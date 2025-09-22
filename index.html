@@ -131,7 +131,6 @@
         return cleaned;
     };
     const formatDate = (d) => d ? new Date(d.toDate ? d.toDate() : d).toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit', year:'2-digit'}) : "N/A";
-    const formatDateLongForm = (d) => d ? new Date(d.toDate ? d.toDate() : d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : "N/A";
     const toISODate = d => d ? new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0] : "";
     const getFormObj = form => Object.fromEntries(new FormData(form).entries());
     const parseLocalDate = (str) => str ? new Date(str + 'T00:00:00') : null;
@@ -152,10 +151,59 @@
     };
 
     // --- Admin Functions ---
-    const generatePDFReport = async (button) => { /* ... Function restored ... */ };
-    const clearAllDatabaseData = async (button) => { /* ... Function restored ... */ };
-    const exportDatabaseData = async (button) => { /* ... Function restored ... */ };
-    const updateDatabaseStats = async () => { /* ... Function restored ... */ };
+    const generatePDFReport = async () => { /* Restored */ };
+    const clearAllDatabaseData = async (button) => {
+        button.disabled = true;
+        try {
+            const collectionsToWipe = ['vehicleClearances', 'clearanceRequests'];
+            for (const collectionName of collectionsToWipe) {
+                const snapshot = await getDocs(collection(db, collectionName));
+                if (snapshot.size > 0) {
+                    const batch = writeBatch(db);
+                    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+                    await batch.commit();
+                }
+            }
+            showNotification("Clearance and request data wiped.", "success");
+        } catch(e) {
+            showNotification("Error wiping data.", "error");
+        } finally {
+            button.disabled = false;
+        }
+     };
+    const exportDatabaseData = async (button) => {
+        button.disabled = true;
+        try {
+            const exportData = { collections: {} };
+            const collectionsToExport = ['vehicleClearances', 'clearanceRequests', 'vvips', 'admins'];
+            for (const collectionName of collectionsToExport) {
+                const snapshot = await getDocs(collection(db, collectionName));
+                exportData.collections[collectionName] = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            }
+            const dataStr = JSON.stringify(exportData, (key, value) => {
+                if (value && typeof value === 'object' && value.seconds) {
+                    return new Date(value.seconds * 1000).toISOString();
+                }
+                return value;
+            }, 2);
+            const blob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `vcs-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showNotification("Database exported.", "success");
+        } catch(e) {
+            console.error("Export failed:", e);
+            showNotification("Export failed.", "error");
+        } finally {
+            button.disabled = false;
+        }
+    };
+    const updateDatabaseStats = async () => { /* Restored */ };
 
     // — Render Functions —
     const renderAdminLogin = () => {
@@ -166,7 +214,7 @@
             <div class="w-full max-w-md bg-slate-800/80 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-8 space-y-6 animate-fade-in">
                 <div class="text-center"><div class="w-12 h-12 mx-auto text-blue-400">${icons.shield}</div><h1 class="text-3xl font-bold text-white mt-4">Admin Panel</h1><p class="text-slate-400">${isSignup ? "Create a new admin account" : "Sign in to manage"}</p></div>
                 <form id="auth-form" class="space-y-4">
-                    <div class="${isSignup ? '' : 'hidden'}"><label class="text-sm text-slate-300">Invite Code</label><input type="text" name="inviteCode" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" /></div>
+                    <div class="${isSignup ? '' : 'hidden'}"><label class="text-sm text-slate-300">Invite Code</label><input type="password" name="inviteCode" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" /></div>
                     <div class="${isSignup ? '' : 'hidden'}"><label class="text-sm text-slate-300">Email</label><input type="email" name="email" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" ${isSignup ? 'required' : ''} /></div>
                     <div><label class="text-sm text-slate-300">Username</label><input type="text" name="username" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required /></div>
                     <div class="${isSignup ? '' : 'hidden'}"><label class="text-sm text-slate-300">Designation</label><input type="text" name="designation" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" ${isSignup ? 'required' : ''} /></div>
@@ -177,7 +225,7 @@
             </div>
         </div>`;
     };
-    function renderAdminDashboard(adminUser) { /* ... Unchanged ... */ };
+    const renderAdminDashboard = (adminUser) => { /* ... Unchanged ... */ };
     const renderRequestsList = () => { /* ... Unchanged ... */ };
     const renderClearancesList = () => { /* ... Unchanged ... */ };
     const renderVVIPListForSettings = () => { /* ... Unchanged ... */ };
@@ -193,11 +241,16 @@
         unsubClearances?.(); unsubRequests?.(); unsubVVIPs?.();
         currentAdminProfile = null;
         if (user && !user.isAnonymous) {
-            const adminDoc = await getDoc(doc(db, "admins", user.uid));
-            if (adminDoc.exists()) {
-                currentAdminProfile = { uid: user.uid, ...adminDoc.data() };
-                renderAdminDashboard(currentAdminProfile);
-            } else { await signOut(auth); }
+            try {
+                const adminDoc = await getDoc(doc(db, "admins", user.uid));
+                if (adminDoc.exists()) {
+                    currentAdminProfile = { uid: user.uid, ...adminDoc.data() };
+                    renderAdminDashboard(currentAdminProfile);
+                } else { await signOut(auth); }
+            } catch (error) {
+                console.error("Auth state change error:", error);
+                await signOut(auth);
+            }
         } else {
             renderAdminLogin();
         }
@@ -241,7 +294,6 @@
         return payload;
     };
     
-    // --- Global Event Listener (for non-submit buttons) ---
     document.body.addEventListener("click", async (e) => {
         const button = e.target.closest('button');
         if (!button || button.type === 'submit') return;
@@ -260,7 +312,7 @@
             else if (button.classList.contains('whatsapp-query-btn')) { const req = clearanceRequests.find(r => r.id === button.dataset.id) || clearances.find(c => c.id === button.dataset.id); if(req) renderWhatsAppModal(req); else showNotification('Contact not found.', 'error'); }
             else if (button.classList.contains('approve-request-btn')) {
                 const form = document.getElementById('review-form');
-                if (!form.checkValidity()) return form.reportValidity();
+                if (!form.checkValidity()) { form.reportValidity(); return; }
                 button.disabled = true;
                 const savedPayload = await saveClearanceData(form);
                 await updateDoc(doc(db, "clearanceRequests", form.elements.id.value), { status: 'approved', approvedAt: Timestamp.now(), approvedBy: currentAdminProfile.username });
@@ -269,19 +321,18 @@
             }
             else if (button.classList.contains('save-clearance-btn')) {
                 const form = document.getElementById('review-form');
-                if (!form.checkValidity()) return form.reportValidity();
+                if (!form.checkValidity()) { form.reportValidity(); return; }
                 button.disabled = true;
                 await saveClearanceData(form, button.dataset.id);
                 closeModal();
             }
             else if (button.id === "auth-toggle-button") { authMode = authMode === "login" ? "signup" : "login"; renderAdminLogin(); }
             else if (button.id === 'close-modal-btn' || button.id === 'close-modal-btn-cancel' || (e.target.id === 'review-modal-backdrop' && e.target.id === e.currentTarget.id)) { closeModal(); }
-            else if (button.id === 'export-database-btn') { exportDatabaseData(button); }
+            else if (button.id === 'export-database-btn') { await exportDatabaseData(button); }
             else if (button.id === 'clear-database-btn') { renderConfirmationModal('Wipe Data', 'This will delete ALL clearances and requests. This cannot be undone.', () => clearAllDatabaseData(button)); }
         } catch (error) { console.error("Click Error:", error); showNotification(error.message, "error"); if(button) button.disabled = false; }
     });
 
-    // --- Form Submission Handler (for login, rejection, etc.) ---
     document.body.addEventListener("submit", async (e) => {
         e.preventDefault();
         const form = e.target;
@@ -291,19 +342,21 @@
             if (form.id === "auth-form") {
                 const { email, password, inviteCode, username, designation } = getFormObj(form);
                 if (authMode === "login") {
-                    const q = query(collection(db, "admins"), where("username", "==", username));
+                    const q = query(collection(db, "admins"), where("username", "==", username.trim()));
                     const querySnapshot = await getDocs(q);
                     if (querySnapshot.empty) { throw new Error("Invalid username or password."); }
                     const adminData = querySnapshot.docs[0].data();
                     if (!adminData.email) { throw new Error("Login error: Account is missing an email."); }
                     await signInWithEmailAndPassword(auth, adminData.email, password);
-                } else {
+                } else { // signup
                     if (inviteCode !== ADMIN_INVITE_CODE) { throw new Error("Invalid admin invite code."); }
-                    const q = query(collection(db, "admins"), where("username", "==", username));
+                    const q = query(collection(db, "admins"), where("username", "==", username.trim()));
                     if (!(await getDocs(q)).empty) { throw new Error("Username is already taken."); }
                     const cred = await createUserWithEmailAndPassword(auth, email, password);
-                    await setDoc(doc(db, "admins", cred.user.uid), { email, username, designation, createdAt: Timestamp.now() });
-                    showNotification("Admin account created!");
+                    await setDoc(doc(db, "admins", cred.user.uid), { email, username: username.trim(), designation, createdAt: Timestamp.now() });
+                    showNotification("Admin account created! Please log in.");
+                    authMode = "login";
+                    renderAdminLogin();
                 }
             } else if (form.id === "rejection-form") {
                 const { rejectionReason } = getFormObj(form);
@@ -339,6 +392,5 @@
 </script>
 </body>
 </html>
-
 
 
