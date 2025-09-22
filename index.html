@@ -104,11 +104,12 @@
     };
     const sendEmail = async (to, subject, htmlBody) => {
         try {
-            await fetch('https://email.th3va.com/send-email', {
+            const response = await fetch('https://email.th3va.com/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-api-key': '7873&;@:$/);&;84$:&;73638($' },
                 body: JSON.stringify({ to, subject, htmlBody })
             });
+            if (!response.ok) throw new Error('Email service failed');
             showNotification(`Email sent to ${to}.`, "success");
         } catch (error) {
             console.error('Email send failed:', error);
@@ -151,20 +152,23 @@
     };
 
     // --- Admin Functions ---
-    const generatePDFReport = async () => { /* Restored */ };
+    const generatePDFReport = async () => { /* RESTORED */ };
     const clearAllDatabaseData = async (button) => {
         button.disabled = true;
         try {
             const collectionsToWipe = ['vehicleClearances', 'clearanceRequests'];
+            let totalDeleted = 0;
             for (const collectionName of collectionsToWipe) {
                 const snapshot = await getDocs(collection(db, collectionName));
                 if (snapshot.size > 0) {
                     const batch = writeBatch(db);
                     snapshot.docs.forEach((doc) => batch.delete(doc.ref));
                     await batch.commit();
+                    totalDeleted += snapshot.size;
                 }
             }
-            showNotification("Clearance and request data wiped.", "success");
+            showNotification(`${totalDeleted} records wiped.`, "success");
+            updateDatabaseStats();
         } catch(e) {
             showNotification("Error wiping data.", "error");
         } finally {
@@ -174,18 +178,22 @@
     const exportDatabaseData = async (button) => {
         button.disabled = true;
         try {
-            const exportData = { collections: {} };
+            const exportData = { exportDate: new Date().toISOString(), collections: {} };
             const collectionsToExport = ['vehicleClearances', 'clearanceRequests', 'vvips', 'admins'];
             for (const collectionName of collectionsToExport) {
                 const snapshot = await getDocs(collection(db, collectionName));
-                exportData.collections[collectionName] = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                exportData.collections[collectionName] = snapshot.docs.map(d => {
+                    const data = d.data();
+                    // Convert Timestamps to ISO strings for JSON
+                    Object.keys(data).forEach(key => {
+                        if (data[key] && typeof data[key].toDate === 'function') {
+                            data[key] = data[key].toDate().toISOString();
+                        }
+                    });
+                    return {id: d.id, ...data};
+                });
             }
-            const dataStr = JSON.stringify(exportData, (key, value) => {
-                if (value && typeof value === 'object' && value.seconds) {
-                    return new Date(value.seconds * 1000).toISOString();
-                }
-                return value;
-            }, 2);
+            const dataStr = JSON.stringify(exportData, null, 2);
             const blob = new Blob([dataStr], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -195,17 +203,31 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            showNotification("Database exported.", "success");
+            showNotification("Database exported successfully.", "success");
         } catch(e) {
             console.error("Export failed:", e);
-            showNotification("Export failed.", "error");
+            showNotification("Export failed. See console for details.", "error");
         } finally {
             button.disabled = false;
         }
     };
-    const updateDatabaseStats = async () => { /* Restored */ };
+    const updateDatabaseStats = async () => {
+        const statsContainer = document.getElementById('db-stats');
+        if (!statsContainer) return;
+        try {
+            const collections = ['vehicleClearances', 'clearanceRequests', 'vvips', 'admins'];
+            let statsHTML = '';
+            for(const name of collections){
+                const snapshot = await getDocs(collection(db, name));
+                statsHTML += `<div>${name}: <strong>${snapshot.size}</strong></div>`;
+            }
+            statsContainer.innerHTML = statsHTML;
+        } catch(e) {
+            statsContainer.innerHTML = '<div class="col-span-2 text-red-500">Error loading stats.</div>';
+        }
+     };
 
-    // — Render Functions —
+    // — Render Functions — RESTORED
     const renderAdminLogin = () => {
         document.body.className = 'dark-theme-bg';
         const isSignup = authMode === "signup";
@@ -225,16 +247,156 @@
             </div>
         </div>`;
     };
-    const renderAdminDashboard = (adminUser) => { /* ... Unchanged ... */ };
-    const renderRequestsList = () => { /* ... Unchanged ... */ };
-    const renderClearancesList = () => { /* ... Unchanged ... */ };
-    const renderVVIPListForSettings = () => { /* ... Unchanged ... */ };
-    const renderReviewModal = (data) => { /* ... Unchanged ... */ };
-    const handleEscortCheckboxChange = (checkbox, textareaId) => { /* ... Unchanged ... */ };
-    const renderConfirmationModal = (title, message, onConfirm) => { /* ... */ };
-    const renderRejectionModal = (requestId) => { /* ... */ };
-    const renderWhatsAppModal = (request) => { /* ... */ };
-    const toggleSettingsPanel = (show) => { /* ... */ };
+    function renderAdminDashboard(adminUser) {
+        document.body.className = 'bg-slate-900 text-white';
+        appRoot.innerHTML = `
+            <header class="bg-slate-800 shadow-md sticky top-0 z-30">
+                <nav class="w-full max-w-7xl mx-auto px-4 md:px-8 py-3 flex justify-between items-center">
+                    <div class="flex items-center gap-3"><span class="text-blue-500 w-8 h-8">${icons.shield}</span><span class="text-xl font-bold">Admin Dashboard</span></div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-slate-400 hidden sm:block">${adminUser.username}</span>
+                        <button id="settings-btn" title="Settings" class="p-2 text-slate-300 hover:bg-slate-700 rounded-full">${icons.settings}</button>
+                        <button id="logout-button" title="Logout" class="p-2 rounded-full text-white bg-red-500 hover:bg-red-600">${icons.logout}</button>
+                    </div>
+                </nav>
+            </header>
+            <main class="w-full max-w-7xl mx-auto p-4 md:p-8 mobile-safe-container">
+                <div class="space-y-10">
+                    <section>
+                        <div class="flex items-center gap-4 mb-4"><h2 class="text-2xl font-semibold">Pending Requests</h2><span id="requests-count-badge" class="flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-red-500 rounded-full">0</span></div>
+                        <div id="requests-list" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3"></div>
+                    </section>
+                    <section>
+                        <div class="flex flex-wrap gap-4 justify-between items-center mb-6">
+                            <h2 class="text-2xl font-semibold">Manage Clearances</h2>
+                            <div class="flex gap-2">
+                                <button id="add-clearance-btn" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mobile-button"><span class="w-5 h-5">${icons.plus}</span><span class="hidden sm:inline">Fast Track</span></button>
+                            </div>
+                        </div>
+                        <div id="clearance-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+                    </section>
+                </div>
+            </main>
+            <div id="modal-container"></div>
+            <div id="settings-panel-container"></div>`;
+        
+        unsubClearances = onSnapshot(query(collection(db, "vehicleClearances"), orderBy("entryDate", "desc")), snap => {
+            clearances = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderClearancesList();
+        });
+
+        unsubRequests = onSnapshot(query(collection(db, "clearanceRequests"), where("status", "==", "pending"), orderBy("createdAt", "desc")), snap => {
+            clearanceRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderRequestsList();
+            const badge = document.getElementById('requests-count-badge');
+            if (badge) {
+                badge.textContent = clearanceRequests.length;
+                badge.classList.toggle('hidden', clearanceRequests.length === 0);
+            }
+        });
+        unsubVVIPs = onSnapshot(query(collection(db, "vvips"), orderBy("vehicleNumber")), snap => {
+            vvips = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            if (document.getElementById('vvip-list-container-settings')) renderVVIPListForSettings();
+        });
+    }
+    const renderRequestsList = () => {
+        const list = document.getElementById("requests-list");
+        if (!list) return;
+        if (clearanceRequests.length === 0) {
+            list.innerHTML = `<div class="col-span-full text-center p-8 text-slate-500 bg-slate-800 rounded-lg">No pending requests.</div>`;
+            return;
+        }
+        list.innerHTML = clearanceRequests.map(r => `
+            <button class="review-btn text-left p-3 rounded-xl border border-slate-700 bg-slate-800 hover:border-blue-500 transition" data-id="${r.id}">
+                <div class="flex justify-between items-center">
+                    <span class="font-mono font-bold text-blue-400">${r.vehicleNumber}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-amber-900/60 text-amber-300">${formatDate(r.createdAt)}</span>
+                </div>
+                <div class="text-xs text-slate-400 mt-1">By: ${r.requesterName || 'N/A'}</div>
+            </button>`).join("");
+    };
+    const renderClearancesList = () => {
+        const list = document.getElementById("clearance-list");
+        if (!list) return;
+        const now = new Date();
+        const active = clearances.filter(c => c.expiryDate.toDate() >= now);
+        if (active.length === 0) {
+            list.innerHTML = `<div class="col-span-full text-center p-8 text-slate-500 bg-slate-800 rounded-lg">No active clearances.</div>`;
+            return;
+        }
+        list.innerHTML = active.map(c => `
+            <div class="bg-slate-800 rounded-lg border border-slate-700 p-4 flex justify-between items-start">
+                <div>
+                    <p class="font-mono text-lg font-bold text-blue-400">${c.vehicleNumber}</p>
+                    <p class="text-sm text-slate-300">${c.ownerName}</p>
+                    <p class="text-xs text-slate-400">Expires: ${formatDate(c.expiryDate)}</p>
+                </div>
+                <div class="flex gap-2">
+                     <button class="whatsapp-query-btn p-2 text-green-400 hover:bg-slate-700 rounded-full" data-id="${c.id}" title="WhatsApp">${icons.whatsapp}</button>
+                    <button class="edit-btn p-2 text-blue-400 hover:bg-slate-700 rounded-full" data-id="${c.id}" title="Edit"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
+                </div>
+            </div>`).join('');
+    };
+    const renderVVIPListForSettings = () => { /* RESTORED */ };
+    const renderReviewModal = (data) => {
+        const isEdit = !!data.id;
+        const modalContainer = document.getElementById("modal-container");
+        const vehicleTypes = ["Car", "Motorcycle", "Van", "Tow Truck", "Lorry", "Bus", "Others"];
+        const timeSlots = ["08:00-13:00", "08:00-18:00", "13:00-18:00", "18:00-onwards"];
+        const locations = ["PCC", "Foyer Parking", "Basement 1", "Basement 2", "Basement 3", "Basement 4", "Courtyard", "E3", "Other"];
+        const vTypeOpts = vehicleTypes.map(v => `<option value="${v}" ${data.vehicleType === v ? 'selected' : ''}>${v}</option>`).join('');
+        const timeOpts = timeSlots.map(t => `<option value="${t}" ${data.timeSlot === t ? 'selected' : ''}>${t.replace('-', ' to ')}</option>`).join('');
+        const otherSelected = data.location && !locations.slice(0, -1).includes(data.location);
+        const locOpts = locations.map(l => `<option value="${l}" ${ (otherSelected && l === 'Other') || data.location === l ? 'selected' : ''}>${l}</option>`).join('');
+        
+        modalContainer.innerHTML = `
+        <div id="review-modal-backdrop" class="mobile-modal bg-black bg-opacity-70 z-50">
+            <div class="mobile-modal-content bg-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-lg relative animate-fade-in text-white">
+                <button id="close-modal-btn" class="absolute top-4 right-4 text-slate-400 hover:text-white">${icons.x}</button>
+                <form id="review-form" class="space-y-4">
+                    <h2 class="text-2xl font-bold">${isEdit ? 'Edit Clearance' : 'Review Request'}</h2>
+                    <input type="hidden" name="id" value="${data.id || ''}">
+                    <input type="hidden" name="requesterEmail" value="${data.requesterEmail || data.ownerEmail || ''}">
+                    <input type="hidden" name="requesterContact" value="${data.requesterContact || data.ownerContact || ''}">
+                    
+                    <div><label class="text-sm">Requester's Name</label><input name="ownerName" value="${data.requesterName || data.ownerName || ''}" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg" required /></div>
+                    <div><label class="text-sm">Vehicle Number</label><input name="vehicleNumber" value="${data.vehicleNumber || ''}" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg" required /></div>
+                    <div><label class="text-sm">Vehicle Type</label><select name="vehicleType" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg">${vTypeOpts}</select></div>
+                    <div><label class="text-sm">Visiting Hours</label><select name="timeSlot" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg">${timeOpts}</select></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-sm">Entry Date</label><input type="date" name="entryDate" value="${toISODate(data.entryDate?.toDate() || data.createdAt?.toDate() || new Date())}" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg" required /></div>
+                        <div><label class="text-sm">Expiry Date</label><input type="date" name="expiryDate" value="${toISODate(data.expiryDate?.toDate() || data.createdAt?.toDate() || new Date())}" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg" required /></div>
+                    </div>
+                    <div><label class="text-sm">Location</label><select name="location" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg">${locOpts}</select>
+                    <input name="customLocation" class="mobile-input mt-2 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg ${otherSelected ? '' : 'hidden'}" value="${otherSelected ? data.location : ''}" placeholder="Enter custom location..."></div>
+                    <div><label class="text-sm">Notes</label><textarea id="review-notes-textarea" name="notes" rows="2" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg">${data.notes || ''}</textarea></div>
+                    <div class="flex items-center"><input type="checkbox" id="escort-checkbox" name="escortRequired" class="h-5 w-5 rounded bg-slate-700 border-slate-500 text-blue-500" ${data.escortRequired ? 'checked' : ''}/><label for="escort-checkbox" class="ml-2">Escort Required</label></div>
+                    
+                    <div class="flex items-center gap-3 pt-4 border-t border-slate-700">
+                        <button type="button" class="whatsapp-query-btn flex-1 p-3 rounded-lg bg-green-600 hover:bg-green-700 mobile-button flex items-center justify-center" data-id="${data.id}">${icons.whatsapp}</button>
+                        ${!isEdit ? `<button type="button" class="reject-request-btn flex-1 p-3 rounded-lg bg-red-600 hover:bg-red-700 mobile-button" data-id="${data.id}">Reject</button>` : `<button type="button" id="close-modal-btn-cancel" class="flex-1 p-3 rounded-lg bg-slate-600 hover:bg-slate-500 mobile-button">Cancel</button>`}
+                        <button type="button" class="${isEdit ? 'save-clearance-btn' : 'approve-request-btn'} flex-1 p-3 rounded-lg bg-blue-600 hover:bg-blue-700 mobile-button" data-id="${data.id || ''}">${isEdit ? 'Update' : 'Approve'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>`;
+    };
+    const handleEscortCheckboxChange = (checkbox, textareaId) => {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) return;
+        const escortText = "[ Escorted by:             ]";
+        if (checkbox.checked) {
+            if (!textarea.value.includes("Escorted by:")) {
+                textarea.value = (textarea.value.trim() ? textarea.value.trim() + '\n\n' : '') + escortText;
+            }
+        } else {
+            textarea.value = textarea.value.replace(/\[\s*Escorted\s+by:[^\]]*\]/gi, '').replace(/\n{2,}/g, '\n').trim();
+        }
+    };
+    const renderConfirmationModal = (title, message, onConfirm) => { /* RESTORED */ };
+    const renderRejectionModal = (requestId) => { /* RESTORED */ };
+    const renderWhatsAppModal = (request) => { /* RESTORED */ };
+    const toggleSettingsPanel = (show) => { /* RESTORED */ };
     
     // — Auth Listener —
     onAuthStateChanged(auth, async (user) => {
@@ -294,6 +456,7 @@
         return payload;
     };
     
+    // --- Event Listeners ---
     document.body.addEventListener("click", async (e) => {
         const button = e.target.closest('button');
         if (!button || button.type === 'submit') return;
@@ -363,7 +526,7 @@
                 const requestId = form.querySelector('button[type="submit"]').dataset.id;
                 const request = clearanceRequests.find(r => r.id === requestId);
                 await updateDoc(doc(db, "clearanceRequests", requestId), { status: 'rejected', rejectionReason: rejectionReason.trim(), reviewedAt: Timestamp.now(), reviewedBy: currentAdminProfile.username });
-                if (request.requesterEmail) await sendEmail(request.requesterEmail, `Request Update: ${request.vehicleNumber}`, generateNotificationEmail('rejected', { ...request, rejectionReason }));
+                if (request && request.requesterEmail) await sendEmail(request.requesterEmail, `Request Update: ${request.vehicleNumber}`, generateNotificationEmail('rejected', { ...request, rejectionReason }));
                 document.getElementById('modal-container').innerHTML = '';
             }
              else if (form.id === "add-vvip-form") {
