@@ -174,7 +174,6 @@
 
     // --- Configuration ---
     const ADMIN_INVITE_CODE = "ADMIN2025";
-    const DEFAULT_USER_PASSWORD = "123456";
 
     // IMPORTANT: Replace with your actual Firebase configuration
     const firebaseConfig = {
@@ -193,7 +192,7 @@
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
-        window.db = db; // expose for admin global search waitForDb
+        window.db = db;
         console.log("Firebase initialized successfully");
     } catch (err) {
         console.error("Firebase initialization error:", err);
@@ -204,11 +203,9 @@
     let clearances = [];
     let clearanceRequests = [];
     let vvips = [];
-    let userPasswordConfig = null;
     let currentAdminProfile = null;
     let unsubClearances = null,
         unsubRequests = null,
-        unsubConfig = null,
         unsubVVIPs = null;
     let authMode = "login";
 
@@ -274,6 +271,8 @@
         let cleaned = phone.replace(/\D/g, '');
         if (cleaned.startsWith('0')) {
             cleaned = '60' + cleaned.substring(1);
+        } else if (cleaned.length > 8 && !cleaned.startsWith('60')) {
+            cleaned = '60' + cleaned;
         }
         return cleaned;
     };
@@ -307,16 +306,6 @@
         }
         return null;
     }
-    
-    const formatApprovalHistory = (clearance) => {
-        if (!clearance.approvalHistory || clearance.approvalHistory.length === 0) return '';
-        return clearance.approvalHistory.map(entry => {
-            const date = formatDate(entry.timestamp);
-            const time = entry.timestamp.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-            const actionText = entry.action.charAt(0).toUpperCase() + entry.action.slice(1);
-            return `${actionText} by ${entry.byUsername} (${entry.byDesignation}) on ${date} at ${time}hrs`;
-        }).join('<br>');
-    }
 
     const toISODate = d => d ? new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0] : "";
     const getFormObj = form => Object.fromEntries(new FormData(form).entries());
@@ -347,7 +336,6 @@
         edit: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`,
         trash: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
         shield: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`,
-        search: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>`,
         x: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
         chevronRight: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`,
         download: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
@@ -594,7 +582,7 @@
                                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Add New VVIP</h3>
                                 <div class="w-full">
                                     <label class="text-xs font-semibold text-gray-600 dark:text-gray-400">Vehicle Number</label>
-                                    <input name="vehicleNumber" oninput="this.value=this.value.replace(/\\D/g, '')" class="mobile-input w-full mt-1 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg" required style="text-transform:uppercase">
+                                    <input name="vehicleNumber" oninput="this.value=this.value.replace(/[^A-Z0-9]/g, '')" class="mobile-input w-full mt-1 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg" required style="text-transform:uppercase">
                                 </div>
                                 <div class="w-full">
                                     <label class="text-xs font-semibold text-gray-600 dark:text-gray-400">Designation</label>
@@ -682,7 +670,7 @@
                         </div>
                     </div>
                     <div class="absolute top-3 right-3 flex flex-col items-center gap-2">
-                        <a href="${whatsappLink}" target="_blank" class="p-2 text-green-500 hover:bg-green-100 dark:hover:bg-gray-700 rounded-full transition-colors ${!contact ? 'opacity-50 cursor-not-allowed' : ''}" title="WhatsApp">${icons.whatsapp}</a>
+                        <button class="whatsapp-query-btn p-2 text-green-500 hover:bg-green-100 dark:hover:bg-gray-700 rounded-full transition-colors ${!contact ? 'opacity-50 cursor-not-allowed' : ''}" data-type="clearance" data-id="${c.id}" title="WhatsApp">${icons.whatsapp}</button>
                         <button class="edit-btn p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-gray-700 rounded-full transition-colors" data-id="${c.id}" title="Edit">${icons.edit}</button>
                         <button class="delete-btn p-2 text-red-500 hover:bg-red-100 dark:hover:bg-gray-700 rounded-full transition-colors" data-id="${c.id}" title="Delete">${icons.trash}</button>
                     </div>
@@ -721,62 +709,117 @@
             </div>`).join('') : '<p class="text-gray-500 dark:text-gray-400 text-sm py-4 text-center">No VVIPs added yet.</p>';
     };
 
-    const renderReviewModal = (request) => {
+    const renderClearanceFormModal = (data = {}, mode = 'new') => {
         const modalContainer = document.getElementById("modal-container");
+        const isReview = mode === 'review';
+        const isEdit = mode === 'edit';
+        const isNew = !isReview && !isEdit;
+
+        const title = isReview ? 'Review Request' : isEdit ? 'Edit Clearance' : 'Fast Track Clearance';
+        
+        const contact = isReview ? data.requesterContact : data.ownerContact;
+        const email = isReview ? data.requesterEmail : data.ownerEmail;
+        const name = isReview ? data.requesterName : data.ownerName;
+
         const vehicleTypeOptions = ["Car", "Motorcycle", "Van", "Tow Truck", "Lorry", "Bus", "Others"];
+        const optionsHTML = vehicleTypeOptions.map(vType => `<option value="${vType}" ${data.vehicleType === vType ? 'selected' : ''}>${vType}</option>`).join('');
+
+        let actionButtonsHTML = '';
+        if (isReview) {
+            actionButtonsHTML = `
+                <button type="button" class="whatsapp-query-btn flex-1 min-w-0 rounded-lg bg-green-600 text-white hover:bg-green-700 mobile-button flex items-center justify-center gap-2" data-type="request" data-id="${data.id}">${icons.whatsapp}</button>
+                <button type="button" class="reject-request-btn flex-1 min-w-0 rounded-lg bg-red-600 text-white hover:bg-red-700 mobile-button" data-id="${data.id}">Reject</button>
+                <button type="button" class="approve-request-btn flex-1 min-w-0 rounded-lg bg-blue-600 text-white hover:bg-blue-700 mobile-button" data-id="${data.id}">Approve</button>
+            `;
+        } else {
+             actionButtonsHTML = `
+                <button type="button" class="whatsapp-query-btn flex-1 px-4 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 mobile-button flex items-center justify-center ${!contact ? 'opacity-50 cursor-not-allowed' : ''}" data-type="clearance" data-id="${data.id}" title="Send WhatsApp Message">${icons.whatsapp}</button>
+                <button type="button" id="cancel-modal-btn" class="flex-1 px-4 py-3 rounded-lg bg-red-600 text-white hover:bg-red-700 mobile-button">Cancel</button>
+                <button type="button" class="save-clearance-btn flex-1 px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 mobile-button" data-id="${data.id || ''}">${isEdit ? 'Update' : 'Save'}</button>
+            `;
+        }
+
         modalContainer.innerHTML = `
-        <div id="review-modal-backdrop" class="mobile-modal bg-black bg-opacity-60 z-50">
-            <div class="mobile-modal-content bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 w-full max-w-2xl relative animate-fade-in">
+        <div id="form-modal-backdrop" class="mobile-modal bg-black bg-opacity-60 z-50">
+            <div class="mobile-modal-content bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 relative animate-fade-in">
                 <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100">${icons.x}</button>
-                <form id="review-form" class="space-y-4">
-                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Review Request</h2>
-                    <input type="hidden" name="id" value="${request.id}">
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Requester's Email</label><input name="requesterEmail" value="${request.requesterEmail || ''}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Requester's Contact</label><input name="requesterContact" value="${request.requesterContact || ''}" type="tel" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Requester's Name</label><input name="ownerName" value="${request.requesterName || ''}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Vehicle Number</label><input name="vehicleNumber" value="${request.vehicleNumber || ''}" oninput="this.value=this.value.replace(/\\D/g, '')" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required style="text-transform:uppercase"/></div>
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Vehicle Type</label><select name="vehicleType" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="">Select type...</option>${vehicleTypeOptions.map(v => `<option value="${v}" ${request.vehicleType === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Visiting Hours</label><select name="timeSlot" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="08:00-13:00" ${request.timeSlot === '08:00-13:00' ? 'selected' : ''}>08:00 to 13:00</option><option value="08:00-18:00" ${request.timeSlot === '08:00-18:00' ? 'selected' : ''}>08:00 to 18:00</option><option value="13:00-18:00" ${request.timeSlot === '13:00-18:00' ? 'selected' : ''}>13:00 to 18:00</option><option value="18:00-onwards" ${request.timeSlot === '18:00-onwards' ? 'selected' : ''}>18:00 onwards</option></select></div>
+                <form id="clearance-form" class="space-y-4">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">${title}</h2>
+                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">${isReview ? "Requester's Name" : "Owner's Name"}</label><input name="ownerName" value="${name || ''}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
+                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Vehicle Number</label><input name="vehicleNumber" value="${data.vehicleNumber || ''}" oninput="this.value=this.value.replace(/[^A-Z0-9]/g, '')" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required style="text-transform:uppercase"/></div>
+                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Contact Number</label><input name="contact" value="${contact || ''}" type="tel" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" /></div>
+                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label><input name="email" value="${email || ''}" type="email" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" /></div>
+                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Vehicle Type</label><select name="vehicleType" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="">Select...</option>${optionsHTML}</select></div>
+                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Visiting Hours</label><select name="timeSlot" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="">Select...</option><option value="08:00-13:00" ${data.timeSlot === '08:00-13:00' ? 'selected' : ''}>08:00 to 13:00</option><option value="08:00-18:00" ${data.timeSlot === '08:00-18:00' ? 'selected' : ''}>08:00 to 18:00</option><option value="13:00-18:00" ${data.timeSlot === '13:00-18:00' ? 'selected' : ''}>13:00 to 18:00</option><option value="18:00-onwards" ${data.timeSlot === '18:00-onwards' ? 'selected' : ''}>18:00 onwards</option></select></div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-sm font-medium">Entry Date</label><input type="date" name="entryDate" value="${toISODate(request.entryDate?.toDate?.())}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
-                        <div><label class="text-sm font-medium">Expiry Date</label><input type="date" name="expiryDate" value="${toISODate(request.expiryDate?.toDate?.())}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
+                        <div><label class="text-sm font-medium">Entry Date</label><input type="date" name="entryDate" value="${toISODate(data.entryDate?.toDate?.())}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
+                        <div><label class="text-sm font-medium">Expiry Date</label><input type="date" name="expiryDate" value="${toISODate(data.expiryDate?.toDate?.())}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
                     </div>
-                    <div><label class="text-sm font-medium">Location</label><select name="location" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="PCC" ${request.location === 'PCC' ? 'selected' : ''}>PCC</option></select></div>
-                    <div><label class="text-sm font-medium">Notes</label><textarea name="notes" rows="3" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg">${request.notes || ''}</textarea></div>
-                    <div class="flex items-center"><input type="checkbox" name="escortRequired" class="h-5 w-5 rounded" ${request.escortRequired ? 'checked' : ''}/><label class="ml-2">Escort Required</label></div>
-                    <div class="flex items-center gap-3 pt-4 border-t"><button type="button" class="reject-request-btn flex-1 px-4 py-3 rounded-lg bg-red-600 text-white" data-id="${request.id}">Reject</button><button type="button" class="approve-request-btn flex-1 px-4 py-3 rounded-lg bg-blue-600 text-white" data-id="${request.id}">Approve</button></div>
+                    <div><label class="text-sm font-medium">Location</label><select name="location" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="PCC" ${data.location === 'PCC' ? 'selected' : ''}>PCC</option></select></div>
+                    <div><label class="text-sm font-medium">Notes</label><textarea id="modal-notes-textarea" name="notes" rows="3" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg">${data.notes || ''}</textarea></div>
+                    <div class="flex items-center"><input type="checkbox" name="escortRequired" id="escort-checkbox" class="h-5 w-5 rounded" ${data.escortRequired ? 'checked' : ''}/><label class="ml-2">Escort Required</label></div>
+                    <div class="flex items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">${actionButtonsHTML}</div>
                 </form>
             </div>
         </div>`;
     };
 
-    const renderModal = (edit = null) => {
+    const renderWhatsAppModal = (data) => {
+        const contact = data.requesterContact || data.ownerContact;
+        if (!contact) {
+            showNotification("No contact number available.", "error");
+            return;
+        }
         const modalContainer = document.getElementById("modal-container");
-        const isEdit = !!edit;
-        const vehicleTypeOptions = ["Car", "Motorcycle", "Van", "Tow Truck", "Lorry", "Bus", "Others"];
-        modalContainer.innerHTML = `
-        <div id="form-modal-backdrop" class="mobile-modal bg-black bg-opacity-60 z-50">
-            <div class="mobile-modal-content bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 relative animate-fade-in">
-                <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400">${icons.x}</button>
-                <form id="clearance-form" class="space-y-4">
-                    <h2 class="text-2xl font-bold">${isEdit ? 'Edit Clearance' : 'Fast Track Clearance'}</h2>
-                    <div><label>Owner's Name</label><input name="ownerName" value="${edit?.ownerName || ''}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
-                    <div><label>Vehicle Number</label><input name="vehicleNumber" value="${edit?.vehicleNumber || ''}" oninput="this.value=this.value.replace(/\\D/g, '')" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required style="text-transform:uppercase"/></div>
-                    <div><label>Contact Number</label><input name="ownerContact" value="${edit?.ownerContact || ''}" type="tel" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" /></div>
-                    <div><label>Email Address</label><input name="ownerEmail" value="${edit?.ownerEmail || ''}" type="email" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" /></div>
-                    <div><label>Vehicle Type</label><select name="vehicleType" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="">Select...</option>${vehicleTypeOptions.map(v => `<option value="${v}" ${edit?.vehicleType === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-                    <div><label>Visiting Hours</label><select name="timeSlot" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="">Select...</option><option value="08:00-13:00" ${edit?.timeSlot === '08:00-13:00' ? 'selected' : ''}>08:00-13:00</option><option value="08:00-18:00" ${edit?.timeSlot === '08:00-18:00' ? 'selected' : ''}>08:00-18:00</option><option value="13:00-18:00" ${edit?.timeSlot === '13:00-18:00' ? 'selected' : ''}>13:00-18:00</option><option value="18:00-onwards" ${edit?.timeSlot === '18:00-onwards' ? 'selected' : ''}>18:00 onwards</option></select></div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div><label>Entry Date</label><input type="date" name="entryDate" value="${toISODate(edit?.entryDate?.toDate?.())}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
-                        <div><label>Expiry Date</label><input type="date" name="expiryDate" value="${toISODate(edit?.expiryDate?.toDate?.())}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
+        modalContainer.innerHTML += `
+        <div id="whatsapp-modal-backdrop" class="mobile-modal bg-black bg-opacity-60 z-[60]">
+            <div class="mobile-modal-content bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md relative animate-fade-in">
+                <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Send WhatsApp Message</h2>
+                <form id="whatsapp-form">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Select Message Type</label>
+                            <div class="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <label class="flex items-center p-3 bg-gray-100 dark:bg-gray-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="approved" class="h-4 w-4"><span class="ml-3 text-sm">Approved</span></label>
+                                <label class="flex items-center p-3 bg-gray-100 dark:bg-gray-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="rejected" class="h-4 w-4"><span class="ml-3 text-sm">Rejected</span></label>
+                                <label class="flex items-center p-3 bg-gray-100 dark:bg-gray-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="query" class="h-4 w-4" checked><span class="ml-3 text-sm">Query</span></label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium">Your Message</label>
+                            <textarea id="customMessage" name="customMessage" rows="4" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg"></textarea>
+                        </div>
                     </div>
-                    <div><label>Location</label><select name="location" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="PCC" ${edit?.location === 'PCC' ? 'selected' : ''}>PCC</option></select></div>
-                    <div><label>Notes</label><textarea name="notes" rows="3" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg">${edit?.notes || ''}</textarea></div>
-                    <div class="flex items-center"><input type="checkbox" name="escortRequired" class="h-5 w-5 rounded" ${edit?.escortRequired ? 'checked' : ''}/><label class="ml-2">Escort Required</label></div>
-                    <div class="flex items-center gap-3 pt-4 border-t"><button type="button" id="cancel-modal-btn" class="flex-1 px-4 py-3 rounded-lg bg-gray-200">Cancel</button><button type="button" class="save-clearance-btn flex-1 px-4 py-3 rounded-lg bg-blue-600 text-white" data-id="${edit?.id || ''}">${isEdit ? 'Update' : 'Save'}</button></div>
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" id="cancel-whatsapp-btn" class="px-4 py-2 rounded-lg bg-gray-200">Cancel</button>
+                        <button type="submit" class="px-4 py-2 rounded-lg bg-green-600 text-white flex items-center gap-2">${icons.whatsapp} Send</button>
+                    </div>
                 </form>
             </div>
         </div>`;
+
+        const form = document.getElementById('whatsapp-form');
+        const textarea = document.getElementById('customMessage');
+        const name = data.requesterName || data.ownerName;
+
+        const updateMessage = (type) => {
+            switch(type) {
+                case 'approved': textarea.value = `Hi ${name}, your vehicle clearance request for [${data.vehicleNumber}] has been APPROVED. It is valid from ${formatDate(data.entryDate.toDate())} to ${formatDate(data.expiryDate.toDate())}.`; break;
+                case 'rejected': textarea.value = `Hi ${name}, your vehicle clearance request for [${data.vehicleNumber}] has been REJECTED. Please check your email for details.`; break;
+                case 'query': textarea.value = `Hi ${name}, regarding your vehicle clearance request for [${data.vehicleNumber}], `; break;
+            }
+        };
+        form.elements.messageType.forEach(radio => radio.addEventListener('change', (e) => updateMessage(e.target.value)));
+        updateMessage('query');
+
+        document.getElementById('cancel-whatsapp-btn').onclick = () => document.getElementById('whatsapp-modal-backdrop').remove();
+        form.onsubmit = (e) => {
+            e.preventDefault();
+            const phone = normalizePhoneNumberForWhatsApp(contact);
+            const message = encodeURIComponent(form.elements.customMessage.value);
+            window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+            document.getElementById('whatsapp-modal-backdrop').remove();
+        };
     };
 
     const renderConfirmationModal = (title, message, onConfirm) => {
@@ -835,7 +878,7 @@
     
     // — Auth State Listener —
     onAuthStateChanged(auth, async (user) => {
-        unsubClearances?.(); unsubRequests?.(); unsubConfig?.(); unsubVVIPs?.();
+        unsubClearances?.(); unsubRequests?.(); unsubVVIPs?.();
         currentAdminProfile = null;
         if (user && !user.isAnonymous) {
             appRoot.innerHTML = '<div class="min-h-screen flex items-center justify-center"><div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div></div>';
@@ -871,7 +914,7 @@
         if (!currentAdminProfile) throw new Error("Admin profile not loaded.");
         const currentTimestamp = Timestamp.now();
         const payload = {
-            ownerName: data.ownerName, ownerContact: data.ownerContact, ownerEmail: data.ownerEmail,
+            ownerName: data.ownerName, ownerContact: data.contact, ownerEmail: data.email,
             vehicleNumber: data.vehicleNumber.toUpperCase(), vehicleType: data.vehicleType,
             location: data.location, timeSlot: data.timeSlot,
             entryDate: Timestamp.fromDate(entryDate), expiryDate: Timestamp.fromDate(expiryDate),
@@ -895,6 +938,24 @@
         return payload;
     };
 
+    const handleEscortCheckboxChange = (checkbox, textareaId) => {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) return;
+        const escortText = "[ Escorted by:             ]";
+        if (checkbox.checked) {
+            if (!textarea.value.includes("Escorted by:")) {
+                let separator = textarea.value.trim() ? (textarea.value.trim().endsWith('\\n') ? '\\n' : '\\n\\n') : '';
+                textarea.value = textarea.value + separator + escortText;
+            }
+        } else {
+            const patterns = [/\\n\\n\\[\\s*Escorted\\s+by:\\s*[^\]]*\\]/gi, /\\n\\[\\s*Escorted\\s+by:\\s*[^\]]*\\]/gi, /\\[\\s*Escorted\\s+by:\\s*[^\]]*\\]/gi];
+            patterns.forEach(pattern => {
+                textarea.value = textarea.value.replace(pattern, '');
+            });
+            textarea.value = textarea.value.replace(/\\n{3,}/g, '\\n\\n').trim();
+        }
+    };
+
     // --- Global Event Listener ---
     document.body.addEventListener("click", async (e) => {
         const target = e.target;
@@ -905,7 +966,19 @@
         }
         if (!button) return;
         if (button.classList.contains('edit-btn') || button.classList.contains('delete-btn')) e.stopPropagation();
+        
         try {
+            if (button.classList.contains("whatsapp-query-btn")) {
+                if (button.classList.contains('cursor-not-allowed')) {
+                    showNotification("No contact number available.", "error");
+                    return;
+                }
+                const dataType = button.dataset.type;
+                const dataId = button.dataset.id;
+                const sourceData = dataType === 'request' ? clearanceRequests.find(r => r.id === dataId) : clearances.find(c => c.id === dataId);
+                if (sourceData) renderWhatsAppModal(sourceData);
+                return;
+            }
             if (button.id === 'settings-btn') { toggleSettingsPanel(true); return; }
             if (button.id === 'close-settings-panel-btn') { toggleSettingsPanel(false); return; }
             if (button.classList.contains('settings-tab-btn')) {
@@ -919,10 +992,10 @@
             }
             if (button.id === "logout-button") { await signOut(auth); showNotification("Logged out"); return; }
             if (button.id === "download-report-btn") { generatePDFReport(button); return; }
-            if (button.id === "add-clearance-btn") { renderModal(); return; }
+            if (button.id === "add-clearance-btn") { renderClearanceFormModal({}, 'new'); return; }
             if (button.classList.contains("edit-btn")) {
                 const clearanceToEdit = clearances.find(c => c.id === button.dataset.id);
-                if (clearanceToEdit) renderModal(clearanceToEdit);
+                if (clearanceToEdit) renderClearanceFormModal(clearanceToEdit, 'edit');
                 return;
             }
             if (button.classList.contains("delete-btn")) {
@@ -941,7 +1014,7 @@
             }
             if (button.classList.contains("review-btn")) {
                 const requestToReview = clearanceRequests.find(r => r.id === button.dataset.id);
-                if (requestToReview) renderReviewModal(requestToReview);
+                if (requestToReview) renderClearanceFormModal(requestToReview, 'review');
                 return;
             }
             if (button.classList.contains("reject-request-btn")) { renderRejectionModal(button.dataset.id); return; }
@@ -958,7 +1031,7 @@
                     if (!entryDate || !expiryDate || !form.checkValidity()) { form.reportValidity(); throw new Error("Invalid form data"); }
                     const approvalTimestamp = Timestamp.now();
                     const clearancePayload = {
-                        ownerName: data.ownerName, ownerEmail: data.requesterEmail, ownerContact: data.requesterContact,
+                        ownerName: data.ownerName, ownerEmail: data.email, ownerContact: data.contact,
                         vehicleNumber: data.vehicleNumber.toUpperCase(), vehicleType: data.vehicleType, location: data.location, timeSlot: data.timeSlot,
                         entryDate: Timestamp.fromDate(entryDate), expiryDate: Timestamp.fromDate(expiryDate),
                         escortRequired: !!data.escortRequired, notes: data.notes || "",
@@ -969,9 +1042,9 @@
                     await addDoc(collection(db, "vehicleClearances"), clearancePayload);
                     await updateDoc(doc(db, "clearanceRequests", requestId), { status: 'approved', approvedAt: approvalTimestamp });
                     showNotification(`Request approved by ${currentAdminProfile.username}`);
-                    if (data.requesterEmail) {
+                    if (data.email) {
                         const emailBody = generateNotificationEmail('approved', { ownerName: data.ownerName, vehicleNumber: clearancePayload.vehicleNumber, location: clearancePayload.location, entryDate: formatDate(clearancePayload.entryDate), expiryDate: formatDate(clearancePayload.expiryDate) });
-                        await sendEmail(data.requesterEmail, `Vehicle Clearance Approved: ${clearancePayload.vehicleNumber}`, emailBody);
+                        await sendEmail(data.email, `Vehicle Clearance Approved: ${clearancePayload.vehicleNumber}`, emailBody);
                     }
                     document.getElementById("modal-container").innerHTML = "";
                 } catch (error) {
@@ -1063,7 +1136,14 @@
         }
     });
 
+    document.body.addEventListener("change", (e) => {
+        if (e.target.name === "escortRequired") {
+            handleEscortCheckboxChange(e.target, 'modal-notes-textarea');
+        }
+    });
+
 </script>
 </body>
 </html>
+
 
