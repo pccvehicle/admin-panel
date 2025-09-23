@@ -270,7 +270,7 @@
                 <div class="flex flex-wrap gap-4 justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold text-slate-100">Manage Clearances</h2>
                     <div class="flex gap-3">
-                       <button id="add-clearance-btn" class="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 h-10 w-10 sm:w-auto"><span class="w-5 h-5">${icons.plus}</span><span class="hidden sm:inline font-semibold"></span></button>
+                       <button id="add-clearance-btn" class="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 h-10 w-10 sm:w-auto"><span class="w-5 h-5">${icons.plus}</span><span class="hidden sm:inline font-semibold">Fast Track</span></button>
                     </div>
                 </div>
                 <div id="clearance-list" class="grid grid-cols-2 gap-4"></div>
@@ -368,15 +368,109 @@
     };
 
     const renderClearanceFormModal = (data = {}, mode = 'new') => {
-        // Omitted for brevity, no changes from previous version
+        const isReview = mode === 'review';
+        const title = isReview ? 'Review Request' : (mode === 'edit' ? 'Edit Clearance' : 'Fast Track Clearance');
+        
+        const vehicleTypeOptions = ["Car", "Motorcycle", "Van", "Tow Truck", "Lorry", "Bus", "Others"];
+        const locationOptions = ["PCC", "Foyer Parking", "Basement 1", "Basement 2", "Basement 3", "Basement 4", "Courtyard", "E3", "Other"];
+
+        const contact = isReview ? data.requesterContact : data.ownerContact;
+        const email = isReview ? data.requesterEmail : data.ownerEmail;
+        const name = isReview ? data.requesterName : data.ownerName;
+
+        const whatsAppButton = `<button type="button" id="whatsapp-form-btn" class="p-3 rounded-lg bg-green-600 text-white flex items-center justify-center" data-id="${data.id || ''}">${icons.whatsapp}</button>`;
+
+        let actionButtonsHTML;
+        if (isReview) {
+            actionButtonsHTML = `
+                ${whatsAppButton}
+                <button type="button" class="reject-request-btn flex-1 py-3 rounded-lg bg-red-600 text-white font-semibold" data-id="${data.id}">Reject</button>
+                <button type="button" class="approve-request-btn flex-1 py-3 rounded-lg bg-blue-600 text-white font-semibold" data-id="${data.id}">Approve</button>`;
+        } else {
+            actionButtonsHTML = `
+                ${whatsAppButton}
+                <button type="button" id="cancel-modal-btn" class="flex-1 py-3 rounded-lg bg-slate-600 text-white font-semibold">Cancel</button>
+                <button type="button" class="save-clearance-btn flex-1 py-3 rounded-lg bg-blue-600 text-white font-semibold" data-id="${data.id || ''}">${mode === 'edit' ? 'Update' : 'Save'}</button>`;
+        }
+
+        document.getElementById("modal-container").innerHTML = `
+        <div id="form-modal-backdrop" class="mobile-modal bg-black/70 z-50">
+            <div class="mobile-modal-content bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg p-6 animate-fade-in relative">
+                 <button id="close-modal-btn" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full">${icons.x}</button>
+                <form id="clearance-form" class="space-y-4 text-slate-300">
+                    <h2 class="text-2xl font-bold text-white mb-6">${title}</h2>
+                    <input type="hidden" name="id" value="${data.id || ''}">
+                    <div><label class="text-sm">Name</label><input name="ownerName" value="${name || ''}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required></div>
+                    <div><label class="text-sm">Vehicle Number</label><input name="vehicleNumber" value="${data.vehicleNumber || ''}" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required></div>
+                    <div><label class="text-sm">Contact Number</label><input name="contact" value="${contact || ''}" type="tel" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
+                    <div><label class="text-sm">Email Address</label><input name="email" value="${email || ''}" type="email" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
+                    <div><label class="text-sm">Vehicle Type</label><select name="vehicleType" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required>${vehicleTypeOptions.map(v => `<option ${data.vehicleType === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+                    <div><label class="text-sm">Visiting Hours</label><select name="timeSlot" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required><option value="08:00-13:00" ${data.timeSlot === '08:00-13:00' ? 'selected' : ''}>08:00-13:00</option><option value="08:00-18:00" ${data.timeSlot === '08:00-18:00' ? 'selected' : ''}>08:00-18:00</option><option value="13:00-18:00" ${data.timeSlot === '13:00-18:00' ? 'selected' : ''}>13:00-18:00</option><option value="18:00-onwards" ${data.timeSlot === '18:00-onwards' ? 'selected' : ''}>18:00 onwards</option></select></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-sm">Entry Date</label><input type="date" name="entryDate" value="${toISODate(data.entryDate?.toDate())}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
+                        <div><label class="text-sm">Expiry Date</label><input type="date" name="expiryDate" value="${toISODate(data.expiryDate?.toDate())}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
+                    </div>
+                    <div><label class="text-sm">Location</label><select name="location" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white">${locationOptions.map(l => `<option ${data.location === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
+                    <input name="customLocation" class="mobile-input mt-2 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white hidden" placeholder="Enter custom location..."></div>
+                    <div><label class="text-sm">Notes</label><textarea name="notes" rows="3" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white">${data.notes || ''}</textarea></div>
+                    <div class="flex items-center"><input type="checkbox" name="escortRequired" class="h-5 w-5 rounded bg-slate-700 border-slate-600 text-blue-500 focus:ring-blue-500" ${data.escortRequired ? 'checked' : ''}><label class="ml-2">Escort Required</label></div>
+                    <div class="flex items-center gap-3 pt-4 border-t border-slate-700">${actionButtonsHTML}</div>
+                </form>
+            </div>
+        </div>`;
     };
     
     const renderWhatsAppModal = (data) => {
-        // Omitted for brevity, no changes from previous version
+        const contact = data.ownerContact || data.requesterContact;
+        if (!contact) { showNotification("No contact number available.", "error"); return; }
+        document.getElementById("modal-container").innerHTML += `
+        <div id="whatsapp-modal-backdrop" class="mobile-modal bg-black/70 z-[60]">
+            <div class="mobile-modal-content bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-md animate-fade-in">
+                <h2 class="text-lg font-bold text-white mb-4">Send WhatsApp Message</h2>
+                <form id="whatsapp-form" class="space-y-4">
+                    <div>
+                        <label class="text-sm text-slate-300">Select Message Type</label>
+                        <div class="mt-2 space-y-2">
+                            <label class="flex items-center p-3 bg-slate-900/70 border border-slate-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="approved" class="h-4 w-4"><span class="ml-3 text-white">Approved</span></label>
+                            <label class="flex items-center p-3 bg-slate-900/70 border border-slate-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="rejected" class="h-4 w-4"><span class="ml-3 text-white">Rejected</span></label>
+                            <label class="flex items-center p-3 bg-slate-900/70 border border-slate-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="query" class="h-4 w-4" checked><span class="ml-3 text-white">Query</span></label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-300">Your Message</label>
+                        <textarea id="customMessage" name="customMessage" rows="4" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></textarea>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button type="button" id="cancel-whatsapp-btn" class="px-4 py-2 rounded-lg bg-slate-600 text-white">Cancel</button>
+                        <button type="submit" class="px-4 py-2 rounded-lg bg-green-600 text-white flex items-center gap-2">${icons.whatsapp} Send</button>
+                    </div>
+                </form>
+            </div>
+        </div>`;
+        const form = document.getElementById('whatsapp-form'), textarea = document.getElementById('customMessage'), name = data.ownerName || data.requesterName;
+        const updateMessage = type => {
+            const dateStr = data.entryDate ? formatDate(data.entryDate instanceof Date ? data.entryDate : data.entryDate.toDate()) : 'N/A';
+            if (type === 'approved') textarea.value = `Hi ${name}, your vehicle clearance for [${data.vehicleNumber}] is APPROVED, valid on ${dateStr}.`;
+            else if (type === 'rejected') textarea.value = `Hi ${name}, your vehicle clearance for [${data.vehicleNumber}] is REJECTED. Please check email for details.`;
+            else textarea.value = `Hi ${name}, regarding your request for [${data.vehicleNumber}], `;
+        };
+        form.elements.messageType.forEach(r => r.onchange = e => updateMessage(e.target.value)); updateMessage('query');
+        document.getElementById('cancel-whatsapp-btn').onclick = () => document.getElementById('whatsapp-modal-backdrop').remove();
+        form.onsubmit = e => { e.preventDefault(); window.open(`https://wa.me/${normalizePhoneNumberForWhatsApp(contact)}?text=${encodeURIComponent(textarea.value)}`); document.getElementById('whatsapp-modal-backdrop').remove(); };
     };
 
     const renderConfirmationModal = (title, message, onConfirm) => {
-        // Omitted for brevity, no changes from previous version
+        const modal = document.createElement('div');
+        modal.innerHTML = `
+        <div id="confirm-modal-backdrop" class="mobile-modal bg-black/70 z-[60]">
+            <div class="mobile-modal-content bg-slate-800 rounded-2xl p-6 w-full max-w-sm animate-fade-in">
+                <h2 class="text-lg font-bold text-white">${title}</h2><p class="mt-2 text-sm text-slate-300">${message}</p>
+                <div class="mt-6 flex justify-end gap-3"><button id="cancel" class="px-4 py-2 rounded-lg bg-slate-600">Cancel</button><button id="confirm" class="px-4 py-2 rounded-lg bg-red-600 text-white">Confirm</button></div>
+            </div>
+        </div>`;
+        document.getElementById('modal-container').appendChild(modal);
+        modal.querySelector('#confirm').onclick = () => { onConfirm(); modal.remove(); };
+        modal.querySelector('#cancel').onclick = () => modal.remove();
     };
 
     const renderSearchModal = () => {
@@ -434,11 +528,52 @@
     });
 
     const saveClearanceData = async (form, editingId = null) => {
-        // Omitted for brevity, no changes from previous version
+        const data = getFormObj(form);
+        const entryDate = parseLocalDate(data.entryDate), expiryDate = parseLocalDate(data.expiryDate);
+        if (!entryDate || !expiryDate || !form.checkValidity()) throw new Error("Invalid form data.");
+        if (!currentAdminProfile) throw new Error("Admin profile not loaded.");
+        
+        const location = data.location === "Other" ? data.customLocation : data.location;
+        const payload = {
+            ownerName: data.ownerName, ownerContact: data.contact, ownerEmail: data.email,
+            vehicleNumber: data.vehicleNumber.toUpperCase(), vehicleType: data.vehicleType,
+            location: location, timeSlot: data.timeSlot,
+            entryDate: Timestamp.fromDate(entryDate), expiryDate: Timestamp.fromDate(expiryDate),
+            notes: data.notes || "",
+            escortRequired: !!data.escortRequired,
+        };
+        
+        if (editingId) {
+            payload.lastUpdatedAt = Timestamp.now();
+            payload.lastUpdatedByUsername = currentAdminProfile.username;
+            await updateDoc(doc(db, "vehicleClearances", editingId), payload);
+            showNotification(`Clearance for ${payload.vehicleNumber} updated.`);
+        } else {
+            payload.createdAt = Timestamp.now();
+            payload.approvedAt = Timestamp.now();
+            payload.approvedByUsername = currentAdminProfile.username;
+            await addDoc(collection(db, "vehicleClearances"), payload);
+            showNotification(`Clearance for ${payload.vehicleNumber} created.`);
+        }
+        return payload;
     };
     
     const handleEscortCheckboxChange = (checkbox) => {
-        // Omitted for brevity, no changes from previous version
+        const form = checkbox.closest('form');
+        if (!form) return;
+        const textarea = form.querySelector('textarea[name="notes"]');
+        if (!textarea) return;
+
+        const escortText = "[ Escorted by:             ]";
+        const escortRegex = /\[\s*Escorted\s+by:[^\]]*\]\s*/g;
+
+        if (checkbox.checked) {
+            if (!escortRegex.test(textarea.value)) {
+                textarea.value = textarea.value.trim() + (textarea.value.trim() ? '\n\n' : '') + escortText;
+            }
+        } else {
+            textarea.value = textarea.value.replace(escortRegex, '').trim();
+        }
     };
 
     // --- Global Event Listener ---
@@ -499,9 +634,40 @@
                  showNotification("Request rejected.");
                  document.getElementById('modal-container').innerHTML = '';
             }
-
             else if (button.classList.contains("approve-request-btn")) {
-                // Omitted for brevity, no changes from previous version
+                const form = button.closest('form');
+                if (!form.checkValidity()) { form.reportValidity(); return; }
+
+                button.disabled = true;
+                button.innerHTML = "Approving...";
+                
+                const originalRequest = clearanceRequests.find(r => r.id === id);
+                const formData = getFormObj(form);
+                const entryDate = parseLocalDate(formData.entryDate);
+                const expiryDate = parseLocalDate(formData.expiryDate);
+
+                const clearancePayload = {
+                    ownerName: formData.ownerName,
+                    ownerContact: formData.contact,
+                    ownerEmail: formData.email,
+                    vehicleNumber: formData.vehicleNumber.toUpperCase(),
+                    vehicleType: formData.vehicleType,
+                    location: formData.location === 'Other' ? formData.customLocation : formData.location,
+                    timeSlot: formData.timeSlot,
+                    entryDate: Timestamp.fromDate(entryDate),
+                    expiryDate: Timestamp.fromDate(expiryDate),
+                    createdAt: originalRequest.createdAt,
+                    approvedAt: Timestamp.now(),
+                    approvedByUsername: currentAdminProfile.username,
+                    notes: formData.notes || "",
+                    escortRequired: !!formData.escortRequired,
+                };
+
+                await addDoc(collection(db, "vehicleClearances"), clearancePayload);
+                await updateDoc(doc(db, "clearanceRequests", id), { status: 'approved' });
+                
+                showNotification(`Request for ${clearancePayload.vehicleNumber} approved.`);
+                document.getElementById('modal-container').innerHTML = '';
             } 
             else if (button.classList.contains("save-clearance-btn")) {
                 await saveClearanceData(button.closest('form'), id);
@@ -516,6 +682,11 @@
             }
         } catch(err) { 
             showNotification(`Error: ${err.message}`, 'error'); 
+            const approveButton = document.querySelector('.approve-request-btn');
+            if(approveButton) {
+                approveButton.disabled = false;
+                approveButton.innerHTML = "Approve";
+            }
         }
     });
 
@@ -584,5 +755,4 @@
 </script>
 </body>
 </html>
-
 
