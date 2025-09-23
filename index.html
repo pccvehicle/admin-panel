@@ -27,12 +27,9 @@
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
         
         input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: invert(0.5);
-        }
-        .dark input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
         }
-
+       
         summary { list-style: none; }
         summary::-webkit-details-marker { display: none; }
 
@@ -44,13 +41,10 @@
         }
 
         .settings-tab-btn.active {
-            border-color: #3b82f6; /* blue-500 */
-            color: #2563eb; /* blue-600 */
-        }
-        .dark .settings-tab-btn.active {
             border-color: #60a5fa; /* blue-400 */
             color: #60a5fa; /* blue-400 */
         }
+        
         .spinner {
             animation: spin 1s linear infinite;
         }
@@ -73,13 +67,7 @@
             margin-right: auto;
             box-sizing: border-box;
         }
-        .mobile-text {
-            font-size: clamp(0.75rem, 3vw, 1rem);
-            line-height: 1.3;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            hyphens: auto;
-        }
+       
         .mobile-vehicle-number {
             font-size: clamp(1rem, 5vw, 1.5rem);
             letter-spacing: 0.05em;
@@ -137,7 +125,7 @@
         }
     </style>
 </head>
-<body class="dark-theme-bg">
+<body class="bg-gray-100 dark:bg-gray-900">
     <div id="app-root"></div>
     
 <script type="module">
@@ -149,7 +137,6 @@
         signInWithEmailAndPassword,
         createUserWithEmailAndPassword,
         signOut,
-        signInAnonymously
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import {
         getFirestore,
@@ -166,16 +153,11 @@
         updateDoc,
         getDocs,
         orderBy,
-        writeBatch,
-        limit,
-        startAt,
-        endAt
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // --- Configuration ---
     const ADMIN_INVITE_CODE = "ADMIN2025";
 
-    // IMPORTANT: Replace with your actual Firebase configuration
     const firebaseConfig = {
         apiKey: "AIzaSyC51Zo7V75JjOpLOdusf6ZKUzEG_gqFcV4",
         authDomain: "vehicle-clearance.firebaseapp.com",
@@ -215,33 +197,19 @@
         const footerText = `This is an automated notification from the Vehicle Clearance System. Please do not reply to this email.`;
         const template = (title, content) => `
             <div style="font-family: Inter, Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                <div style="background-color: #0f172a; color: #ffffff; padding: 20px; text-align: center;">
-                    <h1 style="margin: 0; font-size: 24px;">Vehicle Clearance System</h1>
-                </div>
-                <div style="padding: 25px;">
-                    <h2 style="font-size: 20px; color: #1e293b; margin-top: 0;">${title}</h2>
-                    ${content}
-                    <p style="margin-top: 25px;">Regards,<br/><b>${orgName}</b></p>
-                </div>
-                <div style="background-color: #f1f5f9; color: #64748b; padding: 15px; text-align: center; font-size: 12px;">
-                    ${footerText}
-                </div>
-            </div>
-        `;
-        let title = '';
-        let content = '';
+                <div style="background-color: #0f172a; color: #ffffff; padding: 20px; text-align: center;"><h1 style="margin: 0; font-size: 24px;">Vehicle Clearance System</h1></div>
+                <div style="padding: 25px;"><h2 style="font-size: 20px; color: #1e293b; margin-top: 0;">${title}</h2>${content}<p style="margin-top: 25px;">Regards,<br/><b>${orgName}</b></p></div>
+                <div style="background-color: #f1f5f9; color: #64748b; padding: 15px; text-align: center; font-size: 12px;">${footerText}</div>
+            </div>`;
+        let title = '', content = '';
         switch (status) {
-            case 'pending':
-                title = 'Request Received';
-                content = `<p>Hi ${data.requesterName || 'User'},</p><p>Thank you for your submission. Your vehicle clearance request for <b>${data.vehicleNumber}</b> is now pending review.</p><p>You will receive another email once the status of your request is updated.</p><hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;"><p style="font-size: 14px; color: #475569;"><b>Submitted On:</b> ${data.submittedAt}</p>`;
-                break;
             case 'approved':
                 title = 'Request Approved';
                 content = `<p>Hi ${data.ownerName || 'User'},</p><p>Good news! Your vehicle clearance request for <b>${data.vehicleNumber}</b> has been <strong>approved</strong>.</p><hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;"><p style="font-size: 14px; color: #475569;"><b>Location:</b> ${data.location}</p><p style="font-size: 14px; color: #475569;"><b>Valid From:</b> ${data.entryDate}</p><p style="font-size: 14px; color: #475569;"><b>Valid Until:</b> ${data.expiryDate}</p>`;
                 break;
             case 'rejected':
                 title = 'Request Update';
-                content = `<p>Hi ${data.requesterName || 'User'},</p><p>We have reviewed your vehicle clearance request for <b>${data.vehicleNumber}</b>. Unfortunately, it could not be approved at this time.</p><hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;"><p style="font-size: 14px; color: #475569;"><b>Reason for Rejection:</b></p><p style="padding: 10px; border-left: 3px solid #ef4444; background-color: #fee2e2;">${data.rejectionReason}</p><p>If you believe this is an error, please contact administration or submit a new request with corrected information.</p>`;
+                content = `<p>Hi ${data.requesterName || 'User'},</p><p>We have reviewed your vehicle clearance request for <b>${data.vehicleNumber}</b>. Unfortunately, it could not be approved at this time.</p><hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;"><p style="font-size: 14px; color: #475569;"><b>Reason for Rejection:</b></p><p style="padding: 10px; border-left: 3px solid #ef4444; background-color: #fee2e2;">${data.rejectionReason}</p>`;
                 break;
         }
         return template(title, content);
@@ -257,11 +225,9 @@
             });
             if (!response.ok) throw new Error('Email service HTTP ' + response.status);
             showNotification(`Email notification sent to ${to}.`, "success");
-            return true;
         } catch (error) {
-            console.error('Failed to send email via VPS:', error);
+            console.error('Failed to send email:', error);
             showNotification("Action successful, but failed to send email notification.", "error");
-            return false;
         }
     };
 
@@ -269,11 +235,8 @@
     const normalizePhoneNumberForWhatsApp = (phone) => {
         if (!phone || typeof phone !== 'string') return '';
         let cleaned = phone.replace(/\D/g, '');
-        if (cleaned.startsWith('0')) {
-            cleaned = '60' + cleaned.substring(1);
-        } else if (cleaned.length > 8 && !cleaned.startsWith('60')) {
-            cleaned = '60' + cleaned;
-        }
+        if (cleaned.startsWith('0')) cleaned = '6' + cleaned;
+        if (!cleaned.startsWith('60')) cleaned = '60' + cleaned;
         return cleaned;
     };
 
@@ -289,23 +252,8 @@
         return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     };
 
-    const formatApprovalString = (clearance) => {
-        if (clearance.approvedAt && clearance.approvedByUsername) {
-            const date = formatDate(clearance.approvedAt);
-            const time = clearance.approvedAt.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-            return `Approved by ${clearance.approvedByUsername} (${clearance.approvedByDesignation || 'Admin'}) on ${date} at ${time}hrs`;
-        }
-        return null;
-    }
-
-    const formatUpdateString = (clearance) => {
-        if (clearance.lastUpdatedAt && clearance.lastUpdatedByUsername) {
-            const date = formatDate(clearance.lastUpdatedAt);
-            const time = clearance.lastUpdatedAt.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-            return `Last updated by ${clearance.lastUpdatedByUsername} (${clearance.lastUpdatedByDesignation || 'Admin'}) on ${date} at ${time}hrs`;
-        }
-        return null;
-    }
+    const formatApprovalString = (c) => c.approvedAt ? `Approved by ${c.approvedByUsername} on ${formatDate(c.approvedAt)}` : null;
+    const formatUpdateString = (c) => c.lastUpdatedAt ? `Last updated by ${c.lastUpdatedByUsername} on ${formatDate(c.lastUpdatedAt)}` : null;
 
     const toISODate = d => d ? new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0] : "";
     const getFormObj = form => Object.fromEntries(new FormData(form).entries());
@@ -322,11 +270,8 @@
 
     const parseLocalDate = (dateString) => {
         if (!dateString) return null;
-        const parts = dateString.split('-');
-        if (parts.length !== 3) return null;
-        const [year, month, day] = parts.map(p => parseInt(p, 10));
-        if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
-        return new Date(year, month - 1, day);
+        const [year, month, day] = dateString.split('-').map(p => parseInt(p, 10));
+        return isNaN(year) ? null : new Date(year, month - 1, day);
     };
     
     // — Icon Library —
@@ -354,86 +299,27 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
             const now = new Date();
-            const twentyFourHoursAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-            let reportData = [];
-            const processedVehicleNumbers = new Set();
-            const getEscortInfo = (entry) => {
-                let escortInfo = 'No';
-                if (entry.escortRequired) {
-                    escortInfo = 'Yes';
-                    if (entry.notes) {
-                        const notes = entry.notes.toString();
-                        const match = notes.match(/\[\s*Escorted\s+by:\s*([^\]]*)\]/i);
-                        if (match && match[1].trim()) escortInfo += `\n[Escorted by: ${match[1].trim()}]`;
-                        else escortInfo += '\n[Escorted by: ________]';
-                    } else {
-                        escortInfo += '\n[Escorted by: ________]';
-                    }
-                }
-                return escortInfo;
-            };
-            const clearancesQuery = query(collection(db, "vehicleClearances"), orderBy("createdAt", "desc"));
-            const clearanceSnap = await getDocs(clearancesQuery);
-            const validClearances = clearanceSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.expiryDate.toDate() >= twentyFourHoursAgo);
-            validClearances.forEach(c => {
-                const expiry = c.expiryDate.toDate();
-                expiry.setHours(23, 59, 59, 999);
-                const status = now <= expiry ? 'ACTIVE' : 'EXPIRED';
-                const timeSlotText = c.timeSlot ? c.timeSlot.replace('-', ' to ') : 'N/A';
-                reportData.push([c.vehicleNumber || 'N/A', c.location || 'N/A', timeSlotText, getEscortInfo(c), formatDate(c.expiryDate), status]);
-                processedVehicleNumbers.add(c.vehicleNumber);
-            });
-            const requestsQuery = query(collection(db, "clearanceRequests"), where("createdAt", ">=", Timestamp.fromDate(twentyFourHoursAgo)), orderBy("createdAt", "desc"));
-            const requestSnap = await getDocs(requestsQuery);
-            const recentRequests = requestSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.status !== 'rejected');
-            recentRequests.forEach(r => {
-                if (!processedVehicleNumbers.has(r.vehicleNumber)) {
-                    const timeSlotText = r.timeSlot ? r.timeSlot.replace('-', ' to ') : 'N/A';
-                    reportData.push([r.vehicleNumber || 'N/A', r.location || 'N/A', timeSlotText, getEscortInfo(r), formatDate(r.expiryDate), r.status?.toUpperCase() || 'PENDING']);
-                    processedVehicleNumbers.add(r.vehicleNumber);
-                }
-            });
+            let reportData = clearances.filter(c => c.expiryDate.toDate() >= now).map(c => [
+                c.vehicleNumber || 'N/A', c.location || 'N/A', c.timeSlot ? c.timeSlot.replace('-', ' to ') : 'N/A', 
+                c.escortRequired ? 'Yes' : 'No', formatDate(c.expiryDate), 'ACTIVE'
+            ]);
             doc.setFontSize(20);
             doc.setFont(undefined, 'bold');
             doc.text("Vehicle Clearance Report", 14, 20);
             doc.setFontSize(12);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(100);
-            doc.text(`Report Period: 24-Hour`, 14, 30);
-            doc.text(`Generated: ${formatDateLongForm(now)} at ${now.toLocaleTimeString()}`, 14, 36);
-            if (reportData.length === 0) {
-                doc.setFontSize(14);
-                doc.setTextColor(150);
-                doc.text("No valid clearances or requests found.", 14, 55);
-            } else {
+            doc.text(`Generated: ${formatDateLongForm(now)} at ${now.toLocaleTimeString()}`, 14, 30);
+            if (reportData.length > 0) {
                 doc.autoTable({
-                    head: [['Vehicle No.', 'Location', 'Entry Time', 'Escort Required', 'Expiry Date', 'Status']],
-                    body: reportData,
-                    startY: 45,
-                    theme: 'grid',
-                    headStyles: { fillColor: [45, 55, 72], textColor: 255, fontSize: 10, fontStyle: 'bold' },
-                    styles: { fontSize: 8, cellPadding: 2.5, halign: 'center', valign: 'middle', overflow: 'linebreak', lineColor: [200, 200, 200], lineWidth: 0.5 },
-                    columnStyles: {
-                        0: { halign: 'left', fontStyle: 'bold', cellWidth: 25 }, 1: { halign: 'left', cellWidth: 25 }, 2: { halign: 'center', cellWidth: 25 },
-                        3: { halign: 'left', cellWidth: 35, valign: 'top' }, 4: { halign: 'center', cellWidth: 25 }, 5: { halign: 'center', fontStyle: 'bold', cellWidth: 28 }
-                    },
-                    didParseCell: (data) => {
-                        if (data.section !== 'body') return;
-                        if (data.column.index === 5) {
-                            const status = data.cell.raw;
-                            if (status === 'ACTIVE' || status === 'APPROVED') data.cell.styles.textColor = [22, 163, 74];
-                            else if (status === 'PENDING') data.cell.styles.textColor = [245, 158, 11];
-                            else if (status === 'EXPIRED') data.cell.styles.textColor = [239, 68, 68];
-                            else data.cell.styles.textColor = [107, 114, 128];
-                        }
-                    }
+                    head: [['Vehicle No.', 'Location', 'Entry Time', 'Escort', 'Expiry', 'Status']],
+                    body: reportData, startY: 40, theme: 'grid',
+                    headStyles: { fillColor: [22, 163, 74] }
                 });
+            } else {
+                doc.text("No active clearances found.", 14, 50);
             }
-            const fileName = `Vehicle_Clearance_Report_${now.toISOString().split('T')[0]}.pdf`;
-            doc.save(fileName);
-            showNotification("PDF report generated successfully!");
+            doc.save(`Vehicle_Report_${now.toISOString().split('T')[0]}.pdf`);
+            showNotification("PDF report generated!");
         } catch (error) {
-            console.error("PDF Generation Error:", error);
             showNotification(`Failed to generate PDF: ${error.message}`, "error");
         } finally {
             button.disabled = false;
@@ -445,33 +331,22 @@
     const updateDatabaseStats = async () => {
         const statsContainer = document.getElementById('db-stats');
         if (!statsContainer) return;
-        statsContainer.innerHTML = '<div class="col-span-2 text-center p-4">Loading statistics…</div>';
+        statsContainer.innerHTML = '<div class="col-span-2 text-center p-4">Loading stats...</div>';
         try {
             const collectionsToCount = ['vehicleClearances', 'clearanceRequests', 'vvips', 'admins'];
             const stats = {};
-            for (const collectionName of collectionsToCount) {
-                try {
-                    let snapshot;
-                    if (collectionName === 'clearanceRequests') {
-                        const q = query(collection(db, collectionName), where("status", "==", "pending"));
-                        snapshot = await getDocs(q);
-                    } else {
-                        snapshot = await getDocs(collection(db, collectionName));
-                    }
-                    stats[collectionName] = snapshot.size;
-                } catch (err) {
-                    stats[collectionName] = 'N/A';
-                }
+            for (const name of collectionsToCount) {
+                const q = name === 'clearanceRequests' ? query(collection(db, name), where("status", "==", "pending")) : collection(db, name);
+                stats[name] = (await getDocs(q)).size;
             }
             statsContainer.innerHTML = `
-                <div>Active Clearances: <strong class="text-blue-500">${stats.vehicleClearances}</strong></div>
-                <div>Pending Requests: <strong class="text-yellow-500">${stats.clearanceRequests}</strong></div>
-                <div>VVIPs: <strong class="text-indigo-500">${stats.vvips}</strong></div>
-                <div>Admin Accounts: <strong class="text-green-500">${stats.admins}</strong></div>
-                <div class="col-span-2 text-xs text-gray-500 dark:text-gray-400 mt-2">Last updated: ${new Date().toLocaleTimeString()}</div>`;
+                <div>Active Clearances: <strong class="text-blue-400">${stats.vehicleClearances}</strong></div>
+                <div>Pending Requests: <strong class="text-yellow-400">${stats.clearanceRequests}</strong></div>
+                <div>VVIPs: <strong class="text-indigo-400">${stats.vvips}</strong></div>
+                <div>Admin Accounts: <strong class="text-green-400">${stats.admins}</strong></div>
+                <div class="col-span-2 text-xs text-slate-400 mt-2">Last updated: ${new Date().toLocaleTimeString()}</div>`;
         } catch (error) {
-            console.error('Error loading database stats:', error);
-            statsContainer.innerHTML = '<div class="col-span-2 text-red-500 text-center p-4">Error loading statistics</div>';
+            statsContainer.innerHTML = '<div class="col-span-2 text-red-500 text-center p-4">Error loading stats</div>';
         }
     };
 
@@ -488,31 +363,15 @@
                     <p class="text-slate-400">${isSignup ? "Create an admin account" : "Sign in to manage clearances"}</p>
                 </div>
                 <form id="auth-form" class="space-y-4">
-                    <div class="${isSignup ? '' : 'hidden'}">
-                        <label class="text-sm font-medium text-slate-300">Admin Invite Code</label>
-                        <input type="text" name="inviteCode" class="mobile-input mt-1 block w-full px-4 py-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" placeholder="Enter the secret code" />
-                    </div>
-                     <div class="${isSignup ? '' : 'hidden'}">
-                        <label class="text-sm font-medium text-slate-300">Email</label>
-                        <input type="email" name="email" class="mobile-input mt-1 block w-full px-4 py-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" placeholder="admin@example.com" ${isSignup ? 'required' : ''} />
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-slate-300">Username</label>
-                        <input type="text" name="username" class="mobile-input mt-1 block w-full px-4 py-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" placeholder="e.g., steve" required />
-                    </div>
-                    <div class="${isSignup ? '' : 'hidden'}">
-                        <label class="text-sm font-medium text-slate-300">Designation</label>
-                        <input type="text" name="designation" class="mobile-input mt-1 block w-full px-4 py-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" placeholder="e.g., AD,OC,APO..." ${isSignup ? 'required' : ''} />
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-slate-300">Password</label>
-                        <input type="password" name="password" class="mobile-input mt-1 block w-full px-4 py-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" placeholder="••••••••" required />
-                    </div>
-                    <button type="submit" class="w-full flex justify-center py-3 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 mobile-button">${isSignup ? "Sign Up" : "Login"}</button>
+                    <div class="${isSignup ? '' : 'hidden'}"><label class="text-sm font-medium text-slate-300">Invite Code</label><input type="text" name="inviteCode" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" /></div>
+                    <div class="${isSignup ? '' : 'hidden'}"><label class="text-sm font-medium text-slate-300">Email</label><input type="email" name="email" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" ${isSignup ? 'required' : ''} /></div>
+                    <div><label class="text-sm font-medium text-slate-300">Username</label><input type="text" name="username" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required /></div>
+                    <div class="${isSignup ? '' : 'hidden'}"><label class="text-sm font-medium text-slate-300">Designation</label><input type="text" name="designation" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" ${isSignup ? 'required' : ''} /></div>
+                    <div><label class="text-sm font-medium text-slate-300">Password</label><input type="password" name="password" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required /></div>
+                    <button type="submit" class="w-full py-3 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700">${isSignup ? "Sign Up" : "Login"}</button>
                 </form>
                 <p class="text-center text-sm text-slate-400">
-                    <span>${isSignup ? "Already have an account?" : "Need an admin account?"}</span>
-                    <button id="auth-toggle-button" class="font-medium text-blue-400 hover:text-blue-300 ml-1">${isSignup ? "Login" : "Sign Up"}</button>
+                    <button id="auth-toggle-button" class="font-medium text-blue-400 hover:text-blue-300">${isSignup ? "Login instead" : "Create an account"}</button>
                 </p>
             </div>
         </div>`;
@@ -522,38 +381,24 @@
         document.body.className = 'bg-gray-100 dark:bg-gray-900';
         appRoot.innerHTML = `
         <div id="admin-dashboard-container">
-            <header class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-30">
+            <header class="bg-white dark:bg-slate-800 shadow-md sticky top-0 z-30">
                 <nav class="w-full max-w-7xl mx-auto px-3 md:px-8 py-3 flex justify-between items-center gap-4">
-                    <div class="flex items-center gap-3">
-                        <span class="text-blue-500 w-8 h-8">${icons.shield}</span>
-                        <span class="text-xl font-bold text-gray-800 dark:text-gray-100">Admin Dashboard</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm text-gray-600 dark:text-gray-400 hidden sm:block">${adminUser.username} (${adminUser.designation})</span>
-                        <button id="settings-btn" title="Settings" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">${icons.settings}</button>
-                        <button id="logout-button" title="Logout" class="p-2 rounded-full text-white bg-red-500 hover:bg-red-600"><span class="w-5 h-5">${icons.logout}</span></button>
-                    </div>
+                    <div class="flex items-center gap-3"><span class="text-blue-500 w-8 h-8">${icons.shield}</span><span class="text-xl font-bold text-slate-800 dark:text-slate-100">Admin Dashboard</span></div>
+                    <div class="flex items-center gap-3"><span class="text-sm text-slate-600 dark:text-slate-400 hidden sm:block">${adminUser.username} (${adminUser.designation})</span><button id="settings-btn" title="Settings" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full">${icons.settings}</button><button id="logout-button" title="Logout" class="p-2 rounded-full text-white bg-red-500 hover:bg-red-600"><span class="w-5 h-5">${icons.logout}</span></button></div>
                 </nav>
             </header>
             <main class="w-full max-w-7xl mx-auto p-4 md:p-8 mobile-safe-container">
                 <div class="space-y-10">
                     <section>
-                        <div class="flex items-center gap-4 mb-4">
-                            <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-100">Pending Requests</h2>
-                            <span id="requests-count-badge" class="flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-red-500 rounded-full">0</span>
-                        </div>
+                        <div class="flex items-center gap-4 mb-4"><h2 class="text-2xl font-semibold text-slate-800 dark:text-slate-100">Pending Requests</h2><span id="requests-count-badge" class="flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-red-500 rounded-full">0</span></div>
                         <div id="requests-list" class="space-y-4"></div>
                     </section>
                     <section>
-                        <div class="sticky top-[60px] z-20 bg-gray-100 dark:bg-gray-900 py-3 flex flex-wrap gap-4 justify-between items-center mb-6 border-b border-gray-200 dark:border-gray-700 -mx-4 md:-mx-8 px-4 md:px-8">
-                            <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-100">Manage Clearances</h2>
+                        <div class="sticky top-[60px] z-20 bg-gray-100 dark:bg-gray-900 py-3 flex flex-wrap gap-4 justify-between items-center mb-6 border-b border-slate-200 dark:border-slate-700 -mx-4 md:-mx-8 px-4 md:px-8">
+                            <h2 class="text-2xl font-semibold text-slate-800 dark:text-slate-100">Manage Clearances</h2>
                             <div class="flex gap-2 flex-wrap">
-                               <button id="download-report-btn" class="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 mobile-button">
-                                    <span class="w-5 h-5">${icons.download}</span><span class="hidden sm:inline">Download Report</span>
-                                </button>
-                                <button id="add-clearance-btn" class="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mobile-button">
-                                    <span class="w-5 h-5">${icons.plus}</span><span class="hidden sm:inline">Fast Track</span>
-                                </button>
+                               <button id="download-report-btn" class="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"><span class="w-5 h-5">${icons.download}</span><span class="hidden sm:inline">Report</span></button>
+                               <button id="add-clearance-btn" class="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><span class="w-5 h-5">${icons.plus}</span><span class="hidden sm:inline">Fast Track</span></button>
                             </div>
                         </div>
                         <div id="clearance-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
@@ -563,44 +408,14 @@
             <div id="modal-container"></div>
             <div id="settings-panel-container">
                 <div id="settings-backdrop" class="fixed inset-0 bg-black/0 -z-10"></div>
-                <div id="settings-panel" class="fixed top-0 right-0 h-full w-full max-w-sm bg-white dark:bg-gray-800 shadow-xl transform translate-x-full z-40 flex flex-col">
-                    <div class="flex-shrink-0 flex justify-between items-center p-4 border-b dark:border-gray-700">
-                        <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-100">Settings</h2>
-                        <button id="close-settings-panel-btn" class="p-2 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white rounded-full">${icons.x}</button>
-                    </div>
+                <div id="settings-panel" class="fixed top-0 right-0 h-full w-full max-w-sm bg-white dark:bg-slate-800 shadow-xl transform translate-x-full z-40 flex flex-col">
+                    <div class="flex-shrink-0 flex justify-between items-center p-4 border-b dark:border-slate-700"><h2 class="text-2xl font-semibold text-slate-800 dark:text-slate-100">Settings</h2><button id="close-settings-panel-btn" class="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-full">${icons.x}</button></div>
                     <div class="flex-shrink-0 px-4">
-                        <div class="border-b border-gray-200 dark:border-gray-700">
-                            <nav id="settings-tabs" class="flex gap-2 -mb-px overflow-x-auto">
-                                <button data-tab="vvip" class="settings-tab-btn active whitespace-nowrap py-3 px-2 border-b-2 font-medium text-xs">VVIPs</button>
-                                <button data-tab="database" class="settings-tab-btn whitespace-nowrap py-3 px-2 border-b-2 font-medium text-xs border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200">Database</button>
-                            </nav>
-                        </div>
+                        <nav id="settings-tabs" class="flex gap-2 -mb-px overflow-x-auto border-b border-slate-200 dark:border-slate-700"><button data-tab="vvip" class="settings-tab-btn active whitespace-nowrap py-3 px-2 border-b-2 font-medium text-xs">VVIPs</button><button data-tab="database" class="settings-tab-btn whitespace-nowrap py-3 px-2 border-b-2 font-medium text-xs border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200">Database</button></nav>
                     </div>
                     <div class="flex-grow p-6 overflow-y-auto">
-                        <div id="vvip-settings-pane" class="settings-pane space-y-4">
-                           <form id="add-vvip-form" class="space-y-3 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Add New VVIP</h3>
-                                <div class="w-full">
-                                    <label class="text-xs font-semibold text-gray-600 dark:text-gray-400">Vehicle Number</label>
-                                    <input name="vehicleNumber" oninput="this.value=this.value.replace(/[^A-Z0-9]/g, '')" class="mobile-input w-full mt-1 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg" required style="text-transform:uppercase">
-                                </div>
-                                <div class="w-full">
-                                    <label class="text-xs font-semibold text-gray-600 dark:text-gray-400">Designation</label>
-                                    <input name="designation" class="mobile-input w-full mt-1 p-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg" required>
-                                </div>
-                                <button type="submit" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex-shrink-0 mobile-button">Add VVIP</button>
-                            </form>
-                            <div class="mt-6">
-                                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Current VVIPs</h3>
-                                <div id="vvip-list-container-settings" class="mt-2 space-y-2"></div>
-                            </div>
-                        </div>
-                        <div id="database-settings-pane" class="settings-pane hidden space-y-6">
-                            <div class="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border dark:border-gray-700/50">
-                                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-2">${icons.database} Database Statistics</h3>
-                                <div id="db-stats" class="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300"></div>
-                            </div>
-                        </div>
+                        <div id="vvip-settings-pane" class="settings-pane space-y-4"><form id="add-vvip-form" class="space-y-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg"><h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">Add New VVIP</h3><div><label class="text-xs font-semibold text-slate-600 dark:text-slate-400">Vehicle Number</label><input name="vehicleNumber" oninput="this.value=this.value.replace(/[^A-Z0-9]/g, '')" class="mobile-input mt-1 w-full p-2 bg-white dark:bg-slate-700 border dark:border-slate-600 rounded-lg" required style="text-transform:uppercase"></div><div><label class="text-xs font-semibold text-slate-600 dark:text-slate-400">Designation</label><input name="designation" class="mobile-input mt-1 w-full p-2 bg-white dark:bg-slate-700 border dark:border-slate-600 rounded-lg" required></div><button type="submit" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add VVIP</button></form><div class="mt-6"><h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">Current VVIPs</h3><div id="vvip-list-container-settings" class="mt-2 space-y-2"></div></div></div>
+                        <div id="database-settings-pane" class="settings-pane hidden space-y-6"><div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border dark:border-slate-700/50"><h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">${icons.database} Database Statistics</h3><div id="db-stats" class="grid grid-cols-2 gap-2 text-sm text-slate-700 dark:text-slate-300"></div></div></div>
                     </div>
                 </div>
             </div>
@@ -611,154 +426,101 @@
             renderClearancesList();
         });
 
-        const requestsQuery = query(collection(db, "clearanceRequests"), orderBy("createdAt", "desc"));
-        unsubRequests = onSnapshot(requestsQuery, snap => {
+        unsubRequests = onSnapshot(query(collection(db, "clearanceRequests"), orderBy("createdAt", "desc")), snap => {
             clearanceRequests = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(req => req.status === 'pending');
             renderRequestsList();
-            const badge = document.getElementById('requests-count-badge');
-            if (badge) {
-                badge.textContent = clearanceRequests.length;
-                badge.classList.toggle('hidden', clearanceRequests.length === 0);
-            }
+            document.getElementById('requests-count-badge').textContent = clearanceRequests.length;
         });
-
+        
         renderVVIPListForSettings();
     }
         
     const renderRequestsList = () => {
         const list = document.getElementById("requests-list");
         if (!list) return;
-        if (!Array.isArray(clearanceRequests) || clearanceRequests.length === 0) {
-            list.innerHTML = `<div class="text-center p-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 rounded-lg border dark:border-gray-700">No pending requests.</div>`;
+        if (!clearanceRequests.length) {
+            list.innerHTML = `<div class="text-center p-8 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg">No pending requests.</div>`;
             return;
         }
         list.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">${clearanceRequests.map(r => `
-            <button class="review-btn group relative flex flex-col justify-between gap-2 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition h-20" data-id="${r.id}" title="Review ${r.vehicleNumber}">
-                <div class="w-full flex items-center justify-between gap-2 flex-nowrap">
-                    <span class="font-mono text-lg font-extrabold tracking-wide text-blue-700 dark:text-blue-300 truncate">${(r.vehicleNumber||'').toUpperCase()}</span>
-                    <span class="px-2 py-0.5 text-[11px] rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 whitespace-nowrap">${formatDate(r.entryDate)}</span>
-                </div>
-                <div class="text-xs text-gray-400 dark:text-gray-500">Requested by: ${r.requesterName || 'N/A'}</div>
+            <button class="review-btn group p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:border-blue-400" data-id="${r.id}">
+                <div class="flex justify-between items-center"><span class="font-mono font-bold text-blue-600 dark:text-blue-400">${r.vehicleNumber}</span><span class="text-xs text-slate-500">${formatDate(r.entryDate)}</span></div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mt-2">By: ${r.requesterName}</div>
             </button>`).join("")}</div>`;
     };
 
     const renderClearancesList = () => {
         const list = document.getElementById("clearance-list");
         if (!list) return;
-        const now = new Date();
-        const activeClearances = clearances.filter(c => {
-            const expiryDate = c.expiryDate.toDate();
-            expiryDate.setHours(23, 59, 59, 999);
-            return expiryDate >= now;
-        });
-        if (activeClearances.length === 0) {
-            list.innerHTML = `<div class="col-span-full text-center p-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg border dark:border-gray-700">No active clearances found.</div>`;
+        const active = clearances.filter(c => c.expiryDate.toDate() >= new Date());
+        if (!active.length) {
+            list.innerHTML = `<div class="col-span-full text-center p-8 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg">No active clearances.</div>`;
             return;
         }
-        list.innerHTML = activeClearances.map(c => {
-            const contact = c.ownerContact || c.requesterContact || null;
-            const whatsappLink = contact ? `https://wa.me/${normalizePhoneNumberForWhatsApp(contact)}?text=${encodeURIComponent(`Regarding your vehicle clearance for ${c.vehicleNumber}`)}` : '#';
-            const ownerEmail = c.ownerEmail || c.requesterEmail || null;
-            return `
-            <details class="mobile-details bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden group animate-fade-in border border-gray-200 dark:border-gray-700">
-                <summary class="summary relative block px-3 sm:px-5 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200">
-                    <div class="flex items-center gap-3 min-w-0 flex-1 pr-14">
-                        <span class="text-gray-400 transform transition-transform duration-300 group-open:rotate-90 flex-shrink-0 mt-1">${icons.chevronRight}</span>
-                        <div class="min-w-0 flex-1">
-                            <p class="font-mono text-sm sm:text-base md:text-lg font-bold text-blue-600 dark:text-blue-400 mobile-vehicle-number">${c.vehicleNumber}</p>
-                            <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Entry: ${formatDate(c.entryDate)}</p>
-                        </div>
-                    </div>
-                    <div class="absolute top-3 right-3 flex flex-col items-center gap-2">
-                        <button class="whatsapp-query-btn p-2 text-green-500 hover:bg-green-100 dark:hover:bg-gray-700 rounded-full transition-colors ${!contact ? 'opacity-50 cursor-not-allowed' : ''}" data-type="clearance" data-id="${c.id}" title="WhatsApp">${icons.whatsapp}</button>
-                        <button class="edit-btn p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-gray-700 rounded-full transition-colors" data-id="${c.id}" title="Edit">${icons.edit}</button>
-                        <button class="delete-btn p-2 text-red-500 hover:bg-red-100 dark:hover:bg-gray-700 rounded-full transition-colors" data-id="${c.id}" title="Delete">${icons.trash}</button>
-                    </div>
+        list.innerHTML = active.map(c => `
+            <details class="bg-white dark:bg-slate-800 rounded-lg shadow-md group border border-slate-200 dark:border-slate-700">
+                <summary class="flex justify-between items-center p-4 cursor-pointer">
+                    <p class="font-mono font-bold text-blue-600 dark:text-blue-400">${c.vehicleNumber}</p>
+                    <div class="flex gap-2"><button class="edit-btn p-1" data-id="${c.id}">${icons.edit}</button><button class="delete-btn p-1" data-id="${c.id}">${icons.trash}</button></div>
                 </summary>
-                <div class="px-5 pb-5 border-t border-gray-200 dark:border-gray-700">
-                     <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5 text-sm">
-                        <div><p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Owner</p><p class="font-medium text-gray-800 dark:text-gray-200">${c.ownerName}</p></div>
-                        <div><p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Contact</p><p class="font-medium text-gray-800 dark:text-gray-200">${contact || 'N/A'}</p></div>
-                        <div><p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Location</p><p class="font-medium text-gray-800 dark:text-gray-200">${c.location}</p></div>
-                        <div><p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Vehicle Type</p><p class="font-medium text-gray-800 dark:text-gray-200">${c.vehicleType}</p></div>
-                        <div><p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Visiting Hours</p><p class="font-medium text-gray-800 dark:text-gray-200">${c.timeSlot ? c.timeSlot.replace('-', ' to ') : 'N/A'}</p></div>
-                        <div><p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Validity</p><p class="font-medium text-gray-800 dark:text-gray-200">${formatDate(c.entryDate)} - ${formatDate(c.expiryDate)}</p></div>
-                        <div class="col-span-full"><p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Escort</p><p class="font-medium ${c.escortRequired ? 'text-green-600' : 'text-red-600'}">${c.escortRequired ? 'Required' : 'Not Required'}</p></div>
-                        ${c.notes ? `<div class="col-span-full"><p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Notes</p><p class="font-medium text-gray-800 dark:text-gray-200 whitespace-pre-wrap">${c.notes}</p></div>` : ""}
-                        ${ownerEmail ? `<div class="col-span-full"><p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Email</p><p class="font-medium text-gray-800 dark:text-gray-200 break-all">${ownerEmail}</p></div>` : ''}
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 space-y-2">
-                        ${formatApprovalString(c) ? `<div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg"><p class="font-semibold text-green-700 dark:text-green-300">✓ ${formatApprovalString(c)}</p></div>` : ''}
-                        ${formatUpdateString(c) ? `<div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg"><p class="font-semibold text-yellow-700 dark:text-yellow-300">⚡ ${formatUpdateString(c)}</p></div>` : ''}
-                    </div>
+                <div class="p-4 border-t border-slate-200 dark:border-slate-700 text-sm space-y-2">
+                    <p><b>Owner:</b> ${c.ownerName}</p><p><b>Contact:</b> ${c.ownerContact || 'N/A'}</p>
+                    <p><b>Validity:</b> ${formatDate(c.entryDate)} - ${formatDate(c.expiryDate)}</p>
+                    ${formatApprovalString(c) ? `<p class="text-xs text-slate-500">${formatApprovalString(c)}</p>` : ''}
                 </div>
-            </details>`;
-        }).join("");
+            </details>`).join("");
     };
 
     const renderVVIPListForSettings = () => {
         const container = document.getElementById('vvip-list-container-settings');
         if (!container) return;
         container.innerHTML = vvips.length > 0 ? vvips.map(v => `
-            <div class="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg animate-fade-in border dark:border-gray-700">
-                <div>
-                    <p class="font-mono font-bold text-blue-600 dark:text-blue-400">${v.vehicleNumber.toUpperCase()}</p>
-                    <p class="text-sm text-gray-600 dark:text-gray-300">${v.designation}</p>
-                </div>
-                <button class="delete-vvip-btn p-2 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full" data-id="${v.id}" title="Delete VVIP">${icons.trash}</button>
-            </div>`).join('') : '<p class="text-gray-500 dark:text-gray-400 text-sm py-4 text-center">No VVIPs added yet.</p>';
+            <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-700 rounded-lg border dark:border-slate-600">
+                <div><p class="font-mono font-bold text-blue-500">${v.vehicleNumber}</p><p class="text-sm text-slate-400">${v.designation}</p></div>
+                <button class="delete-vvip-btn p-2 text-red-500 hover:bg-red-100 dark:hover:bg-slate-600 rounded-full" data-id="${v.id}">${icons.trash}</button>
+            </div>`).join('') : '<p class="text-slate-400 text-sm text-center">No VVIPs added.</p>';
     };
 
     const renderClearanceFormModal = (data = {}, mode = 'new') => {
-        const modalContainer = document.getElementById("modal-container");
         const isReview = mode === 'review';
-        const isEdit = mode === 'edit';
-        const isNew = !isReview && !isEdit;
-
-        const title = isReview ? 'Review Request' : isEdit ? 'Edit Clearance' : 'Fast Track Clearance';
-        
+        const title = isReview ? 'Review Request' : (mode === 'edit' ? 'Edit Clearance' : 'Fast Track Clearance');
         const contact = isReview ? data.requesterContact : data.ownerContact;
         const email = isReview ? data.requesterEmail : data.ownerEmail;
         const name = isReview ? data.requesterName : data.ownerName;
 
         const vehicleTypeOptions = ["Car", "Motorcycle", "Van", "Tow Truck", "Lorry", "Bus", "Others"];
-        const optionsHTML = vehicleTypeOptions.map(vType => `<option value="${vType}" ${data.vehicleType === vType ? 'selected' : ''}>${vType}</option>`).join('');
+        const locationOptions = ["PCC", "Foyer Parking", "Basement 1", "Basement 2", "Basement 3", "Basement 4", "Courtyard", "E3", "Other"];
 
-        let actionButtonsHTML = '';
-        if (isReview) {
-            actionButtonsHTML = `
-                <button type="button" class="whatsapp-query-btn flex-1 min-w-0 rounded-lg bg-green-600 text-white hover:bg-green-700 mobile-button flex items-center justify-center gap-2" data-type="request" data-id="${data.id}">${icons.whatsapp}</button>
-                <button type="button" class="reject-request-btn flex-1 min-w-0 rounded-lg bg-red-600 text-white hover:bg-red-700 mobile-button" data-id="${data.id}">Reject</button>
-                <button type="button" class="approve-request-btn flex-1 min-w-0 rounded-lg bg-blue-600 text-white hover:bg-blue-700 mobile-button" data-id="${data.id}">Approve</button>
-            `;
-        } else {
-             actionButtonsHTML = `
-                <button type="button" class="whatsapp-query-btn flex-1 px-4 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 mobile-button flex items-center justify-center ${!contact ? 'opacity-50 cursor-not-allowed' : ''}" data-type="clearance" data-id="${data.id}" title="Send WhatsApp Message">${icons.whatsapp}</button>
-                <button type="button" id="cancel-modal-btn" class="flex-1 px-4 py-3 rounded-lg bg-red-600 text-white hover:bg-red-700 mobile-button">Cancel</button>
-                <button type="button" class="save-clearance-btn flex-1 px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 mobile-button" data-id="${data.id || ''}">${isEdit ? 'Update' : 'Save'}</button>
-            `;
-        }
+        let actionButtonsHTML = isReview ? `
+            <button type="button" class="whatsapp-query-btn flex-1 py-3 rounded-lg bg-green-600 text-white flex items-center justify-center gap-2" data-type="request" data-id="${data.id}">${icons.whatsapp}</button>
+            <button type="button" class="reject-request-btn flex-1 py-3 rounded-lg bg-red-600 text-white" data-id="${data.id}">Reject</button>
+            <button type="button" class="approve-request-btn flex-1 py-3 rounded-lg bg-blue-600 text-white" data-id="${data.id}">Approve</button>`
+            : `
+            <button type="button" class="whatsapp-query-btn flex-1 py-3 rounded-lg bg-green-600 text-white flex items-center justify-center gap-2 ${!contact ? 'opacity-50 cursor-not-allowed' : ''}" data-type="clearance" data-id="${data.id}">${icons.whatsapp}</button>
+            <button type="button" id="cancel-modal-btn" class="flex-1 py-3 rounded-lg bg-red-600 text-white">Cancel</button>
+            <button type="button" class="save-clearance-btn flex-1 py-3 rounded-lg bg-blue-600 text-white" data-id="${data.id || ''}">${mode === 'edit' ? 'Update' : 'Save'}</button>`;
 
-        modalContainer.innerHTML = `
-        <div id="form-modal-backdrop" class="mobile-modal bg-black bg-opacity-60 z-50">
-            <div class="mobile-modal-content bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 relative animate-fade-in">
-                <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100">${icons.x}</button>
-                <form id="clearance-form" class="space-y-4">
-                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">${title}</h2>
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">${isReview ? "Requester's Name" : "Owner's Name"}</label><input name="ownerName" value="${name || ''}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Vehicle Number</label><input name="vehicleNumber" value="${data.vehicleNumber || ''}" oninput="this.value=this.value.replace(/[^A-Z0-9]/g, '')" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required style="text-transform:uppercase"/></div>
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Contact Number</label><input name="contact" value="${contact || ''}" type="tel" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" /></div>
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label><input name="email" value="${email || ''}" type="email" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" /></div>
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Vehicle Type</label><select name="vehicleType" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="">Select...</option>${optionsHTML}</select></div>
-                    <div><label class="text-sm font-medium text-gray-700 dark:text-gray-300">Visiting Hours</label><select name="timeSlot" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="">Select...</option><option value="08:00-13:00" ${data.timeSlot === '08:00-13:00' ? 'selected' : ''}>08:00 to 13:00</option><option value="08:00-18:00" ${data.timeSlot === '08:00-18:00' ? 'selected' : ''}>08:00 to 18:00</option><option value="13:00-18:00" ${data.timeSlot === '13:00-18:00' ? 'selected' : ''}>13:00 to 18:00</option><option value="18:00-onwards" ${data.timeSlot === '18:00-onwards' ? 'selected' : ''}>18:00 onwards</option></select></div>
+        document.getElementById("modal-container").innerHTML = `
+        <div id="form-modal-backdrop" class="mobile-modal bg-black/70 z-50">
+            <div class="mobile-modal-content bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg p-6 animate-fade-in">
+                <form id="clearance-form" class="space-y-4 text-slate-300">
+                    <h2 class="text-2xl font-bold text-white mb-6">${title}</h2>
+                    <input type="hidden" name="id" value="${data.id || ''}">
+                    <div><label class="text-sm">Name</label><input name="ownerName" value="${name || ''}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required></div>
+                    <div><label class="text-sm">Vehicle Number</label><input name="vehicleNumber" value="${data.vehicleNumber || ''}" oninput="this.value=this.value.replace(/[^A-Z0-9]/g, '')" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required style="text-transform:uppercase"></div>
+                    <div><label class="text-sm">Contact Number</label><input name="contact" value="${contact || ''}" type="tel" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
+                    <div><label class="text-sm">Email Address</label><input name="email" value="${email || ''}" type="email" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
+                    <div><label class="text-sm">Vehicle Type</label><select name="vehicleType" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required>${vehicleTypeOptions.map(v => `<option ${data.vehicleType === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+                    <div><label class="text-sm">Visiting Hours</label><select name="timeSlot" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required><option value="08:00-13:00" ${data.timeSlot === '08:00-13:00' ? 'selected' : ''}>08:00-13:00</option><option value="08:00-18:00" ${data.timeSlot === '08:00-18:00' ? 'selected' : ''}>08:00-18:00</option><option value="13:00-18:00" ${data.timeSlot === '13:00-18:00' ? 'selected' : ''}>13:00-18:00</option><option value="18:00-onwards" ${data.timeSlot === '18:00-onwards' ? 'selected' : ''}>18:00 onwards</option></select></div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-sm font-medium">Entry Date</label><input type="date" name="entryDate" value="${toISODate(data.entryDate?.toDate?.())}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
-                        <div><label class="text-sm font-medium">Expiry Date</label><input type="date" name="expiryDate" value="${toISODate(data.expiryDate?.toDate?.())}" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required /></div>
+                        <div><label class="text-sm">Entry Date</label><input type="date" name="entryDate" value="${toISODate(data.entryDate?.toDate())}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
+                        <div><label class="text-sm">Expiry Date</label><input type="date" name="expiryDate" value="${toISODate(data.expiryDate?.toDate())}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
                     </div>
-                    <div><label class="text-sm font-medium">Location</label><select name="location" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required><option value="PCC" ${data.location === 'PCC' ? 'selected' : ''}>PCC</option></select></div>
-                    <div><label class="text-sm font-medium">Notes</label><textarea id="modal-notes-textarea" name="notes" rows="3" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg">${data.notes || ''}</textarea></div>
-                    <div class="flex items-center"><input type="checkbox" name="escortRequired" id="escort-checkbox" class="h-5 w-5 rounded" ${data.escortRequired ? 'checked' : ''}/><label class="ml-2">Escort Required</label></div>
-                    <div class="flex items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">${actionButtonsHTML}</div>
+                    <div><label class="text-sm">Location</label><select name="location" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white">${locationOptions.map(l => `<option ${data.location === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
+                    <input name="customLocation" class="mobile-input mt-2 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white hidden" placeholder="Enter custom location..."></div>
+                    <div><label class="text-sm">Notes</label><textarea id="modal-notes-textarea" name="notes" rows="3" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white">${data.notes || ''}</textarea></div>
+                    <div class="flex items-center"><input type="checkbox" name="escortRequired" class="h-5 w-5 rounded bg-slate-700 border-slate-600" ${data.escortRequired ? 'checked' : ''}><label class="ml-2">Escort Required</label></div>
+                    <div class="flex items-center gap-3 pt-4 border-t border-slate-700">${actionButtonsHTML}</div>
                 </form>
             </div>
         </div>`;
@@ -766,379 +528,214 @@
 
     const renderWhatsAppModal = (data) => {
         const contact = data.requesterContact || data.ownerContact;
-        if (!contact) {
-            showNotification("No contact number available.", "error");
-            return;
-        }
-        const modalContainer = document.getElementById("modal-container");
-        modalContainer.innerHTML += `
-        <div id="whatsapp-modal-backdrop" class="mobile-modal bg-black bg-opacity-60 z-[60]">
-            <div class="mobile-modal-content bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md relative animate-fade-in">
-                <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Send WhatsApp Message</h2>
-                <form id="whatsapp-form">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Select Message Type</label>
-                            <div class="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                <label class="flex items-center p-3 bg-gray-100 dark:bg-gray-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="approved" class="h-4 w-4"><span class="ml-3 text-sm">Approved</span></label>
-                                <label class="flex items-center p-3 bg-gray-100 dark:bg-gray-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="rejected" class="h-4 w-4"><span class="ml-3 text-sm">Rejected</span></label>
-                                <label class="flex items-center p-3 bg-gray-100 dark:bg-gray-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="query" class="h-4 w-4" checked><span class="ml-3 text-sm">Query</span></label>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium">Your Message</label>
-                            <textarea id="customMessage" name="customMessage" rows="4" class="mobile-input mt-1 w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg"></textarea>
+        if (!contact) { showNotification("No contact number available.", "error"); return; }
+        document.getElementById("modal-container").innerHTML += `
+        <div id="whatsapp-modal-backdrop" class="mobile-modal bg-black/70 z-[60]">
+            <div class="mobile-modal-content bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-md animate-fade-in">
+                <h2 class="text-lg font-bold text-white mb-4">Send WhatsApp Message</h2>
+                <form id="whatsapp-form" class="space-y-4">
+                    <div>
+                        <label class="text-sm text-slate-300">Select Message Type</label>
+                        <div class="mt-2 space-y-2">
+                            <label class="flex items-center p-3 bg-slate-900/70 border border-slate-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="approved" class="h-4 w-4"><span class="ml-3 text-white">Approved</span></label>
+                            <label class="flex items-center p-3 bg-slate-900/70 border border-slate-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="rejected" class="h-4 w-4"><span class="ml-3 text-white">Rejected</span></label>
+                            <label class="flex items-center p-3 bg-slate-900/70 border border-slate-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="query" class="h-4 w-4" checked><span class="ml-3 text-white">Query</span></label>
                         </div>
                     </div>
-                    <div class="mt-6 flex justify-end space-x-3">
-                        <button type="button" id="cancel-whatsapp-btn" class="px-4 py-2 rounded-lg bg-gray-200">Cancel</button>
+                    <div>
+                        <label class="text-sm text-slate-300">Your Message</label>
+                        <textarea id="customMessage" name="customMessage" rows="4" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></textarea>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button type="button" id="cancel-whatsapp-btn" class="px-4 py-2 rounded-lg bg-slate-600 text-white">Cancel</button>
                         <button type="submit" class="px-4 py-2 rounded-lg bg-green-600 text-white flex items-center gap-2">${icons.whatsapp} Send</button>
                     </div>
                 </form>
             </div>
         </div>`;
-
-        const form = document.getElementById('whatsapp-form');
-        const textarea = document.getElementById('customMessage');
-        const name = data.requesterName || data.ownerName;
-
-        const updateMessage = (type) => {
-            switch(type) {
-                case 'approved': textarea.value = `Hi ${name}, your vehicle clearance request for [${data.vehicleNumber}] has been APPROVED. It is valid from ${formatDate(data.entryDate.toDate())} to ${formatDate(data.expiryDate.toDate())}.`; break;
-                case 'rejected': textarea.value = `Hi ${name}, your vehicle clearance request for [${data.vehicleNumber}] has been REJECTED. Please check your email for details.`; break;
-                case 'query': textarea.value = `Hi ${name}, regarding your vehicle clearance request for [${data.vehicleNumber}], `; break;
-            }
+        const form = document.getElementById('whatsapp-form'), textarea = document.getElementById('customMessage'), name = data.requesterName || data.ownerName;
+        const updateMessage = type => {
+            const dateStr = data.entryDate ? formatDate(data.entryDate.toDate()) : 'N/A';
+            if (type === 'approved') textarea.value = `Hi ${name}, your vehicle clearance for [${data.vehicleNumber}] is APPROVED, valid on ${dateStr}.`;
+            else if (type === 'rejected') textarea.value = `Hi ${name}, your vehicle clearance for [${data.vehicleNumber}] is REJECTED. Please check email for details.`;
+            else textarea.value = `Hi ${name}, regarding your request for [${data.vehicleNumber}], `;
         };
-        form.elements.messageType.forEach(radio => radio.addEventListener('change', (e) => updateMessage(e.target.value)));
-        updateMessage('query');
-
+        form.elements.messageType.forEach(r => r.onchange = e => updateMessage(e.target.value)); updateMessage('query');
         document.getElementById('cancel-whatsapp-btn').onclick = () => document.getElementById('whatsapp-modal-backdrop').remove();
-        form.onsubmit = (e) => {
-            e.preventDefault();
-            const phone = normalizePhoneNumberForWhatsApp(contact);
-            const message = encodeURIComponent(form.elements.customMessage.value);
-            window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
-            document.getElementById('whatsapp-modal-backdrop').remove();
-        };
+        form.onsubmit = e => { e.preventDefault(); window.open(`https://wa.me/${normalizePhoneNumberForWhatsApp(contact)}?text=${encodeURIComponent(textarea.value)}`); document.getElementById('whatsapp-modal-backdrop').remove(); };
     };
 
     const renderConfirmationModal = (title, message, onConfirm) => {
-        const modalContainer = document.getElementById('modal-container');
-        modalContainer.innerHTML = `
-        <div id="confirm-modal-backdrop" class="mobile-modal bg-black bg-opacity-60 z-[60]">
-            <div class="mobile-modal-content bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm relative animate-fade-in">
-                <h2 class="text-lg font-bold">${title}</h2>
-                <p class="mt-2 text-sm text-gray-600">${message}</p>
-                <div class="mt-6 flex justify-end space-x-3">
-                    <button id="cancel-confirm-btn" class="px-4 py-2 rounded-lg bg-gray-200">Cancel</button>
-                    <button id="confirm-action-btn" class="px-4 py-2 rounded-lg bg-red-600 text-white">Confirm</button>
-                </div>
+        const modal = document.createElement('div');
+        modal.innerHTML = `
+        <div id="confirm-modal-backdrop" class="mobile-modal bg-black/70 z-[60]">
+            <div class="mobile-modal-content bg-slate-800 rounded-2xl p-6 w-full max-w-sm animate-fade-in">
+                <h2 class="text-lg font-bold text-white">${title}</h2><p class="mt-2 text-sm text-slate-300">${message}</p>
+                <div class="mt-6 flex justify-end gap-3"><button id="cancel" class="px-4 py-2 rounded-lg bg-slate-600">Cancel</button><button id="confirm" class="px-4 py-2 rounded-lg bg-red-600 text-white">Confirm</button></div>
             </div>
         </div>`;
-        document.getElementById('confirm-action-btn').onclick = () => { onConfirm(); modalContainer.innerHTML = ''; };
-        const closeModal = () => modalContainer.innerHTML = '';
-        document.getElementById('cancel-confirm-btn').onclick = closeModal;
-        document.getElementById('confirm-modal-backdrop').onclick = (e) => { if (e.target.id === 'confirm-modal-backdrop') closeModal(); };
+        document.getElementById('modal-container').appendChild(modal);
+        modal.querySelector('#confirm').onclick = () => { onConfirm(); modal.remove(); };
+        modal.querySelector('#cancel').onclick = () => modal.remove();
     };
     
     const renderRejectionModal = (requestId) => {
-        const modalContainer = document.getElementById('modal-container');
-        modalContainer.innerHTML = `
-        <div id="rejection-modal-backdrop" class="mobile-modal bg-black bg-opacity-60 z-[60]">
-            <div class="mobile-modal-content bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md relative animate-fade-in">
-                <form id="rejection-form">
-                    <h2 class="text-lg font-bold">Reject Request</h2>
-                    <p class="mt-2 text-sm text-gray-600">Please provide a reason for rejection.</p>
-                    <div class="mt-4">
-                        <textarea id="rejectionReason" name="rejectionReason" rows="3" class="mobile-input w-full p-3 bg-gray-50 dark:bg-gray-700 border rounded-lg" required></textarea>
-                    </div>
-                    <div class="mt-6 flex justify-end space-x-3">
-                        <button type="button" id="cancel-rejection-btn" class="px-4 py-2 rounded-lg bg-gray-200">Cancel</button>
-                        <button type="submit" class="px-4 py-2 rounded-lg bg-red-600 text-white" data-id="${requestId}">Confirm</button>
-                    </div>
+        const modal = document.createElement('div');
+        modal.innerHTML = `
+        <div id="rejection-modal-backdrop" class="mobile-modal bg-black/70 z-[60]">
+            <div class="mobile-modal-content bg-slate-800 rounded-2xl p-6 w-full max-w-md animate-fade-in">
+                <form id="rejection-form"><h2 class="text-lg font-bold text-white">Reject Request</h2><p class="mt-2 text-sm text-slate-300">Please provide a reason.</p>
+                    <textarea name="rejectionReason" rows="3" class="mobile-input mt-4 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required></textarea>
+                    <div class="mt-6 flex justify-end gap-3"><button type="button" id="cancel" class="px-4 py-2 rounded-lg bg-slate-600">Cancel</button><button type="submit" class="px-4 py-2 rounded-lg bg-red-600 text-white" data-id="${requestId}">Confirm</button></div>
                 </form>
             </div>
         </div>`;
+        document.getElementById('modal-container').appendChild(modal);
+        modal.querySelector('#cancel').onclick = () => modal.remove();
+        modal.querySelector('form').onsubmit = async e => { e.preventDefault(); button.disabled = true; /* ... logic in main submit handler */ };
     };
 
     const toggleSettingsPanel = (show) => {
-        const panel = document.getElementById('settings-panel');
-        const backdrop = document.getElementById('settings-backdrop');
+        const panel = document.getElementById('settings-panel'), backdrop = document.getElementById('settings-backdrop');
         if (!panel || !backdrop) return;
-        if (show) {
-            backdrop.classList.replace('bg-black/0', 'bg-black/50');
-            backdrop.classList.replace('-z-10', 'z-40');
-            panel.classList.replace('translate-x-full', 'translate-x-0');
-        } else {
-            backdrop.classList.replace('bg-black/50', 'bg-black/0');
-            panel.classList.replace('translate-x-0', 'translate-x-full');
-            setTimeout(() => backdrop.classList.replace('z-40', '-z-10'), 300);
-        }
+        if (show) { panel.classList.replace('translate-x-full', 'translate-x-0'); backdrop.classList.replace('bg-black/0', 'bg-black/50'); backdrop.classList.replace('-z-10', 'z-40'); }
+        else { panel.classList.replace('translate-x-0', 'translate-x-full'); backdrop.classList.replace('bg-black/50', 'bg-black/0'); setTimeout(() => backdrop.classList.replace('z-40', '-z-10'), 300); }
     };
     
     // — Auth State Listener —
     onAuthStateChanged(auth, async (user) => {
         unsubClearances?.(); unsubRequests?.(); unsubVVIPs?.();
-        currentAdminProfile = null;
         if (user && !user.isAnonymous) {
-            appRoot.innerHTML = '<div class="min-h-screen flex items-center justify-center"><div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div></div>';
-            try {
-                const adminDoc = await getDoc(doc(db, "admins", user.uid));
-                if (adminDoc.exists()) {
-                    currentAdminProfile = { uid: user.uid, ...adminDoc.data() };
-                    unsubVVIPs = onSnapshot(query(collection(db, "vvips"), orderBy("vehicleNumber")), snap => {
-                        vvips = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                        if(document.getElementById('vvip-list-container-settings')) renderVVIPListForSettings();
-                    });
-                    renderAdminDashboard(currentAdminProfile);
-                } else {
-                    await signOut(auth);
-                }
-            } catch (error) {
-                showNotification("Error verifying admin status", "error");
-                await signOut(auth);
-            }
-        } else {
-            renderAdminLogin();
-        }
+            const adminDoc = await getDoc(doc(db, "admins", user.uid));
+            if (adminDoc.exists()) { currentAdminProfile = adminDoc.data(); renderAdminDashboard(currentAdminProfile); } else { signOut(auth); }
+        } else { renderAdminLogin(); }
     });
 
     const saveClearanceData = async (form, editingId = null) => {
         const data = getFormObj(form);
-        const entryDate = parseLocalDate(data.entryDate);
-        const expiryDate = parseLocalDate(data.expiryDate);
-        if (!entryDate || !expiryDate || !form.checkValidity()) {
-            form.reportValidity();
-            throw new Error("Please fill all required fields with valid dates.");
-        }
+        const entryDate = parseLocalDate(data.entryDate), expiryDate = parseLocalDate(data.expiryDate);
+        if (!entryDate || !expiryDate || !form.checkValidity()) throw new Error("Invalid form data.");
         if (!currentAdminProfile) throw new Error("Admin profile not loaded.");
-        const currentTimestamp = Timestamp.now();
+        
+        const location = data.location === "Other" ? data.customLocation : data.location;
         const payload = {
             ownerName: data.ownerName, ownerContact: data.contact, ownerEmail: data.email,
             vehicleNumber: data.vehicleNumber.toUpperCase(), vehicleType: data.vehicleType,
-            location: data.location, timeSlot: data.timeSlot,
+            location: location, timeSlot: data.timeSlot,
             entryDate: Timestamp.fromDate(entryDate), expiryDate: Timestamp.fromDate(expiryDate),
             escortRequired: !!data.escortRequired, notes: data.notes || ""
         };
+        
         if (editingId) {
+            payload.lastUpdatedAt = Timestamp.now();
             payload.lastUpdatedByUsername = currentAdminProfile.username;
-            payload.lastUpdatedByDesignation = currentAdminProfile.designation;
-            payload.lastUpdatedAt = currentTimestamp;
             await updateDoc(doc(db, "vehicleClearances", editingId), payload);
-            showNotification(`Clearance updated by ${currentAdminProfile.username}`);
+            showNotification(`Clearance updated.`);
         } else {
-            payload.createdAt = currentTimestamp;
+            payload.createdAt = Timestamp.now();
+            payload.approvedAt = Timestamp.now();
             payload.approvedByUsername = currentAdminProfile.username;
-            payload.approvedByDesignation = currentAdminProfile.designation;
-            payload.approvedAt = currentTimestamp;
-            payload.approvalHistory = [{ action: 'created', byUsername: currentAdminProfile.username, byDesignation: currentAdminProfile.designation, timestamp: currentTimestamp }];
             await addDoc(collection(db, "vehicleClearances"), payload);
-            showNotification(`Clearance created by ${currentAdminProfile.username}`);
+            showNotification(`Clearance created.`);
         }
         return payload;
     };
 
-    const handleEscortCheckboxChange = (checkbox, textareaId) => {
-        const textarea = document.getElementById(textareaId);
+    const handleEscortCheckboxChange = (checkbox) => {
+        const textarea = checkbox.closest('form').querySelector('#modal-notes-textarea');
         if (!textarea) return;
         const escortText = "[ Escorted by:             ]";
-        if (checkbox.checked) {
-            if (!textarea.value.includes("Escorted by:")) {
-                let separator = textarea.value.trim() ? (textarea.value.trim().endsWith('\\n') ? '\\n' : '\\n\\n') : '';
-                textarea.value = textarea.value + separator + escortText;
-            }
-        } else {
-            const patterns = [/\\n\\n\\[\\s*Escorted\\s+by:\\s*[^\]]*\\]/gi, /\\n\\[\\s*Escorted\\s+by:\\s*[^\]]*\\]/gi, /\\[\\s*Escorted\\s+by:\\s*[^\]]*\\]/gi];
-            patterns.forEach(pattern => {
-                textarea.value = textarea.value.replace(pattern, '');
-            });
-            textarea.value = textarea.value.replace(/\\n{3,}/g, '\\n\\n').trim();
+        if (checkbox.checked && !textarea.value.includes(escortText)) {
+            textarea.value = textarea.value.trim() + (textarea.value ? '\n\n' : '') + escortText;
+        } else if (!checkbox.checked) {
+            textarea.value = textarea.value.replace(/\[\s*Escorted\s+by:[^\]]*\]\s*/g, '').trim();
         }
     };
 
     // --- Global Event Listener ---
     document.body.addEventListener("click", async (e) => {
-        const target = e.target;
-        const button = target.closest('button');
-        if (target.id === 'settings-backdrop') toggleSettingsPanel(false);
-        if (target.id === 'form-modal-backdrop' || target.id === 'review-modal-backdrop' || target.id === 'vvip-modal-backdrop') {
-             if (e.target.id === target.id) target.closest('#modal-container').innerHTML = '';
+        const button = e.target.closest('button');
+        if (e.target.closest('#form-modal-backdrop, #rejection-modal-backdrop, #whatsapp-modal-backdrop, #confirm-modal-backdrop, #settings-backdrop') === e.target) {
+            document.getElementById('modal-container').innerHTML = '';
+            if (e.target.id === 'settings-backdrop') toggleSettingsPanel(false);
         }
         if (!button) return;
-        if (button.classList.contains('edit-btn') || button.classList.contains('delete-btn')) e.stopPropagation();
         
+        const id = button.dataset.id;
         try {
             if (button.classList.contains("whatsapp-query-btn")) {
-                if (button.classList.contains('cursor-not-allowed')) {
-                    showNotification("No contact number available.", "error");
-                    return;
-                }
-                const dataType = button.dataset.type;
-                const dataId = button.dataset.id;
-                const sourceData = dataType === 'request' ? clearanceRequests.find(r => r.id === dataId) : clearances.find(c => c.id === dataId);
+                const type = button.dataset.type;
+                const sourceData = type === 'request' ? clearanceRequests.find(r => r.id === id) : clearances.find(c => c.id === id);
                 if (sourceData) renderWhatsAppModal(sourceData);
-                return;
-            }
-            if (button.id === 'settings-btn') { toggleSettingsPanel(true); return; }
-            if (button.id === 'close-settings-panel-btn') { toggleSettingsPanel(false); return; }
-            if (button.classList.contains('settings-tab-btn')) {
-                const tab = button.dataset.tab;
-                document.querySelectorAll('.settings-tab-btn').forEach(btn => btn.classList.remove('active'));
+            } else if (button.id === 'settings-btn') toggleSettingsPanel(true);
+            else if (button.id === 'close-settings-panel-btn') toggleSettingsPanel(false);
+            else if (button.classList.contains('settings-tab-btn')) {
+                document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
                 button.classList.add('active');
-                document.querySelectorAll('.settings-pane').forEach(pane => pane.classList.add('hidden'));
-                document.getElementById(`${tab}-settings-pane`).classList.remove('hidden');
-                if (tab === 'database') await updateDatabaseStats();
-                return;
-            }
-            if (button.id === "logout-button") { await signOut(auth); showNotification("Logged out"); return; }
-            if (button.id === "download-report-btn") { generatePDFReport(button); return; }
-            if (button.id === "add-clearance-btn") { renderClearanceFormModal({}, 'new'); return; }
-            if (button.classList.contains("edit-btn")) {
-                const clearanceToEdit = clearances.find(c => c.id === button.dataset.id);
-                if (clearanceToEdit) renderClearanceFormModal(clearanceToEdit, 'edit');
-                return;
-            }
-            if (button.classList.contains("delete-btn")) {
-                renderConfirmationModal('Delete Clearance', 'Are you sure? This cannot be undone.', async () => {
-                    await deleteDoc(doc(db, "vehicleClearances", button.dataset.id));
-                    showNotification("Clearance deleted.");
-                });
-                return;
-            }
-            if (button.classList.contains("delete-vvip-btn")) {
-                 renderConfirmationModal('Delete VVIP', 'Are you sure?', async () => {
-                    await deleteDoc(doc(db, "vvips", button.dataset.id));
-                    showNotification("VVIP removed.");
-                });
-                return;
-            }
-            if (button.classList.contains("review-btn")) {
-                const requestToReview = clearanceRequests.find(r => r.id === button.dataset.id);
-                if (requestToReview) renderClearanceFormModal(requestToReview, 'review');
-                return;
-            }
-            if (button.classList.contains("reject-request-btn")) { renderRejectionModal(button.dataset.id); return; }
-            if (button.id === "cancel-rejection-btn") { button.closest("#modal-container").innerHTML = ""; return; }
-            if (button.classList.contains("approve-request-btn")) {
-                const form = button.closest('form');
-                const requestId = button.dataset.id;
-                if (!form || !requestId) return;
-                button.disabled = true;
-                try {
-                    const data = getFormObj(form);
-                    const entryDate = parseLocalDate(data.entryDate);
-                    const expiryDate = parseLocalDate(data.expiryDate);
-                    if (!entryDate || !expiryDate || !form.checkValidity()) { form.reportValidity(); throw new Error("Invalid form data"); }
-                    const approvalTimestamp = Timestamp.now();
-                    const clearancePayload = {
-                        ownerName: data.ownerName, ownerEmail: data.email, ownerContact: data.contact,
-                        vehicleNumber: data.vehicleNumber.toUpperCase(), vehicleType: data.vehicleType, location: data.location, timeSlot: data.timeSlot,
-                        entryDate: Timestamp.fromDate(entryDate), expiryDate: Timestamp.fromDate(expiryDate),
-                        escortRequired: !!data.escortRequired, notes: data.notes || "",
-                        createdAt: approvalTimestamp,
-                        approvedByUsername: currentAdminProfile.username, approvedByDesignation: currentAdminProfile.designation, approvedAt: approvalTimestamp,
-                        approvalHistory: [{ action: 'approved', byUsername: currentAdminProfile.username, byDesignation: currentAdminProfile.designation, timestamp: approvalTimestamp }]
-                    };
-                    await addDoc(collection(db, "vehicleClearances"), clearancePayload);
-                    await updateDoc(doc(db, "clearanceRequests", requestId), { status: 'approved', approvedAt: approvalTimestamp });
-                    showNotification(`Request approved by ${currentAdminProfile.username}`);
-                    if (data.email) {
-                        const emailBody = generateNotificationEmail('approved', { ownerName: data.ownerName, vehicleNumber: clearancePayload.vehicleNumber, location: clearancePayload.location, entryDate: formatDate(clearancePayload.entryDate), expiryDate: formatDate(clearancePayload.expiryDate) });
-                        await sendEmail(data.email, `Vehicle Clearance Approved: ${clearancePayload.vehicleNumber}`, emailBody);
-                    }
-                    document.getElementById("modal-container").innerHTML = "";
-                } catch (error) {
-                    showNotification(`Failed to approve: ${error.message}`, "error");
-                    button.disabled = false;
-                }
-                return;
-            }
-            if (button.classList.contains("save-clearance-btn")) {
-                const form = button.closest('form');
-                if (!form) return;
-                button.disabled = true;
-                try {
-                    const editingId = button.dataset.id;
-                    const savedPayload = await saveClearanceData(form, editingId);
-                     if (savedPayload.ownerEmail && !editingId) {
-                        const emailBody = generateNotificationEmail('approved', { ownerName: savedPayload.ownerName, vehicleNumber: savedPayload.vehicleNumber, location: savedPayload.location, entryDate: formatDate(savedPayload.entryDate), expiryDate: formatDate(savedPayload.expiryDate) });
-                        await sendEmail(savedPayload.ownerEmail, `Vehicle Clearance Approved: ${savedPayload.vehicleNumber}`, emailBody);
-                    }
-                    document.getElementById("modal-container").innerHTML = "";
-                } catch (error) {
-                    showNotification(`Failed to save: ${error.message}`, "error");
-                } finally {
-                    button.disabled = false;
-                }
-                return;
-            }
-            if (button.id === "close-modal-btn" || button.id === "cancel-modal-btn") {
-                button.closest("#modal-container").innerHTML = "";
-                return;
-            }
-            if (button.id === "auth-toggle-button") {
-                authMode = authMode === "login" ? "signup" : "login";
-                renderAdminLogin();
-                return;
-            }
-        } catch (error) {
-            console.error("Click handler error:", error);
-            showNotification("An error occurred.", "error");
-        }
+                document.querySelectorAll('.settings-pane').forEach(p => p.classList.add('hidden'));
+                document.getElementById(`${button.dataset.tab}-settings-pane`).classList.remove('hidden');
+            } else if (button.id === "logout-button") signOut(auth);
+            else if (button.id === "download-report-btn") generatePDFReport(button);
+            else if (button.id === "add-clearance-btn") renderClearanceFormModal({}, 'new');
+            else if (button.classList.contains("edit-btn")) renderClearanceFormModal(clearances.find(c => c.id === id), 'edit');
+            else if (button.classList.contains("delete-btn")) renderConfirmationModal('Delete Clearance', 'Are you sure?', () => deleteDoc(doc(db, "vehicleClearances", id)));
+            else if (button.classList.contains("delete-vvip-btn")) renderConfirmationModal('Delete VVIP', 'Are you sure?', () => deleteDoc(doc(db, "vvips", id)));
+            else if (button.classList.contains("review-btn")) renderClearanceFormModal(clearanceRequests.find(r => r.id === id), 'review');
+            else if (button.classList.contains("reject-request-btn")) renderRejectionModal(id);
+            else if (button.classList.contains("approve-request-btn")) {
+                const form = button.closest('form'), data = getFormObj(form);
+                const entry = parseLocalDate(data.entryDate), expiry = parseLocalDate(data.expiryDate);
+                if (!entry || !expiry || !form.checkValidity()) { form.reportValidity(); return; }
+                const payload = { ...clearanceRequests.find(r => r.id === id), ...data, entryDate: Timestamp.fromDate(entry), expiryDate: Timestamp.fromDate(expiry) };
+                await addDoc(collection(db, "vehicleClearances"), payload);
+                await updateDoc(doc(db, "clearanceRequests", id), { status: 'approved' });
+                showNotification("Approved.");
+                document.getElementById('modal-container').innerHTML = '';
+            } else if (button.classList.contains("save-clearance-btn")) {
+                await saveClearanceData(button.closest('form'), id);
+                document.getElementById('modal-container').innerHTML = '';
+            } else if (button.id === "close-modal-btn" || button.id === "cancel-modal-btn") document.getElementById('modal-container').innerHTML = '';
+            else if (button.id === "auth-toggle-button") { authMode = authMode === 'login' ? 'signup' : 'login'; renderAdminLogin(); }
+        } catch(err) { showNotification(`Error: ${err.message}`, 'error'); }
     });
 
-    // --- Form submission event handler ---
     document.body.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const form = e.target;
-        const button = form.querySelector('button[type="submit"]');
+        const form = e.target, button = form.querySelector('button[type="submit"]');
         if (button) button.disabled = true;
         try {
             if (form.id === "rejection-form") {
-                const { rejectionReason } = getFormObj(form);
-                const requestId = form.querySelector('button[type="submit"]').dataset.id;
-                if (!rejectionReason.trim()) { showNotification("Please provide a reason.", "error"); return; }
-                const originalRequest = clearanceRequests.find(r => r.id === requestId);
-                await updateDoc(doc(db, "clearanceRequests", requestId), { status: 'rejected', rejectionReason: rejectionReason.trim(), reviewedAt: Timestamp.now() });
-                showNotification("Request rejected.");
-                if (originalRequest?.requesterEmail) {
-                    const emailBody = generateNotificationEmail('rejected', { requesterName: originalRequest.requesterName, vehicleNumber: originalRequest.vehicleNumber, rejectionReason: rejectionReason.trim() });
-                    await sendEmail(originalRequest.requesterEmail, `Request Update: ${originalRequest.vehicleNumber}`, emailBody);
-                }
-                document.getElementById("modal-container").innerHTML = "";
+                const data = getFormObj(form), id = button.dataset.id;
+                await updateDoc(doc(db, "clearanceRequests", id), { status: 'rejected', rejectionReason: data.rejectionReason });
+                showNotification("Rejected.");
+                document.getElementById('modal-container').innerHTML = '';
             } else if (form.id === "add-vvip-form") {
                 const data = getFormObj(form);
-                if (data.vehicleNumber && data.designation) {
-                    await addDoc(collection(db, "vvips"), { vehicleNumber: data.vehicleNumber.toUpperCase(), designation: data.designation });
-                    showNotification("VVIP added.");
-                    form.reset();
-                }
+                await addDoc(collection(db, "vvips"), { vehicleNumber: data.vehicleNumber.toUpperCase(), designation: data.designation });
+                form.reset();
             } else if (form.id === "auth-form") {
-                const { email, password, inviteCode, username, designation } = getFormObj(form);
-                if (authMode === "login") {
-                    const q = query(collection(db, "admins"), where("username", "==", username));
+                const data = getFormObj(form);
+                if (authMode === 'login') {
+                    const q = query(collection(db, "admins"), where("username", "==", data.username));
                     const snap = await getDocs(q);
-                    if (snap.empty) { throw new Error("Invalid username or password."); }
-                    await signInWithEmailAndPassword(auth, snap.docs[0].data().email, password);
+                    if (snap.empty) throw new Error("Invalid credentials.");
+                    await signInWithEmailAndPassword(auth, snap.docs[0].data().email, data.password);
                 } else {
-                    if (inviteCode !== ADMIN_INVITE_CODE) { throw new Error("Invalid invite code."); }
-                    const q = query(collection(db, "admins"), where("username", "==", username));
-                    if (!(await getDocs(q)).empty) { throw new Error("Username taken."); }
-                    const cred = await createUserWithEmailAndPassword(auth, email, password);
-                    await setDoc(doc(db, "admins", cred.user.uid), { email, username, designation });
-                    showNotification("Admin account created!");
+                    if (data.inviteCode !== ADMIN_INVITE_CODE) throw new Error("Invalid invite code.");
+                    const user = await createUserWithEmailAndPassword(auth, data.email, data.password);
+                    await setDoc(doc(db, "admins", user.user.uid), { email: data.email, username: data.username, designation: data.designation });
                 }
             }
-        } catch (error) {
-            showNotification(`Error: ${error.message}`, "error");
-        } finally {
-            if (button) button.disabled = false;
-        }
+        } catch (err) { showNotification(`Error: ${err.message}`, 'error'); } finally { if (button) button.disabled = false; }
     });
 
     document.body.addEventListener("change", (e) => {
-        if (e.target.name === "escortRequired") {
-            handleEscortCheckboxChange(e.target, 'modal-notes-textarea');
+        const target = e.target;
+        if (target.name === "escortRequired") handleEscortCheckboxChange(target);
+        if (target.name === "location") {
+            const form = target.closest('form');
+            const customInput = form.querySelector('input[name="customLocation"]');
+            if (customInput) customInput.classList.toggle('hidden', target.value !== 'Other');
         }
     });
 
