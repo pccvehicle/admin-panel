@@ -2,52 +2,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
-  <title>Vehicle Clearance – Admin</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com" rel="preconnect"/>
-  <link crossorigin href="https://fonts.gstatic.com" rel="preconnect"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-  <style>
-    :root{--bg:#0f172a;--panel:#111827;--muted:#94a3b8;}
-    html,body{height:100%;background:var(--bg);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
-    .glass{background:rgba(17,24,39,.8);backdrop-filter: blur(8px);border:1px solid rgba(148,163,184,.15)}
-    .chip{border:1px solid #334155;border-radius:9999px;padding:.15rem .55rem;font-size:.72rem}
-    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.6rem .9rem;border-radius:.65rem;font-weight:600}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .btn-blue{background:#2563eb;color:#fff} .btn-blue:hover{background:#1d4ed8}
-    .btn-green{background:#16a34a;color:#fff} .btn-green:hover{background:#15803d}
-    .btn-red{background:#ef4444;color:#fff} .btn-red:hover{background:#dc2626}
-    .btn-slate{background:#1f2937;color:#e5e7eb} .btn-slate:hover{background:#111827}
-    .icon{width:20px;height:20px}
-    .card{border:1px solid rgba(148,163,184,.12);border-radius:1rem}
-    .scroll-soft{scrollbar-width:thin;scrollbar-color:#334155 transparent}
-    .scroll-soft::-webkit-scrollbar{height:8px;width:8px}
-    .scroll-soft::-webkit-scrollbar-thumb{background:#334155;border-radius:8px}
-    .modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(2,6,23,.6);padding:1rem;z-index:50}
-    .modal.open{display:flex}
-    .modal>div{max-width:40rem;width:100%}
-    .pill{font-weight:700;letter-spacing:.02em}
-  </style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Vehicle Clearance – Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{--bg:#0f172a;--panel:#111827;--muted:#94a3b8;}
+  html,body{height:100%;background:var(--bg);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+  .glass{background:rgba(17,24,39,.8);backdrop-filter: blur(8px);border:1px solid rgba(148,163,184,.15)}
+  .chip{border:1px solid #334155;border-radius:9999px;padding:.15rem .55rem;font-size:.72rem}
+  .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.6rem .9rem;border-radius:.65rem;font-weight:600}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+  .btn-blue{background:#2563eb;color:#fff} .btn-blue:hover{background:#1d4ed8}
+  .btn-green{background:#16a34a;color:#fff} .btn-green:hover{background:#15803d}
+  .btn-red{background:#ef4444;color:#fff} .btn-red:hover{background:#dc2626}
+  .btn-slate{background:#1f2937;color:#e5e7eb} .btn-slate:hover{background:#111827}
+  .icon{width:20px;height:20px}
+  .card{border:1px solid rgba(148,163,184,.12);border-radius:1rem}
+  .modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(2,6,23,.6);padding:1rem;z-index:50}
+  .modal.open{display:flex}
+  .modal>div{max-width:40rem;width:100%}
+</style>
 </head>
 <body>
   <div id="app"></div>
 
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import {
-      getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import {
-      getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
-      getDoc, getDocs, onSnapshot, query, where, orderBy, limit, Timestamp, writeBatch
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <!-- Firebase v9 compat (no ES modules, safest for GH pages) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-    // ----- CONFIG (copied from your current app) -----
+  <script>
+    // ---- CONFIG ----
     const firebaseConfig = {
       apiKey: "AIzaSyC51Zo7V75JjOpLOdusf6ZKUzEG_gqFcV4",
       authDomain: "vehicle-clearance.firebaseapp.com",
@@ -56,61 +47,26 @@
       messagingSenderId: "187403368572",
       appId: "1:187403368572:web:1f94845da67ef0c7ccf1f9"
     };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    // ---- UTIL ----
+    const $ = (s,r=document)=>r.querySelector(s);
+    const fmtDate = (d)=>{ if(!d) return 'N/A'; const x=d.toDate?d.toDate():d; return x.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'}); };
+    const fmtDateLong=(d)=>{ const x=d.toDate?d.toDate():d; return x.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}); };
+    const plate = (v)=>v?String(v).toUpperCase():'N/A';
+    const wa=(s)=>s?String(s).replace(/\\D/g,'').replace(/^0/,'60'):'';
+    function toast(msg){ const el=document.createElement('div'); el.className='fixed bottom-5 right-5 z-50'; el.innerHTML='<div class="glass text-white px-4 py-3 rounded-lg shadow-lg">'+msg+'</div>'; document.body.appendChild(el); setTimeout(()=>el.remove(),3000); }
 
-    // ----- EMAIL SENDER (same endpoint) -----
-    const sendEmail = async (to, subject, htmlBody) => {
-      try {
-        const resp = await fetch('https://email.th3va.com/send-email', {
-          method:'POST',
-          headers:{'Content-Type':'application/json','x-api-key':'7873&;@:$/);&;73638($'},
-          body: JSON.stringify({to, subject, htmlBody})
-        });
-        if(!resp.ok) throw new Error('HTTP '+resp.status);
-        toast('Email notification sent','success');
-        return true;
-      } catch(e){
-        console.warn('Email send failed', e);
-        toast('Action ok, but email failed','error');
-        return false;
-      }
-    };
+    // ---- STATE ----
+    let state={me:null, meProfile:null, reqs:[], clrs:[]};
+    let unsub1=null,unsub2=null;
 
-    // ----- UTIL -----
-    const $ = (sel,root=document)=>root.querySelector(sel);
-    const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
-    const fmtDate = d => {
-      if (!d) return 'N/A';
-      const x = d instanceof Date ? d : d.toDate();
-      return x.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    };
-    const fmtDateLong = d => {
-      const x = d instanceof Date ? d : d.toDate();
-      return x.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
-    };
-    const plate = v => v ? String(v).toUpperCase() : 'N/A';
-    const wa = s => s ? s.replace(/\D/g,'').replace(/^0/,'60') : '';
-    const toast = (msg, kind='info')=>{
-      const host = document.createElement('div');
-      host.className = "fixed bottom-5 right-5 z-50";
-      host.innerHTML = \`
-        <div class="glass text-white px-4 py-3 rounded-lg shadow-lg">\${msg}</div>\`;
-      document.body.appendChild(host);
-      setTimeout(()=>host.remove(),3000);
-    };
+    const root=document.getElementById('app');
 
-    // ----- STATE -----
-    let unsubReq=null, unsubClr=null, unsubAdmins=null;
-    let state = { me:null, meProfile:null, requests:[], clearances:[], vvips:[] };
-
-    // ----- RENDERERS -----
-    const root = document.getElementById('app');
-
-    const renderLogin = ()=>{
-      root.innerHTML = \`
+    function renderLogin(){
+      root.innerHTML = `
       <main class="min-h-screen flex items-center justify-center p-4">
         <section class="glass card w-full max-w-md p-8 text-slate-200">
           <div class="flex items-center gap-3 mb-6">
@@ -123,35 +79,29 @@
             <button class="btn btn-blue w-full">Sign in</button>
           </form>
         </section>
-      </main>\`;
+      </main>`;
       $("#loginForm").addEventListener('submit', async (e)=>{
         e.preventDefault();
-        const email = $("#email").value.trim();
-        const password = $("#password").value.trim();
-        try{
-          await signInWithEmailAndPassword(auth,email,password);
-        }catch(err){
-          toast(err.message,'error');
-        }
+        try{ await auth.signInWithEmailAndPassword($("#email").value.trim(), $("#password").value.trim()); }
+        catch(err){ toast(err.message); }
       });
-    };
+    }
 
-    const renderShell = ()=>{
-      root.innerHTML = \`
+    function renderShell(){
+      root.innerHTML = `
       <header class="sticky top-0 z-40 backdrop-blur bg-[rgba(2,6,23,.6)] border-b border-slate-800">
         <div class="max-w-6xl mx-auto p-3 flex items-center gap-3">
           <div class="text-slate-200 font-extrabold text-xl flex items-center gap-2">
-            <span>🔰</span><span>Admin Dashboard</span>
+            <span>Admin Dashboard</span>
           </div>
           <div class="ml-auto flex items-center gap-2">
-            <button id="btnExport" class="btn btn-slate"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>Export JSON</button>
-            <button id="btnPDF" class="btn btn-slate"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6z"/><path d="M14 2v6h6"/></svg>PDF</button>
+            <button id="btnExport" class="btn btn-slate">Export JSON</button>
+            <button id="btnPDF" class="btn btn-slate">PDF</button>
             <button id="btnFT" class="btn btn-green">+ Fast Track</button>
             <button id="btnLogout" class="btn btn-red">Logout</button>
           </div>
         </div>
       </header>
-
       <main class="max-w-6xl mx-auto p-3 md:p-6 text-slate-200 space-y-8">
         <section class="space-y-4">
           <div class="flex items-center gap-2">
@@ -160,7 +110,6 @@
           </div>
           <div id="listRequests" class="grid md:grid-cols-2 gap-4"></div>
         </section>
-
         <section class="space-y-4">
           <div class="flex items-center gap-2">
             <h2 class="text-xl font-bold">Manage Clearances</h2>
@@ -169,21 +118,19 @@
           <div id="listClearances" class="grid md:grid-cols-2 gap-4"></div>
         </section>
       </main>
+      <div id="modal" class="modal"><div class="glass card p-5 text-slate-200"></div></div>`;
+      document.getElementById('btnLogout').onclick=()=>auth.signOut();
+      document.getElementById('btnFT').onclick=()=>openFastTrack();
+      document.getElementById('btnExport').onclick=()=>exportJSON();
+      document.getElementById('btnPDF').onclick=(e)=>generatePDF(e.target);
+    }
 
-      <div id="modal" class="modal"><div class="glass card p-5 text-slate-200"></div></div>
-      \`;
-
-      $("#btnLogout").onclick = ()=>signOut(auth);
-      $("#btnFT").onclick = ()=>openFastTrack();
-      $("#btnExport").onclick = ()=>exportJSON();
-      $("#btnPDF").onclick = (e)=>generatePDF(e.target);
-    };
-
-    const cardRequest = (r)=>`
+    function cardRequest(r){
+      return `
       <article class="card glass p-4">
         <div class="flex items-center justify-between">
           <a href="#" class="text-blue-400 font-bold">${plate(r.vehicleNumber)}</a>
-          <span class="chip bg-yellow-500/10 text-yellow-300 pill">${r.status||'pending'}</span>
+          <span class="chip bg-yellow-500/10 text-yellow-300">pending</span>
         </div>
         <div class="mt-2 text-sm text-slate-300 space-y-1">
           <div>Requested by: <b>${r.requesterName||'—'}</b></div>
@@ -195,14 +142,15 @@
           <button class="btn btn-red" data-act="reject">Reject</button>
           <button class="btn btn-slate ml-auto" data-act="view">View</button>
         </div>
-      </article>
-    `;
+      </article>`;
+    }
 
-    const cardClearance = (c)=>`
+    function cardClearance(c){
+      return `
       <article class="card glass p-4">
         <div class="flex items-center justify-between">
           <a href="#" class="text-blue-400 font-bold">${plate(c.vehicleNumber)}</a>
-          <span class="chip bg-green-500/10 text-green-300 pill">ACTIVE</span>
+          <span class="chip bg-green-500/10 text-green-300">ACTIVE</span>
         </div>
         <div class="mt-2 text-sm text-slate-300 space-y-1">
           <div>Owner: <b>${c.ownerName||'—'}</b> • Contact: ${c.contact||'—'}</div>
@@ -214,39 +162,36 @@
           <button class="btn btn-slate" data-act="edit">Edit</button>
           <button class="btn btn-red ml-auto" data-act="delete">Delete</button>
         </div>
-      </article>
-    `;
+      </article>`;
+    }
 
-    const paint = ()=>{
-      $("#badgePending").textContent = state.requests.length;
-      $("#badgeClearances").textContent = state.clearances.length;
+    function paint(){
+      document.getElementById('badgePending').textContent = state.reqs.length;
+      document.getElementById('badgeClearances').textContent = state.clrs.length;
 
-      const reqHost = $("#listRequests"); reqHost.innerHTML = "";
-      state.requests.forEach((r)=>{
-        const wrap = document.createElement('div');
-        wrap.innerHTML = cardRequest(r);
-        wrap.querySelector('[data-act="approve"]').onclick = ()=>approveRequest(r);
-        wrap.querySelector('[data-act="reject"]').onclick = ()=>rejectRequest(r);
-        wrap.querySelector('[data-act="view"]').onclick = ()=>viewRequest(r);
+      const reqHost=document.getElementById('listRequests'); reqHost.innerHTML='';
+      state.reqs.forEach((r)=>{
+        const wrap=document.createElement('div'); wrap.innerHTML=cardRequest(r);
+        wrap.querySelector('[data-act="approve"]').onclick=()=>approveRequest(r);
+        wrap.querySelector('[data-act="reject"]').onclick=()=>rejectRequest(r);
+        wrap.querySelector('[data-act="view"]').onclick=()=>viewRequest(r);
         reqHost.appendChild(wrap.firstElementChild);
       });
 
-      const clrHost = $("#listClearances"); clrHost.innerHTML = "";
-      state.clearances.forEach((c)=>{
-        const wrap = document.createElement('div');
-        wrap.innerHTML = cardClearance(c);
-        wrap.querySelector('[data-act="edit"]').onclick = ()=>editClearance(c);
-        wrap.querySelector('[data-act="delete"]').onclick = ()=>deleteClearance(c);
+      const clrHost=document.getElementById('listClearances'); clrHost.innerHTML='';
+      state.clrs.forEach((c)=>{
+        const wrap=document.createElement('div'); wrap.innerHTML=cardClearance(c);
+        wrap.querySelector('[data-act="edit"]').onclick=()=>editClearance(c);
+        wrap.querySelector('[data-act="delete"]').onclick=()=>deleteClearance(c);
         clrHost.appendChild(wrap.firstElementChild);
       });
-    };
+    }
 
-    // ----- MODALS -----
-    const openModal = (html)=>{ $("#modal").classList.add('open'); $("#modal > div").innerHTML = html; };
-    const closeModal = ()=>{ $("#modal").classList.remove('open'); };
+    function openModal(html){ const m=document.getElementById('modal'); m.classList.add('open'); m.children[0].innerHTML=html; }
+    function closeModal(){ document.getElementById('modal').classList.remove('open'); }
 
-    const openFastTrack = ()=>{
-      openModal(\`
+    function openFastTrack(){
+      openModal(`
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-xl font-bold">Fast Track Clearance</h3>
           <button class="chip" id="x">✕</button>
@@ -268,187 +213,157 @@
             <button class="btn btn-slate" type="button" id="cancel">Cancel</button>
           </div>
         </form>
-      \`);
-      $("#x").onclick = closeModal; $("#cancel").onclick = closeModal;
-      $("#ft").onsubmit = async (e)=>{
+      `);
+      document.getElementById('x').onclick=closeModal; document.getElementById('cancel').onclick=closeModal;
+      document.getElementById('ft').onsubmit=async (e)=>{
         e.preventDefault();
-        const fd = Object.fromEntries(new FormData(e.target).entries());
+        const fd=Object.fromEntries(new FormData(e.target).entries());
         try{
           const payload = {
-            ownerName: fd.ownerName, vehicleNumber: fd.vehicleNumber.trim().toUpperCase(),
+            ownerName: fd.ownerName,
+            vehicleNumber: fd.vehicleNumber.trim().toUpperCase(),
             contact: fd.contact, email: fd.email, location: fd.location,
             timeSlot: fd.timeSlot || null, notes: fd.notes || null,
-            entryDate: Timestamp.fromDate(new Date(fd.entryDate)),
-            expiryDate: Timestamp.fromDate(new Date(fd.expiryDate)),
-            createdAt: Timestamp.now(), approvedAt: Timestamp.now(),
-            approvedByUsername: state.meProfile?.username || state.me?.email || 'Admin',
-            approvedByDesignation: state.meProfile?.designation || 'Admin'
+            entryDate: firebase.firestore.Timestamp.fromDate(new Date(fd.entryDate)),
+            expiryDate: firebase.firestore.Timestamp.fromDate(new Date(fd.expiryDate)),
+            createdAt: firebase.firestore.Timestamp.now(), approvedAt: firebase.firestore.Timestamp.now(),
+            approvedByUsername: (state.meProfile && state.meProfile.username) || (state.me && state.me.email) || 'Admin',
+            approvedByDesignation: (state.meProfile && state.meProfile.designation) || 'Admin'
           };
-          await addDoc(collection(db,'vehicleClearances'), payload);
-          toast('Clearance created','success'); closeModal();
-          if (fd.email) {
-            const html = `
-              <div style="font-family:Inter,Arial,sans-serif">
-                <h2>Request Approved</h2>
-                <p>Your vehicle <b>${payload.vehicleNumber}</b> has been approved.</p>
-                <p>Valid: ${fmtDateLong(payload.entryDate)} – ${fmtDateLong(payload.expiryDate)}</p>
-              </div>`;
-            sendEmail(fd.email,'Vehicle Clearance Approved',html);
-          }
-        }catch(err){ toast(err.message,'error'); }
+          await db.collection('vehicleClearances').add(payload);
+          toast('Clearance created'); closeModal();
+        }catch(err){ toast(err.message); }
       };
-    };
+    }
 
-    const viewRequest = (r)=>{
-      openModal(\`
+    function viewRequest(r){
+      openModal(`
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-xl font-bold">Review Request</h3>
           <button class="chip" id="x">✕</button>
         </div>
         <div class="space-y-2 text-slate-300">
-          <div><b>Requester:</b> \${r.requesterName||'—'} • \${r.requesterEmail||'—'} • \${r.requesterContact||'—'}</div>
-          <div><b>Vehicle:</b> \${plate(r.vehicleNumber)}</div>
-          <div><b>Type:</b> \${r.vehicleType||'—'}</div>
-          <div><b>Slot:</b> \${r.timeSlot||'—'}</div>
-          <div><b>Location:</b> \${r.location||'—'}</div>
-          <div><b>Validity:</b> \${fmtDate(r.entryDate)} → \${fmtDate(r.expiryDate)}</div>
-          <div><b>Notes:</b> \${r.notes||'—'}</div>
+          <div><b>Requester:</b> ${r.requesterName||'—'} • ${r.requesterEmail||'—'} • ${r.requesterContact||'—'}</div>
+          <div><b>Vehicle:</b> ${plate(r.vehicleNumber)}</div>
+          <div><b>Type:</b> ${r.vehicleType||'—'}</div>
+          <div><b>Slot:</b> ${r.timeSlot||'—'}</div>
+          <div><b>Location:</b> ${r.location||'—'}</div>
+          <div><b>Validity:</b> ${fmtDate(r.entryDate)} → ${fmtDate(r.expiryDate)}</div>
+          <div><b>Notes:</b> ${r.notes||'—'}</div>
         </div>
         <div class="flex gap-2 mt-4">
           <button class="btn btn-green" id="ok">Approve</button>
           <button class="btn btn-red" id="no">Reject</button>
           <button class="btn btn-slate ml-auto" id="cls">Close</button>
         </div>
-      \`);
-      $("#x").onclick = closeModal; $("#cls").onclick = closeModal;
-      $("#ok").onclick = ()=>{ closeModal(); approveRequest(r); };
-      $("#no").onclick = ()=>{ closeModal(); rejectRequest(r); };
-    };
+      `);
+      document.getElementById('x').onclick=closeModal; document.getElementById('cls').onclick=closeModal;
+      document.getElementById('ok').onclick=()=>{ closeModal(); approveRequest(r); };
+      document.getElementById('no').onclick=()=>{ closeModal(); rejectRequest(r); };
+    }
 
-    const editClearance = (c)=>{
-      openModal(\`
+    async function editClearance(c){
+      openModal(`
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-xl font-bold">Edit Clearance</h3>
           <button class="chip" id="x">✕</button>
         </div>
         <form id="ec" class="grid grid-cols-1 gap-2">
-          <input name="ownerName" value="\${c.ownerName||''}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
-          <input name="vehicleNumber" value="\${plate(c.vehicleNumber)}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2 uppercase">
-          <input name="contact" value="\${c.contact||''}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
-          <input name="email" value="\${c.email||''}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
+          <input name="ownerName" value="${c.ownerName||''}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
+          <input name="vehicleNumber" value="${plate(c.vehicleNumber)}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2 uppercase">
+          <input name="contact" value="${c.contact||''}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
+          <input name="email" value="${c.email||''}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
           <div class="grid grid-cols-2 gap-2">
-            <input name="entryDate" type="date" value="\${c.entryDate.toDate().toISOString().slice(0,10)}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
-            <input name="expiryDate" type="date" value="\${c.expiryDate.toDate().toISOString().slice(0,10)}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
+            <input name="entryDate" type="date" value="${c.entryDate.toDate().toISOString().slice(0,10)}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
+            <input name="expiryDate" type="date" value="${c.expiryDate.toDate().toISOString().slice(0,10)}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
           </div>
-          <input name="location" value="\${c.location||''}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
-          <input name="timeSlot" value="\${c.timeSlot||''}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
-          <textarea name="notes" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">\${c.notes||''}</textarea>
+          <input name="location" value="${c.location||''}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
+          <input name="timeSlot" value="${c.timeSlot||''}" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">
+          <textarea name="notes" class="bg-slate-900/60 border border-slate-700 rounded px-3 py-2">${c.notes||''}</textarea>
           <div class="flex gap-2 mt-2">
             <button class="btn btn-blue" type="submit">Save</button>
             <button class="btn btn-slate" type="button" id="cancel">Cancel</button>
           </div>
         </form>
-      \`);
-      $("#x").onclick = closeModal; $("#cancel").onclick = closeModal;
-      $("#ec").onsubmit = async (e)=>{
+      `);
+      document.getElementById('x').onclick=closeModal; document.getElementById('cancel').onclick=closeModal;
+      document.getElementById('ec').onsubmit=async (e)=>{
         e.preventDefault();
-        const fd = Object.fromEntries(new FormData(e.target).entries());
+        const fd=Object.fromEntries(new FormData(e.target).entries());
         try{
-          await updateDoc(doc(db,'vehicleClearances', c.id), {
+          await db.collection('vehicleClearances').doc(c.id).update({
             ownerName: fd.ownerName, vehicleNumber: fd.vehicleNumber.trim().toUpperCase(),
             contact: fd.contact, email: fd.email, location: fd.location, timeSlot: fd.timeSlot,
             notes: fd.notes,
-            entryDate: Timestamp.fromDate(new Date(fd.entryDate)),
-            expiryDate: Timestamp.fromDate(new Date(fd.expiryDate)),
-            lastUpdatedAt: Timestamp.now(),
-            lastUpdatedByUsername: state.meProfile?.username || state.me?.email || 'Admin',
-            lastUpdatedByDesignation: state.meProfile?.designation || 'Admin'
+            entryDate: firebase.firestore.Timestamp.fromDate(new Date(fd.entryDate)),
+            expiryDate: firebase.firestore.Timestamp.fromDate(new Date(fd.expiryDate)),
+            lastUpdatedAt: firebase.firestore.Timestamp.now(),
+            lastUpdatedByUsername: (state.meProfile && state.meProfile.username) || (state.me && state.me.email) || 'Admin',
+            lastUpdatedByDesignation: (state.meProfile && state.meProfile.designation) || 'Admin'
           });
-          toast('Updated','success'); closeModal();
-        }catch(err){ toast(err.message,'error'); }
+          toast('Updated'); closeModal();
+        }catch(err){ toast(err.message); }
       };
-    };
+    }
 
-    const deleteClearance = async (c)=>{
-      if (!confirm('Delete this clearance?')) return;
-      try{
-        await deleteDoc(doc(db,'vehicleClearances', c.id));
-        toast('Deleted','success');
-      }catch(err){ toast(err.message,'error'); }
-    };
+    async function deleteClearance(c){
+      if(!confirm('Delete this clearance?')) return;
+      try{ await db.collection('vehicleClearances').doc(c.id).delete(); toast('Deleted'); }
+      catch(err){ toast(err.message); }
+    }
 
-    // ----- ACTIONS -----
-    const approveRequest = async (r)=>{
+    async function approveRequest(r){
       try{
         const payload = {
           ownerName: r.requesterName, vehicleNumber: r.vehicleNumber, contact: r.requesterContact, email: r.requesterEmail,
           vehicleType: r.vehicleType||null, location: r.location, timeSlot: r.timeSlot||null, notes: r.notes||null,
           entryDate: r.entryDate, expiryDate: r.expiryDate,
-          approvedAt: Timestamp.now(),
-          approvedByUsername: state.meProfile?.username || state.me?.email || 'Admin',
-          approvedByDesignation: state.meProfile?.designation || 'Admin',
-          createdAt: Timestamp.now()
+          approvedAt: firebase.firestore.Timestamp.now(),
+          approvedByUsername: (state.meProfile && state.meProfile.username) || (state.me && state.me.email) || 'Admin',
+          approvedByDesignation: (state.meProfile && state.meProfile.designation) || 'Admin',
+          createdAt: firebase.firestore.Timestamp.now()
         };
-        await addDoc(collection(db,'vehicleClearances'), payload);
-        await updateDoc(doc(db,'clearanceRequests', r.id), { status:'approved', reviewedAt: Timestamp.now() });
-        toast('Approved','success');
-        if (r.requesterEmail) {
-          const html = \`
-          <div style="font-family:Inter,Arial,sans-serif">
-            <h2>Request Approved</h2>
-            <p>Vehicle <b>\${plate(r.vehicleNumber)}</b> is approved for \${r.location||'PCC'}.</p>
-            <p>Valid: \${fmtDateLong(r.entryDate)} – \${fmtDateLong(r.expiryDate)}</p>
-          </div>\`;
-          sendEmail(r.requesterEmail,'Vehicle Clearance Approved', html);
-        }
-      }catch(err){ toast(err.message,'error'); }
-    };
+        await db.collection('vehicleClearances').add(payload);
+        await db.collection('clearanceRequests').doc(r.id).update({status:'approved', reviewedAt: firebase.firestore.Timestamp.now()});
+        toast('Approved');
+      }catch(err){ toast(err.message); }
+    }
 
-    const rejectRequest = async (r)=>{
+    async function rejectRequest(r){
       const reason = prompt('Reason for rejection?','Incomplete details');
-      if (reason===null) return;
+      if(reason===null) return;
       try{
-        await updateDoc(doc(db,'clearanceRequests', r.id), { status:'rejected', rejectionReason: reason, reviewedAt: Timestamp.now() });
-        toast('Rejected','success');
-        if (r.requesterEmail) {
-          const html = \`
-          <div style="font-family:Inter,Arial,sans-serif">
-            <h2>Request Update</h2>
-            <p>Vehicle <b>\${plate(r.vehicleNumber)}</b> could not be approved.</p>
-            <p><b>Reason:</b> \${reason}</p>
-          </div>\`;
-          sendEmail(r.requesterEmail,'Vehicle Clearance – Update', html);
-        }
-      }catch(err){ toast(err.message,'error'); }
-    };
+        await db.collection('clearanceRequests').doc(r.id).update({status:'rejected', rejectionReason: reason, reviewedAt: firebase.firestore.Timestamp.now()});
+        toast('Rejected');
+      }catch(err){ toast(err.message); }
+    }
 
-    // ----- EXPORT / PDF -----
-    const exportJSON = async ()=>{
+    async function exportJSON(){
       const collections = ['vehicleClearances','clearanceRequests','vvips','admins','authorizedUsers','allowedLocations'];
       const out = { exportedAt: new Date().toISOString(), collections:{} };
-      for (const k of collections){
-        const snap = await getDocs(collection(db,k));
+      for(const k of collections){
+        const snap = await db.collection(k).get();
         out.collections[k] = snap.docs.map(d=>{
           const x = d.data();
-          for (const kk in x){
-            if (x[kk] && typeof x[kk].toDate==='function') x[kk] = x[kk].toDate().toISOString();
-          }
+          Object.keys(x).forEach(kk=>{
+            if(x[kk] && x[kk].toDate) x[kk]=x[kk].toDate().toISOString();
+          });
           return { id:d.id, ...x };
         });
       }
-      const blob = new Blob([JSON.stringify(out,null,2)], {type:'application/json'});
+      const blob = new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href=url; a.download='vehicle_admin_backup.json'; a.click();
       URL.revokeObjectURL(url);
-    };
+    }
 
-    const generatePDF = async (btn)=>{
-      btn.disabled = true;
+    async function generatePDF(btn){
+      btn.disabled=true;
       const { jsPDF } = window.jspdf;
       const docx = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
       docx.setFontSize(18); docx.text('Vehicle Clearance Report',14,18);
       docx.setFontSize(11); docx.text('Generated: '+fmtDateLong(new Date()),14,26);
-      const rows = state.clearances.map(c=>[
+      const rows = state.clrs.map(c=>[
         plate(c.vehicleNumber), c.location||'—', c.timeSlot||'—', fmtDate(c.entryDate), fmtDate(c.expiryDate), c.ownerName||'—'
       ]);
       docx.autoTable({
@@ -457,32 +372,24 @@
         styles:{fontSize:8,cellPadding:2.2,halign:'center',valign:'middle'}
       });
       docx.save('Vehicle_Clearance_Report.pdf');
-      btn.disabled = false;
-    };
+      btn.disabled=false;
+    }
 
-    // ----- AUTH -----
-    onAuthStateChanged(auth, async (user)=>{
+    // ---- AUTH & LIVE DATA ----
+    auth.onAuthStateChanged(async (user)=>{
       if(!user){ renderLogin(); return; }
-      state.me = user;
-      // Check admin profile
-      const prof = await getDoc(doc(db,'admins', user.uid));
-      if (!prof.exists()){
-        await signOut(auth);
-        alert('Your account is not in Admins list.');
-        return;
-      }
-      state.meProfile = prof.data();
+      state.me=user;
+      const prof=await db.collection('admins').doc(user.uid).get();
+      if(!prof.exists){ await auth.signOut(); alert('Your account is not in Admins list.'); return; }
+      state.meProfile=prof.data();
       renderShell();
 
-      // Live data
-      unsubReq && unsubReq(); unsubClr && unsubClr();
-      unsubReq = onSnapshot(query(collection(db,'clearanceRequests'), where('status','==','pending'), orderBy('createdAt','desc')), snap=>{
-        state.requests = snap.docs.map(d=>({id:d.id, ...d.data()}));
-        paint();
+      unsub1 && unsub1(); unsub2 && unsub2();
+      unsub1 = db.collection('clearanceRequests').where('status','==','pending').orderBy('createdAt','desc').onSnapshot((snap)=>{
+        state.reqs = snap.docs.map(d=>({id:d.id, ...d.data()})); paint();
       });
-      unsubClr = onSnapshot(query(collection(db,'vehicleClearances'), orderBy('createdAt','desc')), snap=>{
-        state.clearances = snap.docs.map(d=>({id:d.id, ...d.data()}));
-        paint();
+      unsub2 = db.collection('vehicleClearances').orderBy('createdAt','desc').onSnapshot((snap)=>{
+        state.clrs = snap.docs.map(d=>({id:d.id, ...d.data()})); paint();
       });
     });
   </script>
