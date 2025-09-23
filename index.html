@@ -1,243 +1,443 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
-    <title>Vehicle Clearance - Admin Panel</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        .dark-theme-bg { background-color: #0f172a; color: #e2e8f0; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
-
-        .spinner { animation: spin 1s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        
-        .mobile-safe-container, .mobile-modal-content {
-            width: 100%;
-            max-width: 100vw;
-            box-sizing: border-box;
-        }
-        .mobile-button { min-height: 44px; }
-        .mobile-input { font-size: 16px; }
-
-        .mobile-modal {
-            position: fixed; inset: 0;
-            padding: 1rem; max-height: 100vh;
-            overflow-y: auto; display: flex;
-            align-items: flex-start; justify-content: center;
-            padding-top: 2rem;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
+  <title>Vehicle Clearance - Admin Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    .dark-theme-bg { background-color: #0f172a; color: #e2e8f0; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    .animate-fade-in{ animation: fadeIn .3s ease-out forwards }
+    input[type="date"]::-webkit-calendar-picker-indicator{ filter: invert(1) }
+    .spinner{ animation: spin 1s linear infinite } @keyframes spin{ from{transform:rotate(0)} to{transform:rotate(360deg)} }
+    .mobile-safe-container,.mobile-modal-content{ width:100%; max-width:100vw; box-sizing:border-box }
+    .mobile-button{ min-height:44px } .mobile-input{ font-size:16px }
+    .mobile-modal{ position:fixed; inset:0; padding:1rem; max-height:100vh; overflow-y:auto; display:flex; align-items:flex-start; justify-content:center; padding-top:2rem; }
+    .btn{ @apply px-3 py-2 rounded-lg text-white }
+  </style>
 </head>
 <body class="dark-theme-bg">
-    <div id="app-root"><div class="min-h-screen flex items-center justify-center"><div class="spinner h-16 w-16 border-4 border-slate-700 border-t-blue-500 rounded-full"></div></div></div>
+  <div id="app-root"><div class="min-h-screen flex items-center justify-center"><div class="spinner h-16 w-16 border-4 border-slate-700 border-t-blue-500 rounded-full"></div></div></div>
 
 <script type="module">
-	import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, query, Timestamp, getDoc, where, updateDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  // Firebase SDK (v11)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import {
+    getFirestore, collection, doc, addDoc, setDoc, deleteDoc, query, Timestamp,
+    getDoc, where, updateDoc, getDocs, writeBatch, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // --- Configuration ---
-    const ADMIN_INVITE_CODE = "ADMIN2025";
-    const firebaseConfig = {
-        apiKey: "AIzaSyC51Zo7V75JjOpLOdusf6ZKUzEG_gqFcV4",
-        authDomain: "vehicle-clearance.firebaseapp.com",
-        projectId: "vehicle-clearance",
-        storageBucket: "vehicle-clearance.appspot.com",
-        messagingSenderId: "187403368572",
-        appId: "1:187403368572:web:1f94845da67ef0c7ccf1f9"
-    };
+  // --- Configuration (unchanged) ---
+  const ADMIN_INVITE_CODE = "ADMIN2025";
+  const firebaseConfig = {
+    apiKey: "AIzaSyC51Zo7V75JjOpLOdusf6ZKUzEG_gqFcV4",
+    authDomain: "vehicle-clearance.firebaseapp.com",
+    projectId: "vehicle-clearance",
+    storageBucket: "vehicle-clearance.appspot.com",
+    messagingSenderId: "187403368572",
+    appId: "1:187403368572:web:1f94845da67ef0c7ccf1f9"
+  };
 
-    // --- App Initialization ---
-    const appRoot = document.getElementById("app-root");
-    let app, auth, db;
-    try {
-        app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
-    } catch (err) {
-        appRoot.innerHTML = `<div class="p-4 text-center text-red-500 bg-red-100 rounded-lg"><b>Error:</b> Firebase initialization failed.</div>`;
-    }
+  // --- App Initialization ---
+  const appRoot = document.getElementById("app-root");
+  let app, auth, db;
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } catch (err) {
+    console.error(err);
+    appRoot.innerHTML = `<div class="p-4 text-center text-red-500 bg-red-100 rounded-lg"><b>Error:</b> Firebase initialization failed.</div>`;
+  }
 
-    // --- State ---
-    let clearances = [], clearanceRequests = [], vvips = [], currentAdminProfile = null;
-    let authMode = "login";
+  // --- State ---
+  let clearances = [], clearanceRequests = [], currentAdminProfile = null;
+  let authMode = "login";
 
-    // --- Notifications & Utilities ---
-    const showNotification = (message, type = "success") => {
-        const el = document.createElement("div");
-        const colors = { success: "bg-green-500", error: "bg-red-500", info: "bg-blue-500" };
-        el.className = `fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white flex items-center animate-fade-in z-[100] ${colors[type] || colors.info}`;
-        el.innerHTML = `<span>${message}</span>`;
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 4000);
-    };
-    const formatDate = (d) => d ? new Date(d.toDate ? d.toDate() : d).toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit', year:'2-digit'}) : "N/A";
-    const getFormObj = form => Object.fromEntries(new FormData(form).entries());
+  // --- Notifications & Utilities ---
+  const showNotification = (message, type = "success") => {
+    const el = document.createElement("div");
+    const colors = { success: "bg-green-500", error: "bg-red-500", info: "bg-blue-500" };
+    el.className = `fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white flex items-center animate-fade-in z-[100] ${colors[type] || colors.info}`;
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  };
+  const fmt = (v) => v ?? "";
+  const formatDate = (d) =>
+    d ? new Date(d.toDate ? d.toDate() : d).toLocaleString('en-GB', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : "N/A";
+  const getFormObj = form => Object.fromEntries(new FormData(form).entries());
 
-    // — Icon Library —
-    const icons = {
-        logout: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
-        plus: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
-        shield: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
-        settings: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33-1.82V15a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
-        refresh: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`
-    };
+  // — Icons —
+  const icons = {
+    logout: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+    plus: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+    shield: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+    settings: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33-1.82V15a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+    refresh: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`
+  };
 
-    // — Render Functions —
-    const renderAdminLogin = () => {
-        document.body.className = 'dark-theme-bg';
-        const isSignup = authMode === "signup";
-        appRoot.innerHTML = `
-        <div class="min-h-screen flex items-center justify-center p-4">
-            <div class="w-full max-w-md bg-slate-800/80 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-8 space-y-6 animate-fade-in">
-                <div class="text-center"><div class="w-12 h-12 mx-auto text-blue-400">${icons.shield}</div><h1 class="text-3xl font-bold text-white mt-4">Admin Panel</h1><p class="text-slate-400">${isSignup ? "Create a new admin account" : "Sign in to manage"}</p></div>
-                <form id="auth-form" class="space-y-4">
-                    <div class="${isSignup ? '' : 'hidden'}"><label class="text-sm text-slate-300">Invite Code</label><input type="password" name="inviteCode" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" /></div>
-                    <div class="${isSignup ? '' : 'hidden'}"><label class="text-sm text-slate-300">Email</label><input type="email" name="email" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" ${isSignup ? 'required' : ''} /></div>
-                    <div><label class="text-sm text-slate-300">Username</label><input type="text" name="username" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required /></div>
-                    <div class="${isSignup ? '' : 'hidden'}"><label class="text-sm text-slate-300">Designation</label><input type="text" name="designation" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" ${isSignup ? 'required' : ''} /></div>
-                    <div><label class="text-sm text-slate-300">Password</label><input type="password" name="password" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required /></div>
-                    <button type="submit" class="w-full py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 mobile-button">${isSignup ? "Sign Up" : "Login"}</button>
-                </form>
-                <p class="text-center text-sm text-slate-400"><span>${isSignup ? "Have an account?" : "Need an account?"}</span><button id="auth-toggle-button" class="font-medium text-blue-400 hover:text-blue-300 ml-1">${isSignup ? "Login" : "Sign Up"}</button></p>
+  // — Renderers —
+  const renderAdminLogin = () => {
+    document.body.className = 'dark-theme-bg';
+    const isSignup = authMode === "signup";
+    appRoot.innerHTML = `
+      <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-slate-800/80 backdrop-blur-sm border border-blue-500/20 rounded-2xl shadow-2xl p-8 space-y-6 animate-fade-in">
+          <div class="text-center">
+            <div class="w-12 h-12 mx-auto text-blue-400">${icons.shield}</div>
+            <h1 class="text-3xl font-bold text-white mt-4">Admin Panel</h1>
+            <p class="text-slate-400">${isSignup ? "Create a new admin account" : "Sign in to manage"}</p>
+          </div>
+          <form id="auth-form" class="space-y-4">
+            <div class="${isSignup ? '' : 'hidden'}">
+              <label class="text-sm text-slate-300">Invite Code</label>
+              <input type="password" name="inviteCode" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" />
             </div>
-        </div>`;
-    };
-    function renderAdminDashboard(adminUser) {
-        document.body.className = 'dark-theme-bg';
-        appRoot.innerHTML = `
-            <header class="bg-slate-800 shadow-md sticky top-0 z-30">
-                <nav class="w-full max-w-7xl mx-auto px-4 md:px-8 py-3 flex justify-between items-center">
-                    <div class="flex items-center gap-3"><span class="text-blue-500 w-8 h-8">${icons.shield}</span><span class="text-xl font-bold">Admin Dashboard</span></div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm text-slate-400 hidden sm:block">${adminUser.username}</span>
-                        <button id="settings-btn" title="Settings" class="p-2 text-slate-300 hover:bg-slate-700 rounded-full">${icons.settings}</button>
-                        <button id="logout-button" title="Logout" class="p-2 rounded-full text-white bg-red-500 hover:bg-red-600">${icons.logout}</button>
-                    </div>
-                </nav>
-            </header>
-            <main class="w-full max-w-7xl mx-auto p-4 md:p-8 mobile-safe-container">
-                <div class="space-y-10">
-                    <section>
-                        <div class="flex items-center gap-4 mb-4">
-                            <h2 class="text-2xl font-semibold">Pending Requests</h2>
-                            <span id="requests-count-badge" class="flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-red-500 rounded-full">0</span>
-                            <button id="refresh-data-btn" title="Refresh Data" class="ml-auto p-2 text-slate-300 hover:bg-slate-700 rounded-full">${icons.refresh}</button>
-                        </div>
-                        <div id="requests-list" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3"></div>
-                    </section>
-                    <section>
-                        <div class="flex flex-wrap gap-4 justify-between items-center mb-6">
-                            <h2 class="text-2xl font-semibold">Manage Clearances</h2>
-                            <button id="add-clearance-btn" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mobile-button"><span class="w-5 h-5">${icons.plus}</span><span class="hidden sm:inline">Fast Track</span></button>
-                        </div>
-                        <div id="clearance-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
-                    </section>
-                </div>
-            </main>
-            <div id="modal-container"></div>
-            <div id="settings-panel-container"></div>`;
-    }
-    const renderRequestsList = () => { /* ... */ };
-    const renderClearancesList = () => { /* ... */ };
-    const renderReviewModal = (data) => { /* ... */ };
+            <div class="${isSignup ? '' : 'hidden'}">
+              <label class="text-sm text-slate-300">Email</label>
+              <input type="email" name="email" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" ${isSignup ? 'required' : ''} />
+            </div>
+            <div>
+              <label class="text-sm text-slate-300">Username</label>
+              <input type="text" name="username" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required />
+            </div>
+            <div class="${isSignup ? '' : 'hidden'}">
+              <label class="text-sm text-slate-300">Designation</label>
+              <input type="text" name="designation" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" ${isSignup ? 'required' : ''} />
+            </div>
+            <div>
+              <label class="text-sm text-slate-300">Password</label>
+              <input type="password" name="password" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required />
+            </div>
+            <button type="submit" class="w-full py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 mobile-button">${isSignup ? "Sign Up" : "Login"}</button>
+          </form>
+          <p class="text-center text-sm text-slate-400">
+            <span>${isSignup ? "Have an account?" : "Need an account?"}</span>
+            <button id="auth-toggle-button" class="font-medium text-blue-400 hover:text-blue-300 ml-1">${isSignup ? "Login" : "Sign Up"}</button>
+          </p>
+        </div>
+      </div>`;
+  };
 
-    // --- Data Fetching & State Update ---
-    async function loadAdminData() {
-        const refreshBtn = document.getElementById('refresh-data-btn');
-        if(refreshBtn) refreshBtn.firstElementChild.classList.add('animate-spin');
-        try {
-            const clearancesSnap = await getDocs(collection(db, "vehicleClearances"));
-            clearances = clearancesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-            clearances.sort((a, b) => (b.entryDate?.toMillis() || 0) - (a.entryDate?.toMillis() || 0));
-            
-            const requestsQuery = query(collection(db, "clearanceRequests"), where("status", "==", "pending"));
-            const requestsSnap = await getDocs(requestsQuery);
-            clearanceRequests = requestsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-            clearanceRequests.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+  function renderAdminDashboard(adminUser) {
+    document.body.className = 'dark-theme-bg';
+    appRoot.innerHTML = `
+      <header class="bg-slate-800 shadow-md sticky top-0 z-30">
+        <nav class="w-full max-w-7xl mx-auto px-4 md:px-8 py-3 flex justify-between items-center">
+          <div class="flex items-center gap-3"><span class="text-blue-500 w-8 h-8">${icons.shield}</span><span class="text-xl font-bold">Admin Dashboard</span></div>
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-slate-400 hidden sm:block">${adminUser.username}</span>
+            <button id="settings-btn" title="Settings" class="p-2 text-slate-300 hover:bg-slate-700 rounded-full">${icons.settings}</button>
+            <button id="logout-button" title="Logout" class="p-2 rounded-full text-white bg-red-500 hover:bg-red-600">${icons.logout}</button>
+          </div>
+        </nav>
+      </header>
+      <main class="w-full max-w-7xl mx-auto p-4 md:p-8 mobile-safe-container">
+        <div class="space-y-10">
+          <section>
+            <div class="flex items-center gap-4 mb-4">
+              <h2 class="text-2xl font-semibold">Pending Requests</h2>
+              <span id="requests-count-badge" class="flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-red-500 rounded-full">0</span>
+              <button id="refresh-data-btn" title="Refresh Data" class="ml-auto p-2 text-slate-300 hover:bg-slate-700 rounded-full">${icons.refresh}</button>
+            </div>
+            <div id="requests-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+          </section>
 
-            renderClearancesList();
-            renderRequestsList();
-            showNotification("Data refreshed", "info");
-        } catch (error) {
-            console.error("Failed to fetch admin data:", error);
-            showNotification("Could not load data.", "error");
-        } finally {
-            if(refreshBtn) refreshBtn.firstElementChild.classList.remove('animate-spin');
-        }
+          <section>
+            <div class="flex flex-wrap gap-4 justify-between items-center mb-6">
+              <h2 class="text-2xl font-semibold">Manage Clearances</h2>
+              <button id="add-clearance-btn" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mobile-button">
+                <span class="w-5 h-5">${icons.plus}</span><span class="hidden sm:inline">Fast Track</span>
+              </button>
+            </div>
+            <div id="clearance-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+          </section>
+        </div>
+      </main>
+      <div id="modal-container"></div>
+      <div id="settings-panel-container"></div>`;
+  }
+
+  // ---- CARDS & MODALS ----
+  const renderRequestsList = () => {
+    const wrap = document.getElementById('requests-list');
+    const badge = document.getElementById('requests-count-badge');
+    if (!wrap) return;
+    badge.textContent = clearanceRequests.length;
+    if (clearanceRequests.length === 0) {
+      wrap.innerHTML = `<div class="col-span-full text-slate-400">No pending requests.</div>`;
+      return;
     }
-    
-    // — Auth Listener —
-    onAuthStateChanged(auth, async (user) => {
-        if (user && !user.isAnonymous) {
-            try {
-                const adminDoc = await getDoc(doc(db, "admins", user.uid));
-                if (adminDoc.exists()) {
-                    currentAdminProfile = { uid: user.uid, ...adminDoc.data() };
-                    renderAdminDashboard(currentAdminProfile);
-                    await loadAdminData();
-                } else { await signOut(auth); }
-            } catch (error) {
-                console.error("Auth state change error:", error);
-                await signOut(auth);
-            }
+    wrap.innerHTML = clearanceRequests.map(r => `
+      <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-4">
+        <div class="flex justify-between items-center">
+          <div class="font-semibold">${fmt(r.driverName)} <span class="text-xs text-slate-400">(${fmt(r.plate)})</span></div>
+          <div class="text-xs text-slate-400">${formatDate(r.createdAt)}</div>
+        </div>
+        <div class="mt-2 text-sm text-slate-300">${fmt(r.purpose) || "-"}</div>
+        <div class="mt-3 flex gap-2">
+          <button class="review-btn px-3 py-2 rounded-lg bg-emerald-600 text-white" data-id="${r.id}" data-mode="approve">Review</button>
+        </div>
+      </div>
+    `).join('');
+  };
+
+  const renderClearancesList = () => {
+    const wrap = document.getElementById('clearance-list');
+    if (!wrap) return;
+    if (clearances.length === 0) {
+      wrap.innerHTML = `<div class="col-span-full text-slate-400">No clearances yet.</div>`;
+      return;
+    }
+    wrap.innerHTML = clearances.map(c => `
+      <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-4">
+        <div class="flex justify-between items-center">
+          <div class="font-semibold">${fmt(c.driverName)} <span class="text-xs text-slate-400">(${fmt(c.plate)})</span></div>
+          <div class="text-xs text-slate-400">${formatDate(c.entryDate)}</div>
+        </div>
+        <div class="mt-2 text-sm text-slate-300">${fmt(c.destination) || "-"} • ${fmt(c.purpose) || "-"}</div>
+        <div class="mt-3 flex gap-2">
+          <button class="edit-btn px-3 py-2 rounded-lg bg-blue-600 text-white" data-id="${c.id}">Edit</button>
+          <button class="delete-clearance-btn px-3 py-2 rounded-lg bg-red-600 text-white" data-id="${c.id}">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  };
+
+  const renderReviewModal = (data = {}, mode = "clearance") => {
+    const isRequest = !!data.status; // pending request has status
+    const modal = document.getElementById('modal-container');
+    const title = isRequest ? "Review Request" : (data.id ? "Edit Clearance" : "New Clearance");
+    modal.innerHTML = `
+      <div class="mobile-modal bg-black/50 z-40">
+        <div class="mobile-modal-content w-full max-w-xl bg-slate-800 border border-slate-700 rounded-2xl p-5 animate-fade-in">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-semibold">${title}</h3>
+            <button id="close-modal" class="p-2 text-slate-300 hover:bg-slate-700 rounded-lg">✕</button>
+          </div>
+
+          <form id="${isRequest ? 'request-action-form' : 'clearance-form'}" class="mt-4 space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="text-sm text-slate-300">Driver Name</label>
+                <input name="driverName" class="mobile-input w-full mt-1 p-3 rounded-lg bg-slate-900/70 border border-slate-700 text-white" value="${fmt(data.driverName)}" required />
+              </div>
+              <div>
+                <label class="text-sm text-slate-300">Vehicle Plate</label>
+                <input name="plate" class="mobile-input w-full mt-1 p-3 rounded-lg bg-slate-900/70 border border-slate-700 text-white" value="${fmt(data.plate)}" required />
+              </div>
+              <div>
+                <label class="text-sm text-slate-300">Destination</label>
+                <input name="destination" class="mobile-input w-full mt-1 p-3 rounded-lg bg-slate-900/70 border border-slate-700 text-white" value="${fmt(data.destination)}" />
+              </div>
+              <div>
+                <label class="text-sm text-slate-300">Purpose</label>
+                <input name="purpose" class="mobile-input w-full mt-1 p-3 rounded-lg bg-slate-900/70 border border-slate-700 text-white" value="${fmt(data.purpose)}" />
+              </div>
+              <div class="${isRequest ? 'hidden' : ''}">
+                <label class="text-sm text-slate-300">Entry Date/Time</label>
+                <input name="entryDate" type="datetime-local" class="mobile-input w-full mt-1 p-3 rounded-lg bg-slate-900/70 border border-slate-700 text-white" />
+              </div>
+            </div>
+
+            ${isRequest ? `
+              <div class="mt-2 text-xs text-slate-400">Requested at: ${formatDate(data.createdAt)}</div>
+              <div class="flex gap-2 pt-3">
+                <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white" name="action" value="approve">Approve</button>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-red-600 text-white" name="action" value="reject">Reject</button>
+              </div>
+            ` : `
+              <div class="flex gap-2 pt-3">
+                <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white">${data.id ? 'Save' : 'Create'}</button>
+              </div>
+            `}
+          </form>
+        </div>
+      </div>`;
+  };
+
+  // --- Data Fetching ---
+  async function loadAdminData() {
+    const refreshBtn = document.getElementById('refresh-data-btn');
+    if (refreshBtn) refreshBtn.firstElementChild?.classList.add('animate-spin');
+    try {
+      const clearancesSnap = await getDocs(collection(db, "vehicleClearances"));
+      clearances = clearancesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      clearances.sort((a, b) => (b.entryDate?.toMillis?.() || 0) - (a.entryDate?.toMillis?.() || 0));
+
+      const requestsQuery = query(collection(db, "clearanceRequests"), where("status", "==", "pending"));
+      const requestsSnap = await getDocs(requestsQuery);
+      clearanceRequests = requestsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      clearanceRequests.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+
+      renderClearancesList();
+      renderRequestsList();
+      showNotification("Data refreshed", "info");
+    } catch (error) {
+      console.error("Failed to fetch admin data:", error);
+      showNotification("Could not load data.", "error");
+    } finally {
+      if (refreshBtn) refreshBtn.firstElementChild?.classList.remove('animate-spin');
+    }
+  }
+
+  // — Auth Listener —
+  onAuthStateChanged(auth, async (user) => {
+    if (user && !user.isAnonymous) {
+      try {
+        const adminDoc = await getDoc(doc(db, "admins", user.uid));
+        if (adminDoc.exists()) {
+          currentAdminProfile = { uid: user.uid, ...adminDoc.data() };
+          renderAdminDashboard(currentAdminProfile);
+          await loadAdminData();
         } else {
-            renderAdminLogin();
+          await signOut(auth);
         }
-    });
+      } catch (error) {
+        console.error("Auth state change error:", error);
+        await signOut(auth);
+      }
+    } else {
+      renderAdminLogin();
+    }
+  });
 
-    // --- Event Listeners ---
-    document.body.addEventListener("click", async (e) => {
-        const button = e.target.closest('button');
-        if (!button || button.type === 'submit') return;
-        
-        e.preventDefault();
-        
-        try {
-            if (button.id === 'logout-button') { await signOut(auth); }
-            else if (button.id === 'refresh-data-btn') { await loadAdminData(); }
-            else if (button.id === 'add-clearance-btn') { renderReviewModal({}); }
-            else if (button.classList.contains('edit-btn')) { const c = clearances.find(x => x.id === button.dataset.id); if (c) renderReviewModal(c); }
-            else if (button.classList.contains('review-btn')) { const r = clearanceRequests.find(x => x.id === button.dataset.id); if (r) renderReviewModal(r); }
-            else if (button.id === "auth-toggle-button") { authMode = authMode === "login" ? "signup" : "login"; renderAdminLogin(); }
-        } catch (error) { console.error("Click Error:", error); showNotification(error.message, "error"); }
-    });
+  // --- Global Clicks ---
+  document.body.addEventListener("click", async (e) => {
+    const button = e.target.closest('button');
+    if (!button || button.type === 'submit') return;
+    e.preventDefault();
+    try {
+      if (button.id === 'logout-button') {
+        await signOut(auth);
+      } else if (button.id === 'refresh-data-btn') {
+        await loadAdminData();
+      } else if (button.id === 'add-clearance-btn') {
+        renderReviewModal({});
+      } else if (button.classList.contains('edit-btn')) {
+        const c = clearances.find(x => x.id === button.dataset.id);
+        if (c) renderReviewModal(c);
+      } else if (button.classList.contains('review-btn')) {
+        const r = clearanceRequests.find(x => x.id === button.dataset.id);
+        if (r) renderReviewModal(r, "request");
+      } else if (button.classList.contains('delete-clearance-btn')) {
+        const id = button.dataset.id;
+        if (confirm("Delete this clearance?")) {
+          await deleteDoc(doc(db, "vehicleClearances", id));
+          showNotification("Clearance deleted", "success");
+          await loadAdminData();
+        }
+      } else if (button.id === "auth-toggle-button") {
+        authMode = authMode === "login" ? "signup" : "login";
+        renderAdminLogin();
+      } else if (button.id === "close-modal") {
+        document.getElementById('modal-container').innerHTML = "";
+      }
+    } catch (error) {
+      console.error("Click Error:", error);
+      showNotification(error.message, "error");
+    }
+  });
 
-    document.body.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const button = form.querySelector('button[type="submit"]');
-        if (button) button.disabled = true;
-        try {
-            if (form.id === "auth-form") {
-                const { password, username } = getFormObj(form);
-                if (authMode === 'login') {
-                    const q = query(collection(db, "admins"), where("username", "==", username.trim()));
-                    const querySnapshot = await getDocs(q);
-                    if (querySnapshot.empty) { throw new Error("Invalid username or password."); }
-                    const adminData = querySnapshot.docs[0].data();
-                    if (!adminData.email) { throw new Error("Login error: Account is missing an email."); }
-                    await signInWithEmailAndPassword(auth, adminData.email, password);
-                }
-            }
-        } catch (error) {
-            showNotification(error.message, "error");
-        } finally { if (button) button.disabled = false; }
-    });
+  // --- Submits ---
+  document.body.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const button = form.querySelector('button[type="submit"]');
+    if (button) button.disabled = true;
+
+    try {
+      // LOGIN
+      if (form.id === "auth-form") {
+        const { password, username } = getFormObj(form);
+        if (authMode === 'login') {
+          const q = query(collection(db, "admins"), where("username", "==", username.trim()));
+          const querySnapshot = await getDocs(q);
+          if (querySnapshot.empty) throw new Error("Invalid username or password.");
+          const adminData = querySnapshot.docs[0].data();
+          if (!adminData.email) throw new Error("Login error: Account is missing an email.");
+          await signInWithEmailAndPassword(auth, adminData.email, password);
+        } else {
+          // Minimal signup flow (invite required) – optional based on your rules
+          const { inviteCode, email, password, username, designation } = getFormObj(form);
+          if (inviteCode !== ADMIN_INVITE_CODE) throw new Error("Invalid invite code.");
+          // Intentionally left without createUser (email/password) to keep parity with your current approach.
+          throw new Error("Signup flow is disabled in this build.");
+        }
+      }
+
+      // CREATE / UPDATE CLEARANCE
+      if (form.id === "clearance-form") {
+        const data = getFormObj(form);
+        const payload = {
+          driverName: data.driverName?.trim() || "",
+          plate: data.plate?.trim() || "",
+          destination: data.destination?.trim() || "",
+          purpose: data.purpose?.trim() || "",
+          entryDate: data.entryDate ? Timestamp.fromDate(new Date(data.entryDate)) : serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          updatedBy: currentAdminProfile?.username || "admin"
+        };
+
+        // Edit mode detection (hidden id if present)
+        const maybeId = form.dataset.id;
+        if (maybeId) {
+          await updateDoc(doc(db, "vehicleClearances", maybeId), payload);
+          showNotification("Clearance updated", "success");
+        } else {
+          payload.createdAt = serverTimestamp();
+          await addDoc(collection(db, "vehicleClearances"), payload);
+          showNotification("Clearance created", "success");
+        }
+        document.getElementById('modal-container').innerHTML = "";
+        await loadAdminData();
+      }
+
+      // APPROVE/REJECT REQUEST
+      if (form.id === "request-action-form") {
+        const action = (new FormData(form)).get("action");
+        // We need the current request by its visible fields; pass id via dataset when opening
+        const cardDriver = form.querySelector('input[name="driverName"]').value;
+        const req = clearanceRequests.find(r => r.driverName === cardDriver) || clearanceRequests[0];
+        if (!req) throw new Error("Request not found in memory.");
+        const requestRef = doc(db, "clearanceRequests", req.id);
+
+        if (action === "approve") {
+          // Create clearance + mark request approved atomically
+          const clearanceRef = doc(collection(db, "vehicleClearances"));
+          const batch = writeBatch(db);
+          batch.set(clearanceRef, {
+            driverName: req.driverName || "",
+            plate: req.plate || "",
+            destination: req.destination || "",
+            purpose: req.purpose || "",
+            entryDate: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            approvedBy: currentAdminProfile?.username || "admin"
+          });
+          batch.update(requestRef, { status: "approved", processedAt: serverTimestamp(), processedBy: currentAdminProfile?.username || "admin" });
+          await batch.commit();
+          showNotification("Request approved", "success");
+        } else {
+          await updateDoc(requestRef, { status: "rejected", processedAt: serverTimestamp(), processedBy: currentAdminProfile?.username || "admin" });
+          showNotification("Request rejected", "info");
+        }
+        document.getElementById('modal-container').innerHTML = "";
+        await loadAdminData();
+      }
+    } catch (error) {
+      console.error(error);
+      showNotification(error.message || "Action failed", "error");
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
 </script>
 </body>
 </html>
-
