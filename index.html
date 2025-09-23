@@ -18,7 +18,7 @@
             -moz-osx-font-smoothing: grayscale;
         }
         .dark-theme-bg {
-            background-color: #1e293b; /* Dark Slate Blue */
+             background-color: #0f172a; /* Darker Slate Blue */
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -32,6 +32,10 @@
        
         summary { list-style: none; }
         summary::-webkit-details-marker { display: none; }
+
+        details[open] summary .chevron-icon {
+            transform: rotate(90deg);
+        }
 
         #settings-panel {
             transition: transform 0.3s ease-in-out;
@@ -68,16 +72,6 @@
             box-sizing: border-box;
         }
        
-        .mobile-vehicle-number {
-            font-size: clamp(1rem, 5vw, 1.5rem);
-            letter-spacing: 0.05em;
-            word-break: break-all;
-        }
-        .mobile-button {
-            min-height: 44px;
-            padding: 0.75rem 1rem;
-            font-size: clamp(0.875rem, 3.5vw, 1rem);
-        }
         .mobile-input {
             width: 100%;
             max-width: 100%;
@@ -86,20 +80,6 @@
             box-sizing: border-box;
         }
 
-        .mobile-details {
-            width: 100%;
-            max-width: 100%;
-            overflow: hidden;
-        }
-        .mobile-details summary {
-            padding: 0.75rem;
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            box-sizing: border-box;
-        }
         .mobile-modal {
             position: fixed;
             inset: 0;
@@ -118,14 +98,9 @@
             overflow-y: auto;
             margin: 0 auto;
         }
-        @media (max-width: 640px) {
-            .responsive-grid {
-                grid-template-columns: 1fr !important;
-            }
-        }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900">
+<body class="bg-slate-900 text-slate-100">
     <div id="app-root"></div>
     
 <script type="module">
@@ -191,70 +166,13 @@
         unsubVVIPs = null;
     let authMode = "login";
 
-    // --- Email Notification Helper ---
-    const generateNotificationEmail = (status, data) => {
-        const orgName = "PCC Security";
-        const footerText = `This is an automated notification from the Vehicle Clearance System. Please do not reply to this email.`;
-        const template = (title, content) => `
-            <div style="font-family: Inter, Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                <div style="background-color: #0f172a; color: #ffffff; padding: 20px; text-align: center;"><h1 style="margin: 0; font-size: 24px;">Vehicle Clearance System</h1></div>
-                <div style="padding: 25px;"><h2 style="font-size: 20px; color: #1e293b; margin-top: 0;">${title}</h2>${content}<p style="margin-top: 25px;">Regards,<br/><b>${orgName}</b></p></div>
-                <div style="background-color: #f1f5f9; color: #64748b; padding: 15px; text-align: center; font-size: 12px;">${footerText}</div>
-            </div>`;
-        let title = '', content = '';
-        switch (status) {
-            case 'approved':
-                title = 'Request Approved';
-                content = `<p>Hi ${data.ownerName || 'User'},</p><p>Good news! Your vehicle clearance request for <b>${data.vehicleNumber}</b> has been <strong>approved</strong>.</p><hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;"><p style="font-size: 14px; color: #475569;"><b>Location:</b> ${data.location}</p><p style="font-size: 14px; color: #475569;"><b>Valid From:</b> ${data.entryDate}</p><p style="font-size: 14px; color: #475569;"><b>Valid Until:</b> ${data.expiryDate}</p>`;
-                break;
-            case 'rejected':
-                title = 'Request Update';
-                content = `<p>Hi ${data.requesterName || 'User'},</p><p>We have reviewed your vehicle clearance request for <b>${data.vehicleNumber}</b>. Unfortunately, it could not be approved at this time.</p><hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;"><p style="font-size: 14px; color: #475569;"><b>Reason for Rejection:</b></p><p style="padding: 10px; border-left: 3px solid #ef4444; background-color: #fee2e2;">${data.rejectionReason}</p>`;
-                break;
-        }
-        return template(title, content);
-    };
-
-    const sendEmail = async (to, subject, htmlBody) => {
-        const VPS_API_URL = 'https://email.th3va.com/send-email';
-        try {
-            const response = await fetch(VPS_API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': '7873&;@:$/);&;84$:&;73638($' },
-                body: JSON.stringify({ to, subject, htmlBody }),
-            });
-            if (!response.ok) throw new Error('Email service HTTP ' + response.status);
-            showNotification(`Email notification sent to ${to}.`, "success");
-        } catch (error) {
-            console.error('Failed to send email:', error);
-            showNotification("Action successful, but failed to send email notification.", "error");
-        }
-    };
-
     // --- Utility Functions ---
-    const normalizePhoneNumberForWhatsApp = (phone) => {
-        if (!phone || typeof phone !== 'string') return '';
-        let cleaned = phone.replace(/\D/g, '');
-        if (cleaned.startsWith('0')) cleaned = '6' + cleaned;
-        if (!cleaned.startsWith('60')) cleaned = '60' + cleaned;
-        return cleaned;
-    };
-
     const formatDate = (date) => {
         if (!date) return "N/A";
         const d = date instanceof Date ? date : date.toDate();
         return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
     };
     
-    const formatDateLongForm = (date) => {
-        if (!date) return "N/A";
-        const d = date instanceof Date ? date : date.toDate();
-        return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    };
-
-    const formatApprovalString = (c) => c.approvedAt ? `Approved by ${c.approvedByUsername} on ${formatDate(c.approvedAt)}` : null;
-    const formatUpdateString = (c) => c.lastUpdatedAt ? `Last updated by ${c.lastUpdatedByUsername} on ${formatDate(c.lastUpdatedAt)}` : null;
-
     const toISODate = d => d ? new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0] : "";
     const getFormObj = form => Object.fromEntries(new FormData(form).entries());
 
@@ -276,78 +194,16 @@
     
     // — Icon Library —
     const icons = {
-        logout: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`,
+        logout: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
         plus: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
-        edit: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`,
-        trash: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
+        edit: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/></svg>`,
+        trash: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>`,
         shield: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`,
         x: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
         chevronRight: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`,
-        download: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
+        download: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
         settings: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V15a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
-        database: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>`,
-        whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.894 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.886-.001 2.267.655 4.398 1.908 6.161l.217.324-1.251 4.565 4.654-1.225.308.212z"/></svg>`
-    };
-
-    // --- PDF Generation Function ---
-    const generatePDFReport = async (button) => {
-        button.disabled = true;
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<div class="spinner w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div> Generating...';
-        try {
-            if (typeof window.jspdf === 'undefined') throw new Error('jsPDF library not loaded');
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-            const now = new Date();
-            let reportData = clearances.filter(c => c.expiryDate.toDate() >= now).map(c => [
-                c.vehicleNumber || 'N/A', c.location || 'N/A', c.timeSlot ? c.timeSlot.replace('-', ' to ') : 'N/A', 
-                c.escortRequired ? 'Yes' : 'No', formatDate(c.expiryDate), 'ACTIVE'
-            ]);
-            doc.setFontSize(20);
-            doc.setFont(undefined, 'bold');
-            doc.text("Vehicle Clearance Report", 14, 20);
-            doc.setFontSize(12);
-            doc.text(`Generated: ${formatDateLongForm(now)} at ${now.toLocaleTimeString()}`, 14, 30);
-            if (reportData.length > 0) {
-                doc.autoTable({
-                    head: [['Vehicle No.', 'Location', 'Entry Time', 'Escort', 'Expiry', 'Status']],
-                    body: reportData, startY: 40, theme: 'grid',
-                    headStyles: { fillColor: [22, 163, 74] }
-                });
-            } else {
-                doc.text("No active clearances found.", 14, 50);
-            }
-            doc.save(`Vehicle_Report_${now.toISOString().split('T')[0]}.pdf`);
-            showNotification("PDF report generated!");
-        } catch (error) {
-            showNotification(`Failed to generate PDF: ${error.message}`, "error");
-        } finally {
-            button.disabled = false;
-            button.innerHTML = originalHTML;
-        }
-    };
-
-    // --- DATABASE MANAGEMENT FUNCTIONS ---
-    const updateDatabaseStats = async () => {
-        const statsContainer = document.getElementById('db-stats');
-        if (!statsContainer) return;
-        statsContainer.innerHTML = '<div class="col-span-2 text-center p-4">Loading stats...</div>';
-        try {
-            const collectionsToCount = ['vehicleClearances', 'clearanceRequests', 'vvips', 'admins'];
-            const stats = {};
-            for (const name of collectionsToCount) {
-                const q = name === 'clearanceRequests' ? query(collection(db, name), where("status", "==", "pending")) : collection(db, name);
-                stats[name] = (await getDocs(q)).size;
-            }
-            statsContainer.innerHTML = `
-                <div>Active Clearances: <strong class="text-blue-400">${stats.vehicleClearances}</strong></div>
-                <div>Pending Requests: <strong class="text-yellow-400">${stats.clearanceRequests}</strong></div>
-                <div>VVIPs: <strong class="text-indigo-400">${stats.vvips}</strong></div>
-                <div>Admin Accounts: <strong class="text-green-400">${stats.admins}</strong></div>
-                <div class="col-span-2 text-xs text-slate-400 mt-2">Last updated: ${new Date().toLocaleTimeString()}</div>`;
-        } catch (error) {
-            statsContainer.innerHTML = '<div class="col-span-2 text-red-500 text-center p-4">Error loading stats</div>';
-        }
+        chat: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`
     };
 
     // — Render Functions —
@@ -378,48 +234,30 @@
     };
 
     function renderAdminDashboard(adminUser) {
-        document.body.className = 'bg-gray-100 dark:bg-gray-900';
+        document.body.className = 'bg-slate-900 text-slate-100';
         appRoot.innerHTML = `
-        <div id="admin-dashboard-container">
-            <header class="bg-white dark:bg-slate-800 shadow-md sticky top-0 z-30">
-                <nav class="w-full max-w-7xl mx-auto px-3 md:px-8 py-3 flex justify-between items-center gap-4">
-                    <div class="flex items-center gap-3"><span class="text-blue-500 w-8 h-8">${icons.shield}</span><span class="text-xl font-bold text-slate-800 dark:text-slate-100">Admin Dashboard</span></div>
-                    <div class="flex items-center gap-3"><span class="text-sm text-slate-600 dark:text-slate-400 hidden sm:block">${adminUser.username} (${adminUser.designation})</span><button id="settings-btn" title="Settings" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full">${icons.settings}</button><button id="logout-button" title="Logout" class="p-2 rounded-full text-white bg-red-500 hover:bg-red-600"><span class="w-5 h-5">${icons.logout}</span></button></div>
-                </nav>
-            </header>
-            <main class="w-full max-w-7xl mx-auto p-4 md:p-8 mobile-safe-container">
-                <div class="space-y-10">
-                    <section>
-                        <div class="flex items-center gap-4 mb-4"><h2 class="text-2xl font-semibold text-slate-800 dark:text-slate-100">Pending Requests</h2><span id="requests-count-badge" class="flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-red-500 rounded-full">0</span></div>
-                        <div id="requests-list" class="space-y-4"></div>
-                    </section>
-                    <section>
-                        <div class="sticky top-[60px] z-20 bg-gray-100 dark:bg-gray-900 py-3 flex flex-wrap gap-4 justify-between items-center mb-6 border-b border-slate-200 dark:border-slate-700 -mx-4 md:-mx-8 px-4 md:px-8">
-                            <h2 class="text-2xl font-semibold text-slate-800 dark:text-slate-100">Manage Clearances</h2>
-                            <div class="flex gap-2 flex-wrap">
-                               <button id="download-report-btn" class="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"><span class="w-5 h-5">${icons.download}</span><span class="hidden sm:inline">Report</span></button>
-                               <button id="add-clearance-btn" class="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><span class="w-5 h-5">${icons.plus}</span><span class="hidden sm:inline">Fast Track</span></button>
-                            </div>
-                        </div>
-                        <div id="clearance-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
-                    </section>
+        <main class="w-full max-w-4xl mx-auto p-4 md:p-6 mobile-safe-container space-y-8">
+            <section>
+                <div class="flex items-center gap-3 mb-4">
+                    <h2 class="text-2xl font-bold text-slate-100">Pending Requests</h2>
+                    <span id="requests-count-badge" class="flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-red-600 rounded-full">0</span>
                 </div>
-            </main>
-            <div id="modal-container"></div>
-            <div id="settings-panel-container">
-                <div id="settings-backdrop" class="fixed inset-0 bg-black/0 -z-10"></div>
-                <div id="settings-panel" class="fixed top-0 right-0 h-full w-full max-w-sm bg-white dark:bg-slate-800 shadow-xl transform translate-x-full z-40 flex flex-col">
-                    <div class="flex-shrink-0 flex justify-between items-center p-4 border-b dark:border-slate-700"><h2 class="text-2xl font-semibold text-slate-800 dark:text-slate-100">Settings</h2><button id="close-settings-panel-btn" class="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-full">${icons.x}</button></div>
-                    <div class="flex-shrink-0 px-4">
-                        <nav id="settings-tabs" class="flex gap-2 -mb-px overflow-x-auto border-b border-slate-200 dark:border-slate-700"><button data-tab="vvip" class="settings-tab-btn active whitespace-nowrap py-3 px-2 border-b-2 font-medium text-xs">VVIPs</button><button data-tab="database" class="settings-tab-btn whitespace-nowrap py-3 px-2 border-b-2 font-medium text-xs border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200">Database</button></nav>
-                    </div>
-                    <div class="flex-grow p-6 overflow-y-auto">
-                        <div id="vvip-settings-pane" class="settings-pane space-y-4"><form id="add-vvip-form" class="space-y-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg"><h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">Add New VVIP</h3><div><label class="text-xs font-semibold text-slate-600 dark:text-slate-400">Vehicle Number</label><input name="vehicleNumber" oninput="this.value=this.value.replace(/[^A-Z0-9]/g, '')" class="mobile-input mt-1 w-full p-2 bg-white dark:bg-slate-700 border dark:border-slate-600 rounded-lg" required style="text-transform:uppercase"></div><div><label class="text-xs font-semibold text-slate-600 dark:text-slate-400">Designation</label><input name="designation" class="mobile-input mt-1 w-full p-2 bg-white dark:bg-slate-700 border dark:border-slate-600 rounded-lg" required></div><button type="submit" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add VVIP</button></form><div class="mt-6"><h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">Current VVIPs</h3><div id="vvip-list-container-settings" class="mt-2 space-y-2"></div></div></div>
-                        <div id="database-settings-pane" class="settings-pane hidden space-y-6"><div class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border dark:border-slate-700/50"><h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">${icons.database} Database Statistics</h3><div id="db-stats" class="grid grid-cols-2 gap-2 text-sm text-slate-700 dark:text-slate-300"></div></div></div>
+                <div id="requests-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+            </section>
+            
+            <section>
+                <div class="flex flex-wrap gap-4 justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-slate-100">Manage Clearances</h2>
+                    <div class="flex gap-3">
+                       <button id="download-report-btn" class="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 h-10 w-10 sm:w-auto"><span class="w-5 h-5">${icons.download}</span><span class="hidden sm:inline font-semibold"></span></button>
+                       <button id="add-clearance-btn" class="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 h-10 w-10 sm:w-auto"><span class="w-5 h-5">${icons.plus}</span><span class="hidden sm:inline font-semibold"></span></button>
                     </div>
                 </div>
-            </div>
-        </div>`;
+                <div id="clearance-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+            </section>
+        </main>
+        <div id="modal-container"></div>
+        `;
 
         unsubClearances = onSnapshot(query(collection(db, "vehicleClearances"), orderBy("entryDate", "desc")), snap => {
             clearances = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -429,24 +267,26 @@
         unsubRequests = onSnapshot(query(collection(db, "clearanceRequests"), orderBy("createdAt", "desc")), snap => {
             clearanceRequests = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(req => req.status === 'pending');
             renderRequestsList();
-            document.getElementById('requests-count-badge').textContent = clearanceRequests.length;
+            const badge = document.getElementById('requests-count-badge');
+            if (badge) badge.textContent = clearanceRequests.length;
         });
-        
-        renderVVIPListForSettings();
     }
         
     const renderRequestsList = () => {
         const list = document.getElementById("requests-list");
         if (!list) return;
         if (!clearanceRequests.length) {
-            list.innerHTML = `<div class="text-center p-8 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg">No pending requests.</div>`;
+            list.innerHTML = `<div class="sm:col-span-2 md:col-span-3 text-center py-8 text-slate-500 bg-slate-800/50 rounded-lg">No pending requests.</div>`;
             return;
         }
-        list.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">${clearanceRequests.map(r => `
-            <button class="review-btn group p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:border-blue-400" data-id="${r.id}">
-                <div class="flex justify-between items-center"><span class="font-mono font-bold text-blue-600 dark:text-blue-400">${r.vehicleNumber}</span><span class="text-xs text-slate-500">${formatDate(r.entryDate)}</span></div>
-                <div class="text-xs text-slate-500 dark:text-slate-400 mt-2">By: ${r.requesterName}</div>
-            </button>`).join("")}</div>`;
+        list.innerHTML = clearanceRequests.map(r => `
+            <button class="review-btn text-left p-4 rounded-xl bg-slate-800 hover:bg-slate-700/80 transition-colors duration-200" data-id="${r.id}">
+                <div class="flex justify-between items-start">
+                    <span class="font-mono font-bold text-lg text-slate-100">${r.vehicleNumber}</span>
+                    <span class="text-xs font-semibold text-amber-900 bg-amber-400 px-2 py-1 rounded-md">${formatDate(r.entryDate)}</span>
+                </div>
+                <div class="text-sm text-slate-400 mt-2">Requested by: ${r.requesterName}</div>
+            </button>`).join("");
     };
 
     const renderClearancesList = () => {
@@ -454,31 +294,38 @@
         if (!list) return;
         const active = clearances.filter(c => c.expiryDate.toDate() >= new Date());
         if (!active.length) {
-            list.innerHTML = `<div class="col-span-full text-center p-8 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg">No active clearances.</div>`;
+            list.innerHTML = `<div class="col-span-full text-center py-8 text-slate-500 bg-slate-800/50 rounded-lg">No active clearances.</div>`;
             return;
         }
         list.innerHTML = active.map(c => `
-            <details class="bg-white dark:bg-slate-800 rounded-lg shadow-md group border border-slate-200 dark:border-slate-700">
+            <details class="bg-slate-800 rounded-xl group" data-id="${c.id}">
                 <summary class="flex justify-between items-center p-4 cursor-pointer">
-                    <p class="font-mono font-bold text-blue-600 dark:text-blue-400">${c.vehicleNumber}</p>
-                    <div class="flex gap-2"><button class="edit-btn p-1" data-id="${c.id}">${icons.edit}</button><button class="delete-btn p-1" data-id="${c.id}">${icons.trash}</button></div>
+                    <div class="flex items-center gap-4">
+                        <span class="chevron-icon text-slate-500 transition-transform duration-300">${icons.chevronRight}</span>
+                        <div>
+                            <p class="font-mono font-bold text-slate-100 text-lg">${c.vehicleNumber}</p>
+                            <p class="text-xs text-slate-400">Entry: ${formatDate(c.entryDate)}</p>
+                        </div>
+                    </div>
+                    <div class="w-8 h-8 flex items-center justify-center">${icons.chat}</div>
                 </summary>
-                <div class="p-4 border-t border-slate-200 dark:border-slate-700 text-sm space-y-2">
-                    <p><b>Owner:</b> ${c.ownerName}</p><p><b>Contact:</b> ${c.ownerContact || 'N/A'}</p>
-                    <p><b>Validity:</b> ${formatDate(c.entryDate)} - ${formatDate(c.expiryDate)}</p>
-                    ${formatApprovalString(c) ? `<p class="text-xs text-slate-500">${formatApprovalString(c)}</p>` : ''}
+                <div class="px-4 pb-4 text-sm space-y-3">
+                    <div class="border-t border-slate-700 pt-3 flex justify-between items-start">
+                        <div class="space-y-2 text-slate-300">
+                             <p><strong>Owner:</strong> ${c.ownerName}</p>
+                             <p><strong>Contact:</strong> ${c.ownerContact || 'N/A'}</p>
+                             <p><strong>Location:</strong> ${c.location}</p>
+                             <p><strong>Vehicle Type:</strong> ${c.vehicleType}</p>
+                             <p><strong>Visiting Hours:</strong> ${c.timeSlot}</p>
+                             <p><strong>Validity:</strong> until ${formatDate(c.expiryDate)}</p>
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            <button class="edit-btn p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/40" data-id="${c.id}">${icons.edit}</button>
+                            <button class="delete-btn p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40" data-id="${c.id}">${icons.trash}</button>
+                        </div>
+                    </div>
                 </div>
             </details>`).join("");
-    };
-
-    const renderVVIPListForSettings = () => {
-        const container = document.getElementById('vvip-list-container-settings');
-        if (!container) return;
-        container.innerHTML = vvips.length > 0 ? vvips.map(v => `
-            <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-700 rounded-lg border dark:border-slate-600">
-                <div><p class="font-mono font-bold text-blue-500">${v.vehicleNumber}</p><p class="text-sm text-slate-400">${v.designation}</p></div>
-                <button class="delete-vvip-btn p-2 text-red-500 hover:bg-red-100 dark:hover:bg-slate-600 rounded-full" data-id="${v.id}">${icons.trash}</button>
-            </div>`).join('') : '<p class="text-slate-400 text-sm text-center">No VVIPs added.</p>';
     };
 
     const renderClearanceFormModal = (data = {}, mode = 'new') => {
@@ -492,13 +339,11 @@
         const locationOptions = ["PCC", "Foyer Parking", "Basement 1", "Basement 2", "Basement 3", "Basement 4", "Courtyard", "E3", "Other"];
 
         let actionButtonsHTML = isReview ? `
-            <button type="button" class="whatsapp-query-btn flex-1 py-3 rounded-lg bg-green-600 text-white flex items-center justify-center gap-2" data-type="request" data-id="${data.id}">${icons.whatsapp}</button>
-            <button type="button" class="reject-request-btn flex-1 py-3 rounded-lg bg-red-600 text-white" data-id="${data.id}">Reject</button>
-            <button type="button" class="approve-request-btn flex-1 py-3 rounded-lg bg-blue-600 text-white" data-id="${data.id}">Approve</button>`
+            <button type="button" class="reject-request-btn flex-1 py-3 rounded-lg bg-red-600 text-white font-semibold" data-id="${data.id}">Reject</button>
+            <button type="button" class="approve-request-btn flex-1 py-3 rounded-lg bg-blue-600 text-white font-semibold" data-id="${data.id}">Approve</button>`
             : `
-            <button type="button" class="whatsapp-query-btn flex-1 py-3 rounded-lg bg-green-600 text-white flex items-center justify-center gap-2 ${!contact ? 'opacity-50 cursor-not-allowed' : ''}" data-type="clearance" data-id="${data.id}">${icons.whatsapp}</button>
-            <button type="button" id="cancel-modal-btn" class="flex-1 py-3 rounded-lg bg-red-600 text-white">Cancel</button>
-            <button type="button" class="save-clearance-btn flex-1 py-3 rounded-lg bg-blue-600 text-white" data-id="${data.id || ''}">${mode === 'edit' ? 'Update' : 'Save'}</button>`;
+            <button type="button" id="cancel-modal-btn" class="flex-1 py-3 rounded-lg bg-slate-600 text-white font-semibold">Cancel</button>
+            <button type="button" class="save-clearance-btn flex-1 py-3 rounded-lg bg-blue-600 text-white font-semibold" data-id="${data.id || ''}">${mode === 'edit' ? 'Update' : 'Save'}</button>`;
 
         document.getElementById("modal-container").innerHTML = `
         <div id="form-modal-backdrop" class="mobile-modal bg-black/70 z-50">
@@ -518,51 +363,10 @@
                     </div>
                     <div><label class="text-sm">Location</label><select name="location" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white">${locationOptions.map(l => `<option ${data.location === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
                     <input name="customLocation" class="mobile-input mt-2 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white hidden" placeholder="Enter custom location..."></div>
-                    <div><label class="text-sm">Notes</label><textarea id="modal-notes-textarea" name="notes" rows="3" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white">${data.notes || ''}</textarea></div>
-                    <div class="flex items-center"><input type="checkbox" name="escortRequired" class="h-5 w-5 rounded bg-slate-700 border-slate-600" ${data.escortRequired ? 'checked' : ''}><label class="ml-2">Escort Required</label></div>
                     <div class="flex items-center gap-3 pt-4 border-t border-slate-700">${actionButtonsHTML}</div>
                 </form>
             </div>
         </div>`;
-    };
-
-    const renderWhatsAppModal = (data) => {
-        const contact = data.requesterContact || data.ownerContact;
-        if (!contact) { showNotification("No contact number available.", "error"); return; }
-        document.getElementById("modal-container").innerHTML += `
-        <div id="whatsapp-modal-backdrop" class="mobile-modal bg-black/70 z-[60]">
-            <div class="mobile-modal-content bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-md animate-fade-in">
-                <h2 class="text-lg font-bold text-white mb-4">Send WhatsApp Message</h2>
-                <form id="whatsapp-form" class="space-y-4">
-                    <div>
-                        <label class="text-sm text-slate-300">Select Message Type</label>
-                        <div class="mt-2 space-y-2">
-                            <label class="flex items-center p-3 bg-slate-900/70 border border-slate-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="approved" class="h-4 w-4"><span class="ml-3 text-white">Approved</span></label>
-                            <label class="flex items-center p-3 bg-slate-900/70 border border-slate-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="rejected" class="h-4 w-4"><span class="ml-3 text-white">Rejected</span></label>
-                            <label class="flex items-center p-3 bg-slate-900/70 border border-slate-700 rounded-lg cursor-pointer"><input type="radio" name="messageType" value="query" class="h-4 w-4" checked><span class="ml-3 text-white">Query</span></label>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-sm text-slate-300">Your Message</label>
-                        <textarea id="customMessage" name="customMessage" rows="4" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></textarea>
-                    </div>
-                    <div class="mt-6 flex justify-end gap-3">
-                        <button type="button" id="cancel-whatsapp-btn" class="px-4 py-2 rounded-lg bg-slate-600 text-white">Cancel</button>
-                        <button type="submit" class="px-4 py-2 rounded-lg bg-green-600 text-white flex items-center gap-2">${icons.whatsapp} Send</button>
-                    </div>
-                </form>
-            </div>
-        </div>`;
-        const form = document.getElementById('whatsapp-form'), textarea = document.getElementById('customMessage'), name = data.requesterName || data.ownerName;
-        const updateMessage = type => {
-            const dateStr = data.entryDate ? formatDate(data.entryDate.toDate()) : 'N/A';
-            if (type === 'approved') textarea.value = `Hi ${name}, your vehicle clearance for [${data.vehicleNumber}] is APPROVED, valid on ${dateStr}.`;
-            else if (type === 'rejected') textarea.value = `Hi ${name}, your vehicle clearance for [${data.vehicleNumber}] is REJECTED. Please check email for details.`;
-            else textarea.value = `Hi ${name}, regarding your request for [${data.vehicleNumber}], `;
-        };
-        form.elements.messageType.forEach(r => r.onchange = e => updateMessage(e.target.value)); updateMessage('query');
-        document.getElementById('cancel-whatsapp-btn').onclick = () => document.getElementById('whatsapp-modal-backdrop').remove();
-        form.onsubmit = e => { e.preventDefault(); window.open(`https://wa.me/${normalizePhoneNumberForWhatsApp(contact)}?text=${encodeURIComponent(textarea.value)}`); document.getElementById('whatsapp-modal-backdrop').remove(); };
     };
 
     const renderConfirmationModal = (title, message, onConfirm) => {
@@ -577,29 +381,6 @@
         document.getElementById('modal-container').appendChild(modal);
         modal.querySelector('#confirm').onclick = () => { onConfirm(); modal.remove(); };
         modal.querySelector('#cancel').onclick = () => modal.remove();
-    };
-    
-    const renderRejectionModal = (requestId) => {
-        const modal = document.createElement('div');
-        modal.innerHTML = `
-        <div id="rejection-modal-backdrop" class="mobile-modal bg-black/70 z-[60]">
-            <div class="mobile-modal-content bg-slate-800 rounded-2xl p-6 w-full max-w-md animate-fade-in">
-                <form id="rejection-form"><h2 class="text-lg font-bold text-white">Reject Request</h2><p class="mt-2 text-sm text-slate-300">Please provide a reason.</p>
-                    <textarea name="rejectionReason" rows="3" class="mobile-input mt-4 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required></textarea>
-                    <div class="mt-6 flex justify-end gap-3"><button type="button" id="cancel" class="px-4 py-2 rounded-lg bg-slate-600">Cancel</button><button type="submit" class="px-4 py-2 rounded-lg bg-red-600 text-white" data-id="${requestId}">Confirm</button></div>
-                </form>
-            </div>
-        </div>`;
-        document.getElementById('modal-container').appendChild(modal);
-        modal.querySelector('#cancel').onclick = () => modal.remove();
-        modal.querySelector('form').onsubmit = async e => { e.preventDefault(); button.disabled = true; /* ... logic in main submit handler */ };
-    };
-
-    const toggleSettingsPanel = (show) => {
-        const panel = document.getElementById('settings-panel'), backdrop = document.getElementById('settings-backdrop');
-        if (!panel || !backdrop) return;
-        if (show) { panel.classList.replace('translate-x-full', 'translate-x-0'); backdrop.classList.replace('bg-black/0', 'bg-black/50'); backdrop.classList.replace('-z-10', 'z-40'); }
-        else { panel.classList.replace('translate-x-0', 'translate-x-full'); backdrop.classList.replace('bg-black/50', 'bg-black/0'); setTimeout(() => backdrop.classList.replace('z-40', '-z-10'), 300); }
     };
     
     // — Auth State Listener —
@@ -623,80 +404,113 @@
             vehicleNumber: data.vehicleNumber.toUpperCase(), vehicleType: data.vehicleType,
             location: location, timeSlot: data.timeSlot,
             entryDate: Timestamp.fromDate(entryDate), expiryDate: Timestamp.fromDate(expiryDate),
-            escortRequired: !!data.escortRequired, notes: data.notes || ""
+            notes: "" // Notes field removed from UI for simplicity, can be re-added if needed
         };
         
         if (editingId) {
             payload.lastUpdatedAt = Timestamp.now();
             payload.lastUpdatedByUsername = currentAdminProfile.username;
             await updateDoc(doc(db, "vehicleClearances", editingId), payload);
-            showNotification(`Clearance updated.`);
+            showNotification(`Clearance for ${payload.vehicleNumber} updated.`);
         } else {
             payload.createdAt = Timestamp.now();
             payload.approvedAt = Timestamp.now();
             payload.approvedByUsername = currentAdminProfile.username;
             await addDoc(collection(db, "vehicleClearances"), payload);
-            showNotification(`Clearance created.`);
+            showNotification(`Clearance for ${payload.vehicleNumber} created.`);
         }
         return payload;
     };
-
-    const handleEscortCheckboxChange = (checkbox) => {
-        const textarea = checkbox.closest('form').querySelector('#modal-notes-textarea');
-        if (!textarea) return;
-        const escortText = "[ Escorted by:             ]";
-        if (checkbox.checked && !textarea.value.includes(escortText)) {
-            textarea.value = textarea.value.trim() + (textarea.value ? '\n\n' : '') + escortText;
-        } else if (!checkbox.checked) {
-            textarea.value = textarea.value.replace(/\[\s*Escorted\s+by:[^\]]*\]\s*/g, '').trim();
-        }
-    };
+    
 
     // --- Global Event Listener ---
     document.body.addEventListener("click", async (e) => {
-        const button = e.target.closest('button');
-        if (e.target.closest('#form-modal-backdrop, #rejection-modal-backdrop, #whatsapp-modal-backdrop, #confirm-modal-backdrop, #settings-backdrop') === e.target) {
+        const backdrop = e.target.closest('#form-modal-backdrop, #confirm-modal-backdrop');
+        if (backdrop && backdrop === e.target) {
             document.getElementById('modal-container').innerHTML = '';
-            if (e.target.id === 'settings-backdrop') toggleSettingsPanel(false);
         }
+        
+        const button = e.target.closest('button');
         if (!button) return;
         
-        const id = button.dataset.id;
+        const id = button.dataset.id || e.target.closest('details')?.dataset.id;
+
         try {
-            if (button.classList.contains("whatsapp-query-btn")) {
-                const type = button.dataset.type;
-                const sourceData = type === 'request' ? clearanceRequests.find(r => r.id === id) : clearances.find(c => c.id === id);
-                if (sourceData) renderWhatsAppModal(sourceData);
-            } else if (button.id === 'settings-btn') toggleSettingsPanel(true);
-            else if (button.id === 'close-settings-panel-btn') toggleSettingsPanel(false);
-            else if (button.classList.contains('settings-tab-btn')) {
-                document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
-                button.classList.add('active');
-                document.querySelectorAll('.settings-pane').forEach(p => p.classList.add('hidden'));
-                document.getElementById(`${button.dataset.tab}-settings-pane`).classList.remove('hidden');
-            } else if (button.id === "logout-button") signOut(auth);
-            else if (button.id === "download-report-btn") generatePDFReport(button);
+            if (button.id === "logout-button") signOut(auth);
             else if (button.id === "add-clearance-btn") renderClearanceFormModal({}, 'new');
-            else if (button.classList.contains("edit-btn")) renderClearanceFormModal(clearances.find(c => c.id === id), 'edit');
-            else if (button.classList.contains("delete-btn")) renderConfirmationModal('Delete Clearance', 'Are you sure?', () => deleteDoc(doc(db, "vehicleClearances", id)));
-            else if (button.classList.contains("delete-vvip-btn")) renderConfirmationModal('Delete VVIP', 'Are you sure?', () => deleteDoc(doc(db, "vvips", id)));
-            else if (button.classList.contains("review-btn")) renderClearanceFormModal(clearanceRequests.find(r => r.id === id), 'review');
-            else if (button.classList.contains("reject-request-btn")) renderRejectionModal(id);
+            else if (button.classList.contains("edit-btn")) {
+                const clearance = clearances.find(c => c.id === id);
+                if (clearance) renderClearanceFormModal(clearance, 'edit');
+            }
+            else if (button.classList.contains("delete-btn")) {
+                 renderConfirmationModal('Delete Clearance', 'Are you sure you want to permanently delete this clearance?', async () => {
+                    await deleteDoc(doc(db, "vehicleClearances", id));
+                    showNotification("Clearance deleted.", "success");
+                });
+            }
+            else if (button.classList.contains("review-btn")) {
+                const request = clearanceRequests.find(r => r.id === id);
+                if(request) renderClearanceFormModal(request, 'review');
+            }
+            else if (button.classList.contains("reject-request-btn")) {
+                 await updateDoc(doc(db, "clearanceRequests", id), { status: 'rejected' });
+                 showNotification("Request rejected.");
+                 document.getElementById('modal-container').innerHTML = '';
+            }
+
             else if (button.classList.contains("approve-request-btn")) {
-                const form = button.closest('form'), data = getFormObj(form);
-                const entry = parseLocalDate(data.entryDate), expiry = parseLocalDate(data.expiryDate);
-                if (!entry || !expiry || !form.checkValidity()) { form.reportValidity(); return; }
-                const payload = { ...clearanceRequests.find(r => r.id === id), ...data, entryDate: Timestamp.fromDate(entry), expiryDate: Timestamp.fromDate(expiry) };
-                await addDoc(collection(db, "vehicleClearances"), payload);
+                const form = button.closest('form');
+                if (!form.checkValidity()) { form.reportValidity(); return; }
+
+                button.disabled = true;
+                button.innerHTML = "Approving...";
+                
+                const originalRequest = clearanceRequests.find(r => r.id === id);
+                const formData = getFormObj(form);
+                const entryDate = parseLocalDate(formData.entryDate);
+                const expiryDate = parseLocalDate(formData.expiryDate);
+
+                const clearancePayload = {
+                    ownerName: formData.ownerName,
+                    ownerContact: formData.contact,
+                    ownerEmail: formData.email,
+                    vehicleNumber: formData.vehicleNumber.toUpperCase(),
+                    vehicleType: formData.vehicleType,
+                    location: formData.location === 'Other' ? formData.customLocation : formData.location,
+                    timeSlot: formData.timeSlot,
+                    entryDate: Timestamp.fromDate(entryDate),
+                    expiryDate: Timestamp.fromDate(expiryDate),
+                    createdAt: originalRequest.createdAt,
+                    approvedAt: Timestamp.now(),
+                    approvedByUsername: currentAdminProfile.username,
+                    notes: ""
+                };
+
+                await addDoc(collection(db, "vehicleClearances"), clearancePayload);
                 await updateDoc(doc(db, "clearanceRequests", id), { status: 'approved' });
-                showNotification("Approved.");
+                
+                showNotification(`Request for ${clearancePayload.vehicleNumber} approved.`);
                 document.getElementById('modal-container').innerHTML = '';
-            } else if (button.classList.contains("save-clearance-btn")) {
+            } 
+            else if (button.classList.contains("save-clearance-btn")) {
                 await saveClearanceData(button.closest('form'), id);
                 document.getElementById('modal-container').innerHTML = '';
-            } else if (button.id === "close-modal-btn" || button.id === "cancel-modal-btn") document.getElementById('modal-container').innerHTML = '';
-            else if (button.id === "auth-toggle-button") { authMode = authMode === 'login' ? 'signup' : 'login'; renderAdminLogin(); }
-        } catch(err) { showNotification(`Error: ${err.message}`, 'error'); }
+            } 
+            else if (button.id === "cancel-modal-btn") {
+                document.getElementById('modal-container').innerHTML = '';
+            }
+            else if (button.id === "auth-toggle-button") { 
+                authMode = authMode === 'login' ? 'signup' : 'login'; 
+                renderAdminLogin(); 
+            }
+        } catch(err) { 
+            showNotification(`Error: ${err.message}`, 'error'); 
+            const approveButton = document.querySelector('.approve-request-btn');
+            if(approveButton) {
+                approveButton.disabled = false;
+                approveButton.innerHTML = "Approve";
+            }
+        }
     });
 
     document.body.addEventListener("submit", async (e) => {
@@ -704,16 +518,7 @@
         const form = e.target, button = form.querySelector('button[type="submit"]');
         if (button) button.disabled = true;
         try {
-            if (form.id === "rejection-form") {
-                const data = getFormObj(form), id = button.dataset.id;
-                await updateDoc(doc(db, "clearanceRequests", id), { status: 'rejected', rejectionReason: data.rejectionReason });
-                showNotification("Rejected.");
-                document.getElementById('modal-container').innerHTML = '';
-            } else if (form.id === "add-vvip-form") {
-                const data = getFormObj(form);
-                await addDoc(collection(db, "vvips"), { vehicleNumber: data.vehicleNumber.toUpperCase(), designation: data.designation });
-                form.reset();
-            } else if (form.id === "auth-form") {
+            if (form.id === "auth-form") {
                 const data = getFormObj(form);
                 if (authMode === 'login') {
                     const q = query(collection(db, "admins"), where("username", "==", data.username));
@@ -728,10 +533,9 @@
             }
         } catch (err) { showNotification(`Error: ${err.message}`, 'error'); } finally { if (button) button.disabled = false; }
     });
-
+    
     document.body.addEventListener("change", (e) => {
         const target = e.target;
-        if (target.name === "escortRequired") handleEscortCheckboxChange(target);
         if (target.name === "location") {
             const form = target.closest('form');
             const customInput = form.querySelector('input[name="customLocation"]');
@@ -742,5 +546,4 @@
 </script>
 </body>
 </html>
-
 
