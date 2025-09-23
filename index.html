@@ -264,7 +264,7 @@
             </section>
              <section id="search-results-section" class="hidden">
                 <h2 class="text-2xl font-bold text-slate-100 mb-4">Search Results</h2>
-                <div id="search-results-list" class="grid grid-cols-2 gap-4"></div>
+                <div id="search-results-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
              </section>
             <section>
                 <div class="flex flex-wrap gap-4 justify-between items-center mb-4">
@@ -273,7 +273,7 @@
                        <button id="add-clearance-btn" class="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 h-10 w-10 sm:w-auto"><span class="w-5 h-5">${icons.plus}</span><span class="hidden sm:inline font-semibold">Fast Track</span></button>
                     </div>
                 </div>
-                <div id="clearance-list" class="grid grid-cols-2 gap-4"></div>
+                <div id="clearance-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </section>
         </main>
         <div id="modal-container"></div>
@@ -347,6 +347,8 @@
                              <p><strong>Vehicle Type:</strong> ${c.vehicleType}</p>
                              <p><strong>Visiting Hours:</strong> ${c.timeSlot}</p>
                              <p><strong>Validity:</strong> until ${formatDate(c.expiryDate)}</p>
+                             ${c.escortRequired ? `<p class="mt-2 pt-2 border-t border-slate-700/50"><strong class="text-amber-400">Status:</strong> <span class="font-semibold text-amber-400">Escort Required</span></p>` : ''}
+                             ${c.notes ? `<p class="mt-2 pt-2 border-t border-slate-700/50"><strong>Notes:</strong><br><span class="text-slate-400">${c.notes.replace(/\n/g, '<br>')}</span></p>` : ''}
                         </div>
                         <div class="flex flex-col gap-3">
                             <button class="edit-btn p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/40" data-id="${c.id}">${icons.edit}</button>
@@ -400,15 +402,30 @@
                 <form id="clearance-form" class="space-y-4 text-slate-300">
                     <h2 class="text-2xl font-bold text-white mb-6">${title}</h2>
                     <input type="hidden" name="id" value="${data.id || ''}">
+                    
+                    ${mode !== 'review' && mode !== 'edit' ? `
+                    <div class="flex border-b border-slate-700 mb-4">
+                        <button type="button" id="single-vehicle-tab" class="px-4 py-2 text-sm font-semibold border-b-2 border-blue-500 text-white">Single Vehicle</button>
+                        <button type="button" id="batch-vehicle-tab" class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-white">Batch Register</button>
+                    </div>` : ''}
+
+                    <div id="single-vehicle-content">
+                        <label class="text-sm">Vehicle Number</label>
+                        <input name="vehicleNumber" value="${data.vehicleNumber || ''}" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required>
+                    </div>
+                     <div id="batch-vehicle-content" class="hidden">
+                        <label class="text-sm">Vehicle Numbers (one per line)</label>
+                        <textarea name="vehicleNumbers" rows="5" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" placeholder="WXX1234\nWYX5678\n..."></textarea>
+                    </div>
+
                     <div><label class="text-sm">Name</label><input name="ownerName" value="${name || ''}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required></div>
-                    <div><label class="text-sm">Vehicle Number</label><input name="vehicleNumber" value="${data.vehicleNumber || ''}" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required></div>
                     <div><label class="text-sm">Contact Number</label><input name="contact" value="${contact || ''}" type="tel" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
                     <div><label class="text-sm">Email Address</label><input name="email" value="${email || ''}" type="email" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
                     <div><label class="text-sm">Vehicle Type</label><select name="vehicleType" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required>${vehicleTypeOptions.map(v => `<option ${data.vehicleType === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
                     <div><label class="text-sm">Visiting Hours</label><select name="timeSlot" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required><option value="08:00-13:00" ${data.timeSlot === '08:00-13:00' ? 'selected' : ''}>08:00-13:00</option><option value="08:00-18:00" ${data.timeSlot === '08:00-18:00' ? 'selected' : ''}>08:00-18:00</option><option value="13:00-18:00" ${data.timeSlot === '13:00-18:00' ? 'selected' : ''}>13:00-18:00</option><option value="18:00-onwards" ${data.timeSlot === '18:00-onwards' ? 'selected' : ''}>18:00 onwards</option></select></div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-sm">Entry Date</label><input type="date" name="entryDate" value="${toISODate(data.entryDate?.toDate())}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
-                        <div><label class="text-sm">Expiry Date</label><input type="date" name="expiryDate" value="${toISODate(data.expiryDate?.toDate())}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
+                        <div><label class="text-sm">Entry Date</label><input type="date" name="entryDate" value="${toISODate(data.entryDate?.toDate() || new Date())}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
+                        <div><label class="text-sm">Expiry Date</label><input type="date" name="expiryDate" value="${toISODate(data.expiryDate?.toDate() || new Date())}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
                     </div>
                     <div><label class="text-sm">Location</label><select name="location" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white">${locationOptions.map(l => `<option ${data.location === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
                     <input name="customLocation" class="mobile-input mt-2 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white hidden" placeholder="Enter custom location..."></div>
@@ -418,6 +435,48 @@
                 </form>
             </div>
         </div>`;
+
+        // --- Batch Registration Tab Logic ---
+        if (mode === 'new') {
+            const singleTab = document.getElementById('single-vehicle-tab');
+            const batchTab = document.getElementById('batch-vehicle-tab');
+            const singleContent = document.getElementById('single-vehicle-content');
+            const batchContent = document.getElementById('batch-vehicle-content');
+            const vehicleNumberInput = singleContent.querySelector('input[name="vehicleNumber"]');
+            const vehicleNumbersTextarea = batchContent.querySelector('textarea[name="vehicleNumbers"]');
+
+            const switchToSingle = () => {
+                singleTab.classList.add('border-blue-500', 'text-white');
+                singleTab.classList.remove('border-transparent', 'text-slate-400');
+                batchTab.classList.add('border-transparent', 'text-slate-400');
+                batchTab.classList.remove('border-blue-500', 'text-white');
+                singleContent.classList.remove('hidden');
+                batchContent.classList.add('hidden');
+                vehicleNumberInput.required = true;
+                vehicleNumbersTextarea.required = false;
+            };
+
+            const switchToBatch = () => {
+                batchTab.classList.add('border-blue-500', 'text-white');
+                batchTab.classList.remove('border-transparent', 'text-slate-400');
+                singleTab.classList.add('border-transparent', 'text-slate-400');
+                singleTab.classList.remove('border-blue-500', 'text-white');
+                batchContent.classList.remove('hidden');
+                singleContent.classList.add('hidden');
+                vehicleNumberInput.required = false;
+                vehicleNumbersTextarea.required = true;
+            };
+
+            singleTab.onclick = switchToSingle;
+            batchTab.onclick = switchToBatch;
+            
+            // Initial state
+            switchToSingle();
+        } else {
+             // Hide batch content if not in 'new' mode
+             const batchContent = document.getElementById('batch-vehicle-content');
+             if(batchContent) batchContent.classList.add('hidden');
+        }
     };
     
     const renderWhatsAppModal = (data) => {
@@ -457,6 +516,41 @@
         form.elements.messageType.forEach(r => r.onchange = e => updateMessage(e.target.value)); updateMessage('query');
         document.getElementById('cancel-whatsapp-btn').onclick = () => document.getElementById('whatsapp-modal-backdrop').remove();
         form.onsubmit = e => { e.preventDefault(); window.open(`https://wa.me/${normalizePhoneNumberForWhatsApp(contact)}?text=${encodeURIComponent(textarea.value)}`); document.getElementById('whatsapp-modal-backdrop').remove(); };
+    };
+
+    const renderBatchWhatsAppModal = (formData, vehicleNumbers) => {
+        const contact = formData.contact;
+        if (!contact) {
+            showNotification("No contact number provided to send WhatsApp summary.", "info");
+            return;
+        }
+        const name = formData.ownerName;
+        const dateStr = formatDate(parseLocalDate(formData.entryDate));
+
+        const vehicleListString = vehicleNumbers.join(', ');
+        const message = `Hi ${name}, your clearance request is APPROVED for the following vehicles: ${vehicleListString}. This is valid on ${dateStr}. Thank you.`;
+
+        document.getElementById("modal-container").innerHTML = `
+        <div id="whatsapp-modal-backdrop" class="mobile-modal bg-black/70 z-[60]">
+            <div class="mobile-modal-content bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-md animate-fade-in">
+                <h2 class="text-lg font-bold text-white mb-4">Send Batch Confirmation</h2>
+                <p class="text-sm text-slate-300 mb-4">A pre-filled message will be prepared for WhatsApp.</p>
+                <textarea readonly class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" rows="6">${message}</textarea>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" id="cancel-whatsapp-btn" class="px-4 py-2 rounded-lg bg-slate-600 text-white">Close</button>
+                    <a href="https://wa.me/${normalizePhoneNumberForWhatsApp(contact)}?text=${encodeURIComponent(message)}" target="_blank" id="send-batch-whatsapp-btn" class="px-4 py-2 rounded-lg bg-green-600 text-white flex items-center gap-2">${icons.whatsapp} Send</a>
+                </div>
+            </div>
+        </div>`;
+
+        document.getElementById('cancel-whatsapp-btn').onclick = () => document.getElementById('whatsapp-modal-backdrop').remove();
+        document.getElementById('send-batch-whatsapp-btn').onclick = () => {
+            setTimeout(() => {
+                if(document.getElementById('whatsapp-modal-backdrop')) {
+                    document.getElementById('whatsapp-modal-backdrop').remove();
+                }
+            }, 500);
+        };
     };
 
     const renderConfirmationModal = (title, message, onConfirm) => {
@@ -527,35 +621,84 @@
         } else { renderAdminLogin(); }
     });
 
-    const saveClearanceData = async (form, editingId = null) => {
+    // --- Data Handling ---
+    const getCommonPayload = (form) => {
         const data = getFormObj(form);
         const entryDate = parseLocalDate(data.entryDate), expiryDate = parseLocalDate(data.expiryDate);
-        if (!entryDate || !expiryDate || !form.checkValidity()) throw new Error("Invalid form data.");
-        if (!currentAdminProfile) throw new Error("Admin profile not loaded.");
-        
+        if (!entryDate || !expiryDate || !form.checkValidity()) {
+            showNotification("Invalid form data. Fill all required fields.", "error");
+            return null;
+        }
+        if (!currentAdminProfile) {
+            showNotification("Admin profile not loaded.", "error");
+            return null;
+        }
         const location = data.location === "Other" ? data.customLocation : data.location;
-        const payload = {
+        return {
             ownerName: data.ownerName, ownerContact: data.contact, ownerEmail: data.email,
-            vehicleNumber: data.vehicleNumber.toUpperCase(), vehicleType: data.vehicleType,
-            location: location, timeSlot: data.timeSlot,
+            vehicleType: data.vehicleType, location: location, timeSlot: data.timeSlot,
             entryDate: Timestamp.fromDate(entryDate), expiryDate: Timestamp.fromDate(expiryDate),
-            notes: data.notes || "",
-            escortRequired: !!data.escortRequired,
+            notes: data.notes || "", escortRequired: !!data.escortRequired,
+            createdAt: Timestamp.now(), approvedAt: Timestamp.now(),
+            approvedByUsername: currentAdminProfile.username,
         };
-        
+    };
+
+    const saveSingleClearance = async (form, editingId = null) => {
+        const commonPayload = getCommonPayload(form);
+        if (!commonPayload) return;
+        const data = getFormObj(form);
+        const payload = { ...commonPayload, vehicleNumber: data.vehicleNumber.toUpperCase() };
+
         if (editingId) {
+            delete payload.createdAt; delete payload.approvedAt; delete payload.approvedByUsername;
             payload.lastUpdatedAt = Timestamp.now();
             payload.lastUpdatedByUsername = currentAdminProfile.username;
             await updateDoc(doc(db, "vehicleClearances", editingId), payload);
             showNotification(`Clearance for ${payload.vehicleNumber} updated.`);
         } else {
-            payload.createdAt = Timestamp.now();
-            payload.approvedAt = Timestamp.now();
-            payload.approvedByUsername = currentAdminProfile.username;
             await addDoc(collection(db, "vehicleClearances"), payload);
             showNotification(`Clearance for ${payload.vehicleNumber} created.`);
         }
-        return payload;
+        document.getElementById('modal-container').innerHTML = '';
+    };
+    
+    const handleSaveClearance = async (form, editingId) => {
+        const saveButton = form.querySelector('.save-clearance-btn');
+        const isBatchMode = document.getElementById('batch-vehicle-tab')?.classList.contains('border-blue-500');
+
+        if (editingId) { // Editing is always single vehicle
+            await saveSingleClearance(form, editingId);
+            return;
+        }
+
+        if (isBatchMode) {
+            saveButton.disabled = true;
+            saveButton.innerHTML = `<span class="spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></span> Processing...`;
+            const data = getFormObj(form);
+            const vehicleNumbers = (data.vehicleNumbers || '').split('\n').map(v => v.trim().toUpperCase()).filter(Boolean);
+
+            if (vehicleNumbers.length === 0) {
+                showNotification("Enter at least one vehicle number for batch registration.", "error");
+                saveButton.disabled = false; saveButton.innerHTML = 'Save'; return;
+            }
+
+            const commonPayload = getCommonPayload(form);
+            if (!commonPayload) { saveButton.disabled = false; saveButton.innerHTML = 'Save'; return; }
+
+            try {
+                const promises = vehicleNumbers.map(vNum => addDoc(collection(db, "vehicleClearances"), { ...commonPayload, vehicleNumber: vNum.replace(/[^A-Z0-9]/g, '') }));
+                await Promise.all(promises);
+                document.getElementById('modal-container').innerHTML = '';
+                showNotification(`Successfully created ${vehicleNumbers.length} clearance records.`, "success");
+                renderBatchWhatsAppModal(data, vehicleNumbers);
+            } catch (err) {
+                showNotification(`Error during batch save: ${err.message}`, 'error');
+                saveButton.disabled = false; saveButton.innerHTML = 'Save';
+            }
+        } else {
+            await saveSingleClearance(form, null);
+        }
     };
     
     const handleEscortCheckboxChange = (checkbox) => {
@@ -670,8 +813,7 @@
                 document.getElementById('modal-container').innerHTML = '';
             } 
             else if (button.classList.contains("save-clearance-btn")) {
-                await saveClearanceData(button.closest('form'), id);
-                document.getElementById('modal-container').innerHTML = '';
+                await handleSaveClearance(button.closest('form'), id);
             } 
             else if (button.id === "cancel-modal-btn" || button.id === "close-modal-btn") {
                 document.getElementById('modal-container').innerHTML = '';
@@ -755,3 +897,4 @@
 </script>
 </body>
 </html>
+
