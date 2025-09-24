@@ -181,13 +181,30 @@
     const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
     const toISODate = d => d ? new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0] : "";
     
+    // UPDATED: Smarter WhatsApp number normalization for MY (+60) and SG (+65)
     const normalizePhoneNumberForWhatsApp = (phone) => {
         if (!phone || typeof phone !== 'string') return '';
-        let cleaned = phone.replace(/\D/g, '');
-        if (cleaned.startsWith('0')) cleaned = '6' + cleaned;
-        if (!cleaned.startsWith('60')) cleaned = '60' + cleaned;
-        return cleaned;
+        let cleaned = phone.replace(/\D/g, ''); // Remove all non-digit characters
+
+        // Case 1: Already has a valid international prefix (60 for MY, 65 for SG)
+        if (cleaned.startsWith('60') || cleaned.startsWith('65')) {
+            return cleaned;
+        }
+
+        // Case 2: Malaysian local number starting with 0 (e.g., 012...)
+        if (cleaned.startsWith('0')) {
+            return '6' + cleaned; // Becomes 60...
+        }
+
+        // Case 3: Singaporean local number (typically 8 digits starting with 8 or 9)
+        if ((cleaned.startsWith('8') || cleaned.startsWith('9')) && cleaned.length === 8) {
+            return '65' + cleaned;
+        }
+
+        // Default Case: Assume Malaysian number if ambiguous (maintains original behavior)
+        return '60' + cleaned;
     };
+
 
     const formatDate = (date) => {
         if (!date) return "N/A";
@@ -333,7 +350,6 @@
         });
     }
     
-    // UPDATED: Function to render the Tabbed Parking Zone Monitor
     const renderParkingMonitor = () => {
         const container = document.getElementById("parking-monitor-section");
         if (!container) return;
