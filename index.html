@@ -18,7 +18,7 @@
             -moz-osx-font-smoothing: grayscale;
         }
         .dark-theme-bg {
-             background-color: #0f172a; /* Darker Slate Blue */
+             background-color: #0f172a;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -28,6 +28,7 @@
         
         input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
+            cursor: pointer;
         }
        
         summary { list-style: none; }
@@ -93,13 +94,12 @@
             margin: 0 auto;
         }
         .horizontal-scroll {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
         .horizontal-scroll::-webkit-scrollbar {
-            display: none; /* Chrome, Safari and Opera */
+            display: none;
         }
-        /* Styles for the new Parking Monitor */
         .parking-lot {
             transition: all 0.3s ease-in-out;
         }
@@ -174,10 +174,14 @@
     let currentAdminProfile = null;
     let unsubClearances = null, unsubRequests = null, unsubVVIPs = null, unsubParking = null;
     let authMode = "login";
-    let activeParkingTab = 'Red'; // State for the active parking tab
+    let activeParkingTab = 'Red';
+    let selectedParkingDate = new Date();
 
     // --- Utility Functions ---
-     const normalizePhoneNumberForWhatsApp = (phone) => {
+    const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+    const toISODate = d => d ? new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0] : "";
+    
+    const normalizePhoneNumberForWhatsApp = (phone) => {
         if (!phone || typeof phone !== 'string') return '';
         let cleaned = phone.replace(/\D/g, '');
         if (cleaned.startsWith('0')) cleaned = '6' + cleaned;
@@ -191,7 +195,6 @@
         return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
     };
     
-    const toISODate = d => d ? new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0] : "";
     const getFormObj = form => Object.fromEntries(new FormData(form).entries());
 
     const showNotification = (message, type = "success") => {
@@ -218,10 +221,9 @@
         trash: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>`,
         shield: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`,
         chevronRight: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`,
-        download: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
         whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.894 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.886-.001 2.267.655 4.398 1.908 6.161l.217.324-1.251 4.565 4.654-1.225.308.212z"/></svg>`,
         x: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
-        settings: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V15a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
+        settings: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V15a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
         search: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`
     };
 
@@ -268,9 +270,7 @@
                  </div>
             </header>
             <main class="w-full max-w-4xl mx-auto p-4 md:p-6 mobile-safe-container flex flex-col flex-grow min-h-0">
-                <!-- NEW PARKING MONITOR SECTION -->
                 <section id="parking-monitor-section" class="flex-shrink-0 mb-8"></section>
-
                 <section class="flex-shrink-0 mb-8">
                     <div class="flex items-center gap-3 mb-4">
                         <h2 class="text-2xl font-bold text-slate-100">Pending Requests</h2>
@@ -282,7 +282,6 @@
                     <h2 class="text-2xl font-bold text-slate-100 mb-4">Search Results</h2>
                     <div id="search-results-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                  </section>
-
                 <div class="flex-shrink-0 flex flex-wrap gap-4 justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold text-slate-100">Manage Clearances</h2>
                     <div class="flex gap-3">
@@ -300,10 +299,7 @@
             renderClearancesList();
         });
         
-        unsubParking = onSnapshot(query(collection(db, "vehicleClearances"), where("parkingZone", "in", ["Red", "White"])), snap => {
-             parkingAssignments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-             renderParkingMonitor();
-        });
+        subscribeToParkingForDate(selectedParkingDate);
 
         unsubRequests = onSnapshot(query(collection(db, "clearanceRequests"), orderBy("createdAt", "desc")), snap => {
             clearanceRequests = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(req => req.status === 'pending');
@@ -317,55 +313,87 @@
             renderVVIPListForSettings();
         });
     }
+
+    const subscribeToParkingForDate = (date) => {
+        unsubParking?.(); // Unsubscribe from previous listener
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const q = query(
+            collection(db, "vehicleClearances"), 
+            where("parkingZone", "in", ["Red", "White"]),
+            where("entryDate", ">=", Timestamp.fromDate(startOfDay)),
+            where("entryDate", "<=", Timestamp.fromDate(endOfDay))
+        );
+        unsubParking = onSnapshot(q, snap => {
+             parkingAssignments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+             renderParkingMonitor();
+        });
+    }
     
     // UPDATED: Function to render the Tabbed Parking Zone Monitor
     const renderParkingMonitor = () => {
         const container = document.getElementById("parking-monitor-section");
         if (!container) return;
         
+        const now = new Date();
+        const isToday = isSameDay(selectedParkingDate, now);
+        const isOperational = now.getHours() >= 8 && now.getHours() < 19;
+        
         let tabsHTML = '';
         Object.keys(PARKING_ZONES).forEach(zoneKey => {
             const zone = PARKING_ZONES[zoneKey];
-            const occupiedCount = parkingAssignments.filter(p => p.parkingZone === zoneKey).length;
+            const assignedForSelectedDate = parkingAssignments.filter(p => p.parkingZone === zoneKey);
+            const occupiedCount = (isToday && isOperational) ? assignedForSelectedDate.length : 0;
+            const forecastCount = assignedForSelectedDate.length;
             const isActive = activeParkingTab === zoneKey;
             
-            const activeClasses = isActive ? (zone.color === 'red' ? 'border-red-500 text-red-400' : 'border-slate-300 text-white') : 'border-transparent text-slate-400 hover:text-white';
-            const countColor = occupiedCount > zone.allocated ? 'bg-amber-500 text-amber-900' : (isActive ? 'bg-blue-500 text-white' : 'bg-slate-600 text-slate-200');
+            const countColor = forecastCount > zone.allocated ? 'bg-amber-500 text-amber-900' : (isActive ? 'bg-blue-500 text-white' : 'bg-slate-600 text-slate-200');
 
             tabsHTML += `
                 <button class="parking-tab-btn flex-1 flex items-center justify-center gap-3 py-3 text-sm font-bold border-b-2 transition" data-zone="${zoneKey}">
                     <span>${zone.name}</span>
-                    <span class="px-2 py-0.5 rounded-full text-xs font-mono ${countColor}">${occupiedCount}/${zone.allocated}</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-mono ${countColor}">${forecastCount}/${zone.allocated}</span>
                 </button>`;
         });
         
         const activeZone = PARKING_ZONES[activeParkingTab];
         const assignedHere = parkingAssignments.filter(p => p.parkingZone === activeParkingTab);
-        const occupiedCount = assignedHere.length;
-        const availableCount = activeZone.allocated + activeZone.buffer - occupiedCount;
-        const bufferUsed = Math.max(0, occupiedCount - activeZone.allocated);
+        const forecastCount = assignedHere.length;
+        const availableCount = activeZone.allocated + activeZone.buffer - forecastCount;
+        const bufferUsed = Math.max(0, forecastCount - activeZone.allocated);
 
         let lotsHTML = '';
-        // Render allocated lots
-        for(let i = 1; i <= activeZone.allocated; i++) {
+        for(let i = 1; i <= activeZone.allocated + activeZone.buffer; i++) {
             const vehicle = assignedHere[i - 1];
-            const isOccupied = i <= occupiedCount;
-            const bgColor = isOccupied ? (activeZone.color === 'red' ? 'bg-red-500' : 'bg-slate-300') : 'bg-slate-700';
-            lotsHTML += `<div class="parking-lot h-2.5 rounded ${bgColor}" title="Lot ${i}${isOccupied ? ` - ${vehicle.vehicleNumber}`: ' - Available'}"></div>`;
-        }
-        // Render buffer lots
-        for(let i = 1; i <= activeZone.buffer; i++) {
-            const vehicle = assignedHere[activeZone.allocated + i - 1];
-            const isOccupied = (activeZone.allocated + i) <= occupiedCount;
-            const bgColor = isOccupied ? 'bg-amber-500' : 'bg-slate-700/50';
-            lotsHTML += `<div class="parking-lot h-2.5 rounded ${bgColor}" title="Buffer Lot ${i}${isOccupied ? ` - ${vehicle.vehicleNumber}` : ' - Available'}"></div>`;
+            const isOccupied = i <= forecastCount;
+            const isBuffer = i > activeZone.allocated;
+            let bgColor = 'bg-slate-700/50'; // Default empty
+            if(isOccupied) {
+                if(isBuffer) {
+                    bgColor = 'bg-amber-500';
+                } else {
+                    bgColor = activeZone.color === 'red' ? 'bg-red-500' : 'bg-slate-300';
+                }
+            }
+            lotsHTML += `<div class="parking-lot h-2.5 rounded ${bgColor}" title="${isOccupied ? vehicle.vehicleNumber : 'Available'}"></div>`;
         }
 
         container.innerHTML = `
-            <h2 class="text-2xl font-bold text-slate-100 mb-4">Parking Zone Monitor</h2>
+            <div class="flex justify-between items-end mb-4">
+                <h2 class="text-2xl font-bold text-slate-100">Parking Monitor</h2>
+                <div class="text-right">
+                    <label class="text-xs text-slate-400">Viewing Date</label>
+                    <input type="date" id="parking-date-selector" value="${toISODate(selectedParkingDate)}" class="bg-slate-700 text-white font-semibold p-1 rounded-md text-sm">
+                    ${!isToday ? '<button id="return-today-btn" class="text-xs text-blue-400 hover:underline ml-2">Return to Today</button>' : ''}
+                </div>
+            </div>
             <div class="bg-slate-800 rounded-xl">
                 <div class="flex border-b border-slate-700">${tabsHTML}</div>
                 <div class="tab-content p-4">
+                    ${(isToday && !isOperational) ? `<p class="text-center text-sm text-amber-400 mb-3">Off-Peak Hours. Showing forecast for next operational period.</p>` : ''}
                     <div class="grid grid-cols-5 gap-2 mb-3">${lotsHTML}</div>
                     <div class="text-xs text-slate-400 flex justify-between">
                         <span>Available: <strong class="text-green-400">${availableCount > 0 ? availableCount : 0}</strong></span>
@@ -374,7 +402,6 @@
                 </div>
             </div>`;
         
-        // Add active classes to the correct tab after rendering
         container.querySelectorAll('.parking-tab-btn').forEach(btn => {
             if (btn.dataset.zone === activeParkingTab) {
                  const zone = PARKING_ZONES[activeParkingTab];
@@ -463,7 +490,6 @@
         const isReview = mode === 'review';
         const title = isReview ? 'Review Request' : (mode === 'edit' ? 'Edit Clearance' : 'Fast Track Clearance');
         
-        // UPDATED: Simplified vehicle type options
         const vehicleTypeOptions = ["Car", "Motorcycle"];
         const locationOptions = ["PCC", "Foyer Parking", "Basement 1", "Basement 2", "Basement 3", "Basement 4", "Courtyard", "E3", "Other"];
 
@@ -537,7 +563,6 @@
             </div>
         </div>`;
 
-        // --- Batch Registration Tab Logic ---
         if (mode === 'new') {
             const singleTab = document.getElementById('single-vehicle-tab');
             const batchTab = document.getElementById('batch-vehicle-tab');
@@ -554,7 +579,7 @@
                 batchTab.classList.remove('border-blue-500', 'text-white');
                 singleContent.classList.remove('hidden');
                 batchContent.classList.add('hidden');
-                parkingZoneContainer.classList.remove('hidden'); // Show parking for single
+                parkingZoneContainer.classList.remove('hidden');
                 vehicleNumberInput.required = true;
                 vehicleNumbersTextarea.required = false;
             };
@@ -566,7 +591,7 @@
                 singleTab.classList.remove('border-blue-500', 'text-white');
                 batchContent.classList.remove('hidden');
                 singleContent.classList.add('hidden');
-                parkingZoneContainer.classList.add('hidden'); // Hide parking for batch
+                parkingZoneContainer.classList.add('hidden');
                 vehicleNumberInput.required = false;
                 vehicleNumbersTextarea.required = true;
             };
@@ -574,7 +599,6 @@
             singleTab.onclick = switchToSingle;
             batchTab.onclick = switchToBatch;
             
-            // Initial state
             switchToSingle();
         } else {
              const batchContent = document.getElementById('batch-vehicle-content');
@@ -715,7 +739,6 @@
         renderVVIPListForSettings();
     };
 
-    // — Auth State Listener —
     onAuthStateChanged(auth, async (user) => {
         unsubClearances?.(); unsubRequests?.(); unsubVVIPs?.(); unsubParking?.();
         if (user && !user.isAnonymous) {
@@ -724,7 +747,6 @@
         } else { renderAdminLogin(); }
     });
 
-    // --- Data Handling ---
     const getCommonPayload = (form) => {
         const data = getFormObj(form);
         const entryDate = parseLocalDate(data.entryDate), expiryDate = parseLocalDate(data.expiryDate);
@@ -791,7 +813,6 @@
             if (!commonPayload) { saveButton.disabled = false; saveButton.innerHTML = 'Save'; return; }
             delete commonPayload.parkingZone; 
 
-
             try {
                 const promises = vehicleNumbers.map(vNum => addDoc(collection(db, "vehicleClearances"), { ...commonPayload, vehicleNumber: vNum.replace(/[^A-Z0-9]/g, '') }));
                 await Promise.all(promises);
@@ -825,7 +846,6 @@
         }
     };
 
-    // --- Global Event Listener ---
     document.body.addEventListener("click", async (e) => {
         const backdrop = e.target.closest('#form-modal-backdrop, #confirm-modal-backdrop, #whatsapp-modal-backdrop, #settings-backdrop, #search-modal-backdrop');
         if (backdrop && backdrop === e.target) {
@@ -842,6 +862,10 @@
             if (button.classList.contains("parking-tab-btn")) {
                 activeParkingTab = button.dataset.zone;
                 renderParkingMonitor();
+            }
+            else if (button.id === "return-today-btn") {
+                selectedParkingDate = new Date();
+                subscribeToParkingForDate(selectedParkingDate);
             }
             else if (button.id === "search-btn") renderSearchModal();
             else if (button.id === "settings-btn") renderSettingsPanel();
@@ -934,6 +958,7 @@
                 renderAdminLogin(); 
             }
         } catch(err) { 
+            console.error("Click Event Error:", err);
             showNotification(`Error: ${err.message}`, 'error'); 
             const approveButton = document.querySelector('.approve-request-btn');
             if(approveButton) {
@@ -995,12 +1020,16 @@
     
     document.body.addEventListener("change", (e) => {
         const target = e.target;
-        if (target.name === "location") {
+        if(target.id === 'parking-date-selector'){
+            selectedParkingDate = parseLocalDate(target.value) || new Date();
+            subscribeToParkingForDate(selectedParkingDate);
+        }
+        else if (target.name === "location") {
             const form = target.closest('form');
             const customInput = form.querySelector('input[name="customLocation"]');
             if (customInput) customInput.classList.toggle('hidden', target.value !== 'Other');
         }
-        if (target.name === "escortRequired") {
+        else if (target.name === "escortRequired") {
             handleEscortCheckboxChange(target);
         }
     });
