@@ -99,6 +99,10 @@
         .horizontal-scroll::-webkit-scrollbar {
             display: none; /* Chrome, Safari and Opera */
         }
+        /* Styles for the new Parking Monitor */
+        .parking-lot {
+            transition: all 0.3s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100">
@@ -133,6 +137,10 @@
 
     // --- Configuration ---
     const ADMIN_INVITE_CODE = "ADMIN2025";
+    const PARKING_ZONES = {
+        Red: { name: "Red Zone", allocated: 10, buffer: 5, color: 'red' },
+        White: { name: "White Zone", allocated: 10, buffer: 5, color: 'white' },
+    };
 
     const firebaseConfig = {
         apiKey: "AIzaSyC51Zo7V75JjOpLOdusf6ZKUzEG_gqFcV4",
@@ -159,8 +167,9 @@
     let clearances = [];
     let clearanceRequests = [];
     let vvips = [];
+    let parkingAssignments = []; // NEW: To store vehicles with assigned parking
     let currentAdminProfile = null;
-    let unsubClearances = null, unsubRequests = null, unsubVVIPs = null;
+    let unsubClearances = null, unsubRequests = null, unsubVVIPs = null, unsubParking = null;
     let authMode = "login";
 
     // --- Utility Functions ---
@@ -255,6 +264,9 @@
                  </div>
             </header>
             <main class="w-full max-w-4xl mx-auto p-4 md:p-6 mobile-safe-container flex flex-col flex-grow min-h-0">
+                <!-- NEW PARKING MONITOR SECTION -->
+                <section id="parking-monitor-section" class="flex-shrink-0 mb-8"></section>
+
                 <section class="flex-shrink-0 mb-8">
                     <div class="flex items-center gap-3 mb-4">
                         <h2 class="text-2xl font-bold text-slate-100">Pending Requests</h2>
@@ -283,6 +295,12 @@
             clearances = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             renderClearancesList();
         });
+        
+        // NEW: Real-time listener for parking assignments
+        unsubParking = onSnapshot(query(collection(db, "vehicleClearances"), where("parkingZone", "in", ["Red", "White"])), snap => {
+             parkingAssignments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+             renderParkingMonitor();
+        });
 
         unsubRequests = onSnapshot(query(collection(db, "clearanceRequests"), orderBy("createdAt", "desc")), snap => {
             clearanceRequests = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(req => req.status === 'pending');
@@ -296,7 +314,63 @@
             renderVVIPListForSettings();
         });
     }
+    
+    // UPDATED: Function to render the Parking Zone Monitor
+    const renderParkingMonitor = () => {
+        const container = document.getElementById("parking-monitor-section");
+        if (!container) return;
         
+        let monitorHTML = `<h2 class="text-2xl font-bold text-slate-100 mb-4">Parking Zone Monitor</h2>
+        <div class="bg-slate-800 p-4 rounded-xl">
+            <div class="flex flex-col md:flex-row md:items-center gap-4">`;
+
+        Object.keys(PARKING_ZONES).forEach(zoneKey => {
+            const zone = PARKING_ZONES[zoneKey];
+            const assignedHere = parkingAssignments.filter(p => p.parkingZone === zoneKey);
+            const occupiedCount = assignedHere.length;
+            const availableCount = zone.allocated + zone.buffer - occupiedCount;
+            const countColor = occupiedCount > zone.allocated ? 'text-amber-400' : 'text-white';
+            const bufferUsed = Math.max(0, occupiedCount - zone.allocated);
+            
+            let lotsHTML = '';
+            // Render allocated lots
+            for(let i = 1; i <= zone.allocated; i++) {
+                const isOccupied = i <= occupiedCount;
+                const bgColor = isOccupied ? (zone.color === 'red' ? 'bg-red-500' : 'bg-slate-300') : 'bg-slate-700';
+                lotsHTML += `<div class="parking-lot h-2 rounded-sm ${bgColor}" title="Lot ${i}${isOccupied ? ` - ${assignedHere[i-1].vehicleNumber}`: ' - Available'}"></div>`;
+            }
+
+            // Render buffer lots
+            for(let i = 1; i <= zone.buffer; i++) {
+                const isOccupied = (zone.allocated + i) <= occupiedCount;
+                const bgColor = isOccupied ? 'bg-amber-500' : 'bg-slate-700/50';
+                lotsHTML += `<div class="parking-lot h-2 rounded-sm ${bgColor}" title="Buffer Lot ${i}${isOccupied ? ` - ${assignedHere[zone.allocated + i - 1].vehicleNumber}` : ' - Available'}"></div>`;
+            }
+            
+            const zoneColorClass = zone.color === 'red' ? 'border-red-500/50' : 'border-slate-300/50';
+
+            monitorHTML += `
+            <div class="flex-1 p-3 rounded-lg bg-slate-900/50 border-l-4 ${zoneColorClass}">
+                 <div class="flex justify-between items-baseline mb-2">
+                    <h3 class="font-bold ${zone.color === 'red' ? 'text-red-400' : 'text-slate-100'}">${zone.name}</h3>
+                    <p class="font-mono text-lg font-bold ${countColor}">
+                        ${occupiedCount} / ${zone.allocated}
+                    </p>
+                </div>
+                <div class="grid grid-cols-5 gap-1.5 mb-2">
+                    ${lotsHTML}
+                </div>
+                 <div class="text-xs text-slate-400 flex justify-between">
+                    <span>Available: <strong class="text-green-400">${availableCount > 0 ? availableCount : 0}</strong></span>
+                    <span>Buffer Used: <strong class="text-amber-400">${bufferUsed} / ${zone.buffer}</strong></span>
+                </div>
+            </div>`;
+        });
+
+        monitorHTML += `</div></div>`;
+        container.innerHTML = monitorHTML;
+    };
+
     const renderRequestsList = () => {
         const list = document.getElementById("requests-list");
         if (!list) return;
@@ -331,6 +405,7 @@
                     <div class="flex items-center gap-3">
                         <span class="chevron-icon text-slate-500 transition-transform duration-300">${icons.chevronRight}</span>
                         <p class="font-mono font-bold text-slate-100 text-lg">${c.vehicleNumber}</p>
+                        ${c.parkingZone ? `<span class="text-xs font-bold px-2 py-0.5 rounded ${c.parkingZone === 'Red' ? 'bg-red-500/80 text-white' : 'bg-slate-300 text-slate-900'}">${c.parkingZone}</span>` : ''}
                     </div>
                     <div class="flex-grow text-center">
                         <span class="text-xs font-semibold text-amber-900 bg-amber-400 px-2 py-1 rounded-md">${formatDate(c.entryDate)}</span>
@@ -422,6 +497,17 @@
                     <div><label class="text-sm">Contact Number</label><input name="contact" value="${contact || ''}" type="tel" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
                     <div><label class="text-sm">Email Address</label><input name="email" value="${email || ''}" type="email" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
                     <div><label class="text-sm">Vehicle Type</label><select name="vehicleType" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required>${vehicleTypeOptions.map(v => `<option ${data.vehicleType === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+                    
+                    <!-- NEW: Parking Zone Assignment -->
+                    <div id="parking-zone-assignment-container">
+                        <label class="text-sm">Parking Zone</label>
+                        <select name="parkingZone" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white">
+                            <option value="">None</option>
+                            <option value="Red" ${data.parkingZone === 'Red' ? 'selected' : ''}>Red Zone</option>
+                            <option value="White" ${data.parkingZone === 'White' ? 'selected' : ''}>White Zone</option>
+                        </select>
+                    </div>
+                    
                     <div><label class="text-sm">Visiting Hours</label><select name="timeSlot" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required><option value="08:00-13:00" ${data.timeSlot === '08:00-13:00' ? 'selected' : ''}>08:00-13:00</option><option value="08:00-18:00" ${data.timeSlot === '08:00-18:00' ? 'selected' : ''}>08:00-18:00</option><option value="13:00-18:00" ${data.timeSlot === '13:00-18:00' ? 'selected' : ''}>13:00-18:00</option><option value="18:00-onwards" ${data.timeSlot === '18:00-onwards' ? 'selected' : ''}>18:00 onwards</option></select></div>
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="text-sm">Entry Date</label><input type="date" name="entryDate" value="${toISODate(data.entryDate?.toDate() || new Date())}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white"></div>
@@ -442,6 +528,7 @@
             const batchTab = document.getElementById('batch-vehicle-tab');
             const singleContent = document.getElementById('single-vehicle-content');
             const batchContent = document.getElementById('batch-vehicle-content');
+            const parkingZoneContainer = document.getElementById('parking-zone-assignment-container');
             const vehicleNumberInput = singleContent.querySelector('input[name="vehicleNumber"]');
             const vehicleNumbersTextarea = batchContent.querySelector('textarea[name="vehicleNumbers"]');
 
@@ -452,6 +539,7 @@
                 batchTab.classList.remove('border-blue-500', 'text-white');
                 singleContent.classList.remove('hidden');
                 batchContent.classList.add('hidden');
+                parkingZoneContainer.classList.remove('hidden'); // Show parking for single
                 vehicleNumberInput.required = true;
                 vehicleNumbersTextarea.required = false;
             };
@@ -463,6 +551,7 @@
                 singleTab.classList.remove('border-blue-500', 'text-white');
                 batchContent.classList.remove('hidden');
                 singleContent.classList.add('hidden');
+                parkingZoneContainer.classList.add('hidden'); // Hide parking for batch
                 vehicleNumberInput.required = false;
                 vehicleNumbersTextarea.required = true;
             };
@@ -614,7 +703,7 @@
 
     // — Auth State Listener —
     onAuthStateChanged(auth, async (user) => {
-        unsubClearances?.(); unsubRequests?.(); unsubVVIPs?.();
+        unsubClearances?.(); unsubRequests?.(); unsubVVIPs?.(); unsubParking?.(); // Unsubscribe from parking listener on logout
         if (user && !user.isAnonymous) {
             const adminDoc = await getDoc(doc(db, "admins", user.uid));
             if (adminDoc.exists()) { currentAdminProfile = adminDoc.data(); renderAdminDashboard(currentAdminProfile); } else { signOut(auth); }
@@ -639,6 +728,7 @@
             vehicleType: data.vehicleType, location: location, timeSlot: data.timeSlot,
             entryDate: Timestamp.fromDate(entryDate), expiryDate: Timestamp.fromDate(expiryDate),
             notes: data.notes || "", escortRequired: !!data.escortRequired,
+            parkingZone: data.parkingZone || "", // NEW: Add parking zone to payload
             createdAt: Timestamp.now(), approvedAt: Timestamp.now(),
             approvedByUsername: currentAdminProfile.username,
         };
@@ -682,9 +772,12 @@
                 showNotification("Enter at least one vehicle number for batch registration.", "error");
                 saveButton.disabled = false; saveButton.innerHTML = 'Save'; return;
             }
-
+            
+            // Parking zone assignment is disabled in batch mode, so we remove it from the payload
             const commonPayload = getCommonPayload(form);
             if (!commonPayload) { saveButton.disabled = false; saveButton.innerHTML = 'Save'; return; }
+            delete commonPayload.parkingZone; 
+
 
             try {
                 const promises = vehicleNumbers.map(vNum => addDoc(collection(db, "vehicleClearances"), { ...commonPayload, vehicleNumber: vNum.replace(/[^A-Z0-9]/g, '') }));
@@ -799,6 +892,7 @@
                     timeSlot: formData.timeSlot,
                     entryDate: Timestamp.fromDate(entryDate),
                     expiryDate: Timestamp.fromDate(expiryDate),
+                    parkingZone: formData.parkingZone || "", // NEW: Add parking zone on approval
                     createdAt: originalRequest.createdAt,
                     approvedAt: Timestamp.now(),
                     approvedByUsername: currentAdminProfile.username,
