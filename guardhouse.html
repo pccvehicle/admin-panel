@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
+    <title>Staff Vehicle Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #0f172a; /* Darker slate background */
+            color: #e2e8f0;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        /* Style for date picker icon */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.8);
+        }
+        
+        /* Custom modal styles */
+        #modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
+        
+        /* Mobile-friendly inputs */
+        .mobile-input {
+            width: 100%;
+            max-width: 100%;
+            font-size: 16px;
+            padding: 0.75rem;
+            box-sizing: border-box;
+            background-color: #1e293b; /* slate-800 */
+            border: 1px solid #334155; /* slate-700 */
+            border-radius: 0.5rem;
+            color: #f1f5f9; /* slate-100 */
+        }
+        .mobile-input:focus {
+            border-color: #3b82f6; /* blue-500 */
+            outline: none;
+            box-shadow: 0 0 0 2px #1e293b, 0 0 0 4px #3b82f6;
+        }
+        /* Custom checkbox */
+        .mobile-checkbox {
+            height: 1.25rem;
+            width: 1.25rem;
+            border-radius: 0.25rem;
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            color: #3b82f6;
+            cursor: pointer;
+        }
+        .mobile-checkbox:focus {
+             outline: none;
+             box-shadow: 0 0 0 2px #1e293b, 0 0 0 4px #3b82f6;
+        }
+        
+        /* Nav button styles */
+        .nav-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+            border: 2px solid transparent;
+        }
+        .nav-button[data-active="true"] {
+            background-color: #3b82f6; /* blue-600 */
+            color: #ffffff;
+        }
+        .nav-button[data-active="false"] {
+            background-color: #334155; /* slate-700 */
+            color: #cbd5e1; /* slate-300 */
+        }
+        .nav-button[data-active="false"]:hover {
+            background-color: #475569; /* slate-600 */
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Application Root -->
+    <div id="app-root" class="max-w-4xl mx-auto p-4 sm:p-6"></div>
+
+    <!-- Global Modal for Confirmations -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div id="modal-content" class="w-full max-w-md bg-slate-800 rounded-xl shadow-2xl p-6 space-y-4 border border-slate-700">
+            <h3 id="modal-title" class="text-xl font-bold text-white"></h3>
+            <p id="modal-body" class="text-slate-300"></p>
+            <div class="flex justify-end gap-3 pt-2">
+                <button id="modal-cancel-btn" class="px-4 py-2 rounded-lg bg-slate-600 text-slate-200 hover:bg-slate-500 font-medium">Cancel</button>
+                <button id="modal-confirm-btn" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-500 font-medium">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        // --- Firebase Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged,
+            signInWithEmailAndPassword, // We still use this, but with the email we look up
+            signOut
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, collection, addDoc, Timestamp, query, where, getDocs, 
+            doc, deleteDoc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuration (Copied from your script) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyC51Zo7V75JjOpLOdusf6ZKUzEG_gqFcV4",
+            authDomain: "vehicle-clearance.firebaseapp.com",
+            projectId: "vehicle-clearance",
+            storageBucket: "vehicle-clearance.appspot.com",
+            messagingSenderId: "187403368572",
+            appId: "1:187403368572:web:1f94845da67ef0c7ccf1f9"
+        };
+        
+        // --- App State ---
+        let app, auth, db, authUser;
+        let currentView = 'add'; // 'add', 'search', or 'settings'
+        let vehicleCache = []; // To store search results
+        let lastSearchTerm = ''; // To refresh search
+        let confirmCallback = null; // For modal confirmation
+        
+        const DB_COLLECTION = "vehicleClearances"; 
+        const SETTINGS_COLLECTION = "publicConfig";
+        const SETTINGS_DOC_ID = "panelSettings"; 
+        let settingsDocRef;
+        let appSettings = {
+            escortBy: [],
+            vehicleTypes: [],
+            locations: [],
+            approvedBy: []
+        };
+        const defaultSettings = {
+            escortBy: ["SMM", "HTX", "Alpha"],
+            vehicleTypes: ["Car", "Motorcycle"],
+            locations: ["PCC"],
+            approvedBy: ["User A", "User B"]
+        };
+
+
+        // --- DOM Elements ---
+        const appRoot = document.getElementById("app-root");
+        const modalBackdrop = document.getElementById("modal-backdrop");
+        const modalTitle = document.getElementById("modal-title");
+        const modalBody = document.getElementById("modal-body");
+        const modalCancelBtn = document.getElementById("modal-cancel-btn");
+        const modalConfirmBtn = document.getElementById("modal-confirm-btn");
+
+        // --- Icons ---
+        const icons = {
+            add: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`,
+            search: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>`,
+            trash: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
+            car: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1m-4 0H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1m0 0v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1M4 16v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1H4Zm0 0H3m16 0h1M5 11h14M5 8h14"/></svg>`,
+            motorcycle: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16H3a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h2m16 0h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2m-3-11 3 3m-3-3-3 3m-2 11h3l3-6-4-3-4 3 3 6Z"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`,
+            settings: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
+            signOut: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`
+        };
+
+        // --- Firebase Initialization ---
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            setLogLevel('Debug'); 
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    // 1. User is logged in, check if they are an admin
+                    console.log("User logged in:", user.uid);
+                    const adminDocRef = doc(db, "admins", user.uid);
+                    const adminDocSnap = await getDoc(adminDocRef);
+
+                    if (adminDocSnap.exists()) {
+                        // 2. SUCCESS: User is an admin
+                        console.log("Admin user confirmed:", user.uid);
+                        authUser = user; // Set global authUser
+                        await loadSettings(); // Load settings from publicConfig
+                        renderApp(); // Render the full staff panel
+                    } else {
+                        // 3. FAILURE: User is logged in but NOT an admin
+                        console.warn("User is not an admin:", user.uid);
+                        authUser = null;
+                        renderLoginScreen("Error: You are not authorized to use this panel.");
+                        await signOut(auth); // Log them out
+                    }
+                } else {
+                    // 4. No user is logged in
+                    console.log("No user logged in.");
+                    authUser = null;
+                    renderLoginScreen(); // Show the login form
+                }
+            });
+
+        } catch (err) {
+            console.error("Firebase initialization error:", err);
+            renderLoginScreen("Firebase initialization error. Please refresh.");
+        }
+        
+        // --- Load Settings Function ---
+        const loadSettings = async () => {
+            try {
+                if (!authUser) throw new Error("User is not authenticated.");
+                
+                settingsDocRef = doc(db, SETTINGS_COLLECTION, SETTINGS_DOC_ID);
+                console.log("Loading settings from:", `${SETTINGS_COLLECTION}/${SETTINGS_DOC_ID}`);
+                
+                const docSnap = await getDoc(settingsDocRef);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    appSettings.escortBy = data.escortBy || [];
+                    appSettings.vehicleTypes = data.vehicleTypes || [];
+                    appSettings.locations = data.locations || [];
+                    appSettings.approvedBy = data.approvedBy || [];
+                    console.log("Settings loaded:", appSettings);
+                } else {
+                    console.log("No settings doc found. Creating with defaults.");
+                    await setDoc(settingsDocRef, defaultSettings);
+                    appSettings = { ...defaultSettings };
+                }
+            } catch (error) {
+                console.error("Error loading settings:", error);
+                showNotification(`Error loading settings: ${error.message}`, "error");
+                appSettings = { ...defaultSettings };
+            }
+        };
+        
+        // --- Helper Functions ---
+        
+        const showNotification = (message, type = "success") => {
+            const existingNotif = document.getElementById("global-notification");
+            if (existingNotif) existingNotif.remove();
+
+            const notification = document.createElement("div");
+            notification.id = "global-notification";
+            const colors = {
+                success: "bg-green-600 border-green-500",
+                error: "bg-red-600 border-red-500",
+                info: "bg-blue-600 border-blue-500"
+            };
+            const icon = type === "success" ? "✓" : type === "error" ? "✗" : "ℹ";
+            
+            notification.className = `fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white flex items-center animate-fade-in z-[100] ${colors[type]} border-l-4 max-w-sm`;
+            notification.innerHTML = `<span class="mr-3 text-lg font-bold">${icon}</span><span>${message}</span>`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 4000);
+        };
+
+        const parseLocalDate = (dateString) => {
+            if (!dateString) return null;
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return null;
+            const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+            return new Date(date.getTime() + userTimezoneOffset);
+        };
+
+        const formatDate = (date) => {
+            if (!date) return "N/A";
+            const d = date instanceof Date ? date : (date.toDate ? date.toDate() : new Date(date));
+            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
+        };
+
+        const showModal = (title, body, onConfirm) => {
+            modalTitle.textContent = title;
+            modalBody.textContent = body;
+            confirmCallback = onConfirm;
+            modalBackdrop.classList.remove("hidden");
+        };
+
+        const hideModal = () => {
+            modalBackdrop.classList.add("hidden");
+            confirmCallback = null;
+        };
+
+        const sanitizeInput = (str) => {
+            return str.trim().replace(/[\s\n\r\t]/g, ' '); 
+        };
+        
+        // --- Render Functions ---
+
+        // *** UPDATED: Renders the login form with "Username" ***
+        const renderLoginScreen = (error = null) => {
+            appRoot.innerHTML = `
+                <div class="flex flex-col items-center justify-center min-h-[50vh] animate-fade-in">
+                    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl p-8 space-y-6 border border-slate-700">
+                        <h1 class="text-3xl font-bold text-white text-center">Admin Panel Login</h1>
+                        
+                        ${error ? `<div id="login-error" class="p-3 rounded-lg bg-red-800/50 border border-red-700 text-red-300 text-sm">${error}</div>` : ''}
+
+                        <form id="login-form" class="space-y-4">
+                            <div>
+                                <label for="login-username" class="block text-sm font-medium text-slate-300 mb-1">Username</label>
+                                <input type="text" id="login-username" name="username" class="mobile-input" required />
+                            </div>
+                            <div>
+                                <label for="login-password" class="block text-sm font-medium text-slate-300 mb-1">Password</label>
+                                <input type="password" id="login-password" name="password" class="mobile-input" required />
+                            </div>
+                            <div class="pt-2">
+                                <button type="submit" id="login-button" class="w-full px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all">
+                                    Login
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderApp = () => {
+            if (!authUser) return renderLoginScreen("An error occurred. Please log in again."); 
+            
+            appRoot.innerHTML = `
+                <header class="mb-6 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h1 class="text-4xl font-bold text-white tracking-tight">Staff Vehicle Panel</h1>
+                        <button id="sign-out-btn" title="Sign Out" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-red-700 hover:text-white transition-colors">
+                            <span class="w-5 h-5">${icons.signOut}</span>
+                            <span class="hidden sm:block text-sm font-medium">Sign Out</span>
+                        </button>
+                    </div>
+                    <p class="text-slate-400">Manage vehicle clearance database.</p>
+                </header>
+                
+                <nav class="flex gap-2 mb-6">
+                    <button id="nav-add" data-view="add" class="nav-button flex items-center gap-2" data-active="${currentView === 'add'}">
+                        <span class="w-5 h-5">${icons.add}</span> Add Vehicle
+                    </button>
+                    <button id="nav-search" data-view="search" class="nav-button flex items-center gap-2" data-active="${currentView === 'search'}">
+                        <span class="w-5 h-5">${icons.search}</span> Search & Manage
+                    </button>
+                    <button id="nav-settings" data-view="settings" class="nav-button flex items-center gap-2" data-active="${currentView === 'settings'}">
+                        <span class="w-5 h-5">${icons.settings}</span> Settings
+                    </button>
+                </nav>
+
+                <main id="view-content" class="animate-fade-in"></main>
+            `;
+            
+            renderViewContent();
+        };
+        
+        const renderViewContent = () => {
+             const contentEl = document.getElementById("view-content");
+            if (!contentEl) return;
+            
+            if (currentView === 'add') {
+                renderAddVehicleForm();
+            } else if (currentView === 'search') {
+                renderSearchView();
+            } else if (currentView === 'settings') {
+                renderSettingsView();
+            }
+        };
+
+        const renderAddVehicleForm = () => {
+            const contentEl = document.getElementById("view-content");
+            if (!contentEl) return;
+
+            const createOptions = (arr) => {
+                if (!arr) return ''; 
+                return arr.sort().map(item => `<option value="${item}">${item}</option>`).join('');
+            };
+
+            contentEl.innerHTML = `
+                <div class="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-lg p-6 sm:p-8">
+                    <h2 class="text-2xl font-semibold text-white mb-6">Add New Vehicle Reference</h2>
+                    <form id="add-vehicle-form" class="space-y-5">
+                        <!-- Vehicle Number -->
+                        <div>
+                            <label for="vehicleNumber" class="block text-sm font-medium text-slate-300 mb-1">Vehicle Number (Required)</label>
+                            <input type="text" id="vehicleNumber" name="vehicleNumber" 
+                                   oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" 
+                                   class="mobile-input uppercase tracking-wider font-mono" 
+                                   placeholder="E.G. SGA1234X" required />
+                        </div>
+                        
+                        <!-- Owner Name (Optional) -->
+                        <div>
+                            <label for="ownerName" class="block text-sm font-medium text-slate-300 mb-1">Driver/Owner Name (Optional)</label>
+                            <input type="text" id="ownerName" name="ownerName" class="mobile-input" placeholder="e.g. John Doe" />
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <!-- Vehicle Type -->
+                            <div>
+                                <label for="vehicleType" class="block text-sm font-medium text-slate-300 mb-1">Vehicle Type</label>
+                                <select id="vehicleType" name="vehicleType" class="mobile-input" required>
+                                    <option value="">Select type...</option>
+                                    ${createOptions(appSettings.vehicleTypes)}
+                                </select>
+                            </div>
+                            <!-- Location -->
+                            <div>
+                                <label for="location" class="block text-sm font-medium text-slate-300 mb-1">Location</label>
+                                <select id="location" name="location" class="mobile-input" required>
+                                    <option value="">Select location...</option>
+                                    ${createOptions(appSettings.locations)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Visiting Hours -->
+                        <div>
+                            <label for="timeSlot" class="block text-sm font-medium text-slate-300 mb-1">Visiting Hours</label>
+                            <select id="timeSlot" name="timeSlot" class="mobile-input" required>
+                                <option value="">Select a time slot...</option>
+                                <option value="08:00-13:00">08:00 to 13:00</option>
+                                <option value="08:00-18:00">08:00 to 18:00</option>
+                                <option value="13:00-18:00">13:00 to 18:00</option>
+                                <option value="18:00-onwards">18:00 onwards</option>
+                                <option value="24 Hours">24 Hours</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <!-- Entry Date -->
+                            <div>
+                                <label for="entryDate" class="block text-sm font-medium text-slate-300 mb-1">Entry Date</label>
+                                <input type="date" id="entryDate" name="entryDate" class="mobile-input" required />
+                            </div>
+                            <!-- Expiry Date -->
+                            <div>
+                                <label for="expiryDate" class="block text-sm font-medium text-slate-300 mb-1">Expiry Date</label>
+                                <input type="date" id="expiryDate" name="expiryDate" class="mobile-input" required />
+                            </div>
+                        </div>
+                        
+                        <!-- Notes (Optional) -->
+                        <div>
+                            <label for="notes" class="block text-sm font-medium text-slate-300 mb-1">Notes / Purpose (Optional)</label>
+                            <textarea id="notes" name="notes" rows="3" class="mobile-input" placeholder="e.g. Visitor for meeting, Contractor works..."></textarea>
+                        </div>
+                        
+                        <!-- Escort Required -->
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="escortRequired" name="escortRequired" class="mobile-checkbox"/>
+                                <label for="escortRequired" class="text-sm font-medium text-slate-300 cursor-pointer">Escort Required</label>
+                            </div>
+                            
+                            <div id="escort-details-container" class="hidden pl-8">
+                                <label for="escortBy" class="block text-sm font-medium text-slate-400 mb-1">Escort By</label>
+                                <select id="escortBy" name="escortBy" class="mobile-input">
+                                    <option value="">Select escort team...</option>
+                                    ${createOptions(appSettings.escortBy)}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Approved By -->
+                        <div>
+                            <label for="approvedBy" class="block text-sm font-medium text-slate-300 mb-1">Approved By</label>
+                            <select id="approvedBy" name="approvedBy" class="mobile-input" required>
+                                <option value="">Select approver...</option>
+                                ${createOptions(appSettings.approvedBy)}
+                            </select>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="pt-4 text-right">
+                            <button type="submit" class="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
+                                Add Vehicle to Database
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+        };
+        
+        const renderSearchView = () => {
+            const contentEl = document.getElementById("view-content");
+            if (!contentEl) return;
+            
+            contentEl.innerHTML = `
+                <div class="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-lg p-6 sm:p-8">
+                    <h2 class="text-2xl font-semibold text-white mb-6">Search & Manage Vehicles</h2>
+                    
+                    <form id="search-vehicle-form" class="flex flex-col sm:flex-row gap-3 mb-6">
+                        <input type="text" id="search-input" 
+                               oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"
+                               class="mobile-input flex-grow uppercase tracking-wider font-mono" 
+                               placeholder="Enter Vehicle Number" value="${lastSearchTerm}">
+                        <div class="flex gap-3">
+                            <button type="submit" class="flex-1 sm:flex-none px-5 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all">
+                                Search
+                            </button>
+                            <button type="button" id="show-all-btn" class="flex-1 sm:flex-none px-5 py-2.5 rounded-lg bg-slate-600 text-slate-200 hover:bg-slate-500 transition-all">
+                                Show All
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="search-results-container">
+                        <p id="search-message" class="text-center text-slate-400 py-4">Enter a vehicle number or click "Show All".</p>
+                        <div id="search-results" class="space-y-4"></div>
+                    </div>
+                </div>
+            `;
+
+            if (vehicleCache.length > 0) {
+                renderSearchResults(vehicleCache);
+            }
+        };
+
+        const renderSearchResults = (vehicles) => {
+            const resultsEl = document.getElementById("search-results");
+            const messageEl = document.getElementById("search-message");
+            if (!resultsEl || !messageEl) return;
+            
+            if (vehicles.length === 0) {
+                resultsEl.innerHTML = '';
+                messageEl.textContent = 'No records found.';
+                messageEl.classList.remove('hidden');
+                return;
+            }
+
+            messageEl.classList.add('hidden');
+            vehicles.sort((a, b) => (b.expiryDate?.toMillis() || 0) - (a.expiryDate?.toMillis() || 0));
+            resultsEl.innerHTML = vehicles.map(v => renderVehicleCard(v)).join('');
+        };
+        
+        const renderVehicleCard = (v) => {
+            const now = new Date();
+            const expiryDate = v.expiryDate?.toDate ? v.expiryDate.toDate() : new Date(); 
+            let status, statusConfig;
+            
+            if (expiryDate < now) {
+                status = "EXPIRED";
+                statusConfig = { text: "text-gray-400", bg: "bg-gray-700/30", border: "border-gray-700" };
+            } else {
+                status = "ACTIVE";
+                statusConfig = { text: "text-green-400", bg: "bg-green-600/20", border: "border-green-600/50" };
+            }
+
+            const icon = v.vehicleType === 'Motorcycle' ? icons.motorcycle : icons.car;
+            const timeSlotText = v.timeSlot ? v.timeSlot.replace('-', ' to ').replace('onwards', ' onwards') : 'N/A';
+
+            return `
+            <div class="p-4 ${statusConfig.bg} ${statusConfig.border} rounded-xl border text-left animate-fade-in relative">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center gap-3">
+                        <span class="${statusConfig.text}">${icon}</span>
+                        <div>
+                            <p class="text-sm text-slate-400">Vehicle</p>
+                            <p class="font-mono text-xl font-bold text-blue-300">${v.vehicleNumber}</p>
+                            <p class="text-xs text-slate-400">${v.vehicleType || "Car"}</p>
+                        </div>
+                    </div>
+                    <span class="px-2 py-1 rounded-full text-xs font-medium ${statusConfig.text} ${statusConfig.bg} border ${statusConfig.border}">${status}</span>
+                </div>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                    <div>
+                        <p class="text-xs text-slate-400">Owner/Driver</p>
+                        <p class="font-semibold text-slate-200">${v.ownerName || "N/A"}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Location</p>
+                        <p class="font-semibold text-slate-200">${v.location}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Visiting Hours</p>
+                        <p class="font-semibold text-slate-200">${timeSlotText}</p>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                        <p class="text-xs text-slate-400">Valid Period</p>
+                        <p class="font-semibold text-slate-200">${formatDate(v.entryDate)} - ${formatDate(v.expiryDate)}</p>
+                    </div>
+                    
+                    <div>
+                        <p class="text-xs text-slate-400">Escort By</p>
+                        <p class="font-semibold ${v.escortRequired ? 'text-yellow-400' : 'text-slate-200'}">
+                            ${v.escortRequired ? (v.escortBy || 'REQUIRED') : 'N/A'}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Approved By</p>
+                        <p class="font-semibold text-slate-200">${v.approvedBy || "N/A"}</p>
+                    </div>
+                </div>
+                
+                ${v.notes ? `<div class="mt-3 pt-3 border-t border-slate-600/50"><p class="text-xs text-slate-400">Purpose</p><p class="text-sm text-slate-300">${v.notes}</p></div>` : ""}
+                
+                <button 
+                    data-id="${v.id}" 
+                    data-vehicle-number="${v.vehicleNumber}"
+                    class="delete-btn absolute top-3 right-3 p-1.5 rounded-full bg-red-800/50 text-red-300 hover:bg-red-700 hover:text-white transition-colors">
+                    <span class="w-4 h-4">${icons.trash}</span>
+                </button>
+            </div>
+            `;
+        };
+        
+        // Render Settings View
+        const renderSettingsView = () => {
+            const contentEl = document.getElementById("view-content");
+            if (!contentEl) return;
+            
+            const renderCategory = (key, title, placeholder) => {
+                const items = appSettings[key] || [];
+                return `
+                <section class="p-4 bg-slate-900/50 rounded-lg border border-slate-700 space-y-3">
+                    <h3 class="text-lg font-medium text-slate-200">${title}</h3>
+                    <!-- List of items -->
+                    <div class="flex flex-wrap gap-2 min-h-[2.5rem]">
+                        ${items.length > 0 ? items.sort().map((item) => `
+                            <div class="flex items-center bg-slate-700 rounded-full px-3 py-1 animate-fade-in">
+                                <span class="text-sm text-slate-100">${item}</span>
+                                <button data-key="${key}" data-value="${item}" class="setting-delete-btn ml-2 text-red-400 hover:text-red-300 font-bold text-lg leading-none">
+                                    &times;
+                                </button>
+                            </div>
+                        `).join('') : '<p class="text-sm text-slate-500 px-2 py-1">No items added yet.</p>'}
+                    </div>
+                    <!-- Add new item form -->
+                    <form class="flex gap-2 setting-add-form">
+                        <input type="text" name="newItem" class="mobile-input flex-grow" placeholder="${placeholder}" required />
+                        <input type="hidden" name="key" value="${key}" />
+                        <button type="submit" class="px-5 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all">Add</button>
+                    </form>
+                </section>
+                `;
+            };
+
+            contentEl.innerHTML = `
+                <div class="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-lg p-6 sm:p-8 space-y-6">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-white">Manage Dropdown Lists</h2>
+                        <p class="text-slate-400 mt-1">Changes are saved instantly and shared with all staff.</p>
+                    </div>
+                    
+                    ${renderCategory('escortBy', 'Escort By', 'e.g. SMM')}
+                    ${renderCategory('vehicleTypes', 'Vehicle Types', 'e.g. Lorry')}
+                    ${renderCategory('locations', 'Locations', 'e.g. HQ')}
+                    ${renderCategory('approvedBy', 'Approved By', 'e.g. Jane Doe')}
+                    
+                </div>
+            `;
+        };
+
+        // --- Event Handlers ---
+        
+        // *** UPDATED: Handles the login form submission with username lookup ***
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+            button.textContent = 'Verifying...';
+            
+            const username = form.username.value;
+            const password = form.password.value;
+            let emailToLogin;
+
+            try {
+                // 1. Look up the username in the 'admins' collection
+                const q = query(collection(db, "admins"), where("username", "==", username));
+                const querySnap = await getDocs(q);
+
+                if (querySnap.empty) {
+                    // No user found with that username
+                    console.warn(`No admin found with username: ${username}`);
+                    throw new Error("Invalid username or password.");
+                }
+
+                // 2. Get the email from the found admin document
+                const adminData = querySnap.docs[0].data();
+                emailToLogin = adminData.email;
+
+                if (!emailToLogin) {
+                    console.error(`Admin doc for ${username} is missing 'email' field.`);
+                    throw new Error("Admin account is not configured correctly.");
+                }
+
+                // 3. Try to sign in with the retrieved email and entered password
+                button.textContent = 'Logging in...';
+                await signInWithEmailAndPassword(auth, emailToLogin, password);
+                // Success! onAuthStateChanged will handle the rest.
+                console.log("Login successful, waiting for auth state change...");
+
+            } catch (error) {
+                console.error("Login failed:", error.code, error.message);
+                let friendlyError = error.message;
+                if (error.code === 'auth/invalid-credential' || error.message === "Invalid username or password.") {
+                    friendlyError = "Invalid username or password.";
+                } else if (error.code === 'auth/invalid-email') {
+                    friendlyError = "Please enter a valid username.";
+                }
+                renderLoginScreen(friendlyError);
+            }
+            // No 'finally' block needed, as renderLoginScreen handles button re-enabling
+        };
+
+        const handleSignOut = async () => {
+            try {
+                await signOut(auth);
+                // Success! onAuthStateChanged will show the login screen.
+            } catch (error) {
+                console.error("Sign out failed:", error);
+                showNotification("Error signing out.", "error");
+            }
+        };
+
+        const handleNavClick = (e) => {
+            const view = e.target.closest('button')?.dataset.view;
+            if (view && view !== currentView) {
+                currentView = view;
+                renderApp();
+            }
+        };
+
+        const handleAddVehicle = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+            button.textContent = 'Adding...';
+
+            try {
+                if (!authUser) throw new Error("Authentication error. Please refresh and log in.");
+
+                const data = Object.fromEntries(new FormData(form).entries());
+                const entryDate = parseLocalDate(data.entryDate);
+                const expiryDate = parseLocalDate(data.expiryDate);
+                const isEscortRequired = data.escortRequired === 'on';
+
+                if (!data.vehicleNumber) throw new Error("Vehicle Number is required.");
+                if (!data.vehicleType) throw new Error("Vehicle Type is required.");
+                if (!data.location) throw new Error("Location is required.");
+                if (!data.timeSlot) throw new Error("Visiting Hours are required.");
+                if (!entryDate || !expiryDate) throw new Error("Invalid entry or expiry date.");
+                if (expiryDate < entryDate) throw new Error("Expiry date cannot be before the entry date.");
+                if (isEscortRequired && !data.escortBy) throw new Error("Please select an escort team.");
+                if (!data.approvedBy) throw new Error("Please select an approver.");
+
+                const q = query(collection(db, DB_COLLECTION), 
+                    where("vehicleNumber", "==", data.vehicleNumber),
+                    where("expiryDate", ">=", Timestamp.now())
+                );
+                const existingSnap = await getDocs(q);
+                if (!existingSnap.empty) {
+                    throw new Error(`Vehicle ${data.vehicleNumber} already has an active clearance.`);
+                }
+
+                const payload = {
+                    vehicleNumber: data.vehicleNumber,
+                    ownerName: data.ownerName || "",
+                    vehicleType: data.vehicleType,
+                    location: data.location,
+                    timeSlot: data.timeSlot,
+                    entryDate: Timestamp.fromDate(entryDate),
+                    expiryDate: Timestamp.fromDate(expiryDate),
+                    notes: data.notes || "",
+                    escortRequired: isEscortRequired,
+                    escortBy: isEscortRequired ? data.escortBy : "",
+                    approvedBy: data.approvedBy || "",
+                    createdAt: Timestamp.now(),
+                    createdBy: authUser.uid 
+                };
+                
+                await addDoc(collection(db, DB_COLLECTION), payload);
+                
+                showNotification("Vehicle added to database successfully!", "success");
+                form.reset();
+                const escortContainer = document.getElementById('escort-details-container');
+                if (escortContainer) escortContainer.classList.add('hidden');
+
+            } catch (error) {
+                console.error("Error adding vehicle:", error);
+                showNotification(error.message, "error");
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Add Vehicle to Database';
+            }
+        };
+
+        const handleSearch = async (e) => {
+            e.preventDefault();
+            const input = document.getElementById("search-input");
+            const messageEl = document.getElementById("search-message");
+            lastSearchTerm = input.value.trim().toUpperCase();
+
+            if (!lastSearchTerm) {
+                showNotification("Please enter a vehicle number to search.", "info");
+                return;
+            }
+             if (!authUser) {
+                showNotification("Authentication error. Please refresh.", "error");
+                return;
+            }
+
+            if (messageEl) {
+                messageEl.textContent = 'Searching...';
+                messageEl.classList.remove('hidden');
+            }
+            
+            try {
+                const q = query(collection(db, DB_COLLECTION), where("vehicleNumber", "==", lastSearchTerm));
+                const querySnap = await getDocs(q);
+                
+                vehicleCache = querySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderSearchResults(vehicleCache);
+                
+            } catch (error) {
+                console.error("Search error:", error);
+                showNotification(`Search failed: ${error.message}`, "error");
+            }
+        };
+        
+        const handleShowAll = async () => {
+            const messageEl = document.getElementById("search-message");
+            lastSearchTerm = '';
+
+            if (!authUser) {
+                showNotification("Authentication error. Please refresh.", "error");
+                return;
+            }
+
+            if (messageEl) {
+                messageEl.textContent = 'Loading all vehicles...';
+                messageEl.classList.remove('hidden');
+            }
+            
+            try {
+                const q = collection(db, DB_COLLECTION);
+                const querySnap = await getDocs(q);
+                
+                vehicleCache = querySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderSearchResults(vehicleCache);
+                
+            } catch (error) {
+                console.error("Error fetching all vehicles:", error);
+                showNotification(`Failed to load vehicles: ${error.message}`, "error");
+            }
+        };
+
+        const handleDeleteClick = (e) => {
+            const deleteBtn = e.target.closest('.delete-btn');
+            if (!deleteBtn) return;
+            
+            const docId = deleteBtn.dataset.id;
+            const vehicleNumber = deleteBtn.dataset.vehicleNumber;
+            
+            if (!docId) return;
+
+            showModal(
+                `Delete ${vehicleNumber}?`,
+                "Are you sure you want to permanently delete this vehicle clearance? This action cannot be undone.",
+                () => handleConfirmDelete(docId)
+            );
+        };
+
+        const handleConfirmDelete = async (docId) => {
+            if (!docId) return;
+            if (!authUser) {
+                showNotification("Authentication error. Please refresh.", "error");
+                hideModal();
+                return;
+            }
+
+            try {
+                await deleteDoc(doc(db, DB_COLLECTION, docId));
+                showNotification("Vehicle record deleted.", "success");
+                
+                vehicleCache = vehicleCache.filter(v => v.id !== docId);
+                renderSearchResults(vehicleCache);
+                
+            } catch (error)
+            {
+                console.error("Error deleting document:", error);
+                showNotification(`Error: ${error.message}`, "error");
+            } finally {
+                hideModal();
+            }
+        };
+        
+        const handleFormChange = (e) => {
+            if (e.target.id === 'escortRequired') {
+                const escortContainer = document.getElementById('escort-details-container');
+                const escortSelect = document.getElementById('escortBy');
+                if (e.target.checked) {
+                    escortContainer.classList.remove('hidden');
+                    escortSelect.required = true;
+                } else {
+                    escortContainer.classList.add('hidden');
+                    escortSelect.required = false;
+                    escortSelect.value = '';
+                }
+            }
+        };
+        
+        // --- Settings Event Handlers ---
+        
+        const handleSettingAdd = async (e) => {
+            e.preventDefault();
+            const form = e.target.closest('.setting-add-form');
+            if (!form) return;
+            if (!authUser) {
+                showNotification("Authentication error. Please refresh.", "error");
+                return;
+            }
+
+            const key = form.key.value;
+            const newItemInput = form.newItem;
+            const newItem = sanitizeInput(newItemInput.value);
+
+            if (!newItem) return;
+            
+            if (appSettings[key] && appSettings[key].map(i => i.toLowerCase()).includes(newItem.toLowerCase())) {
+                showNotification("This item already exists in the list.", "info");
+                return;
+            }
+
+            const button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+
+            try {
+                await updateDoc(settingsDocRef, {
+                    [key]: arrayUnion(newItem)
+                });
+                appSettings[key].push(newItem);
+                renderSettingsView(); 
+                showNotification("Item added to settings.", "success");
+            } catch (error) {
+                console.error("Error adding setting:", error);
+                showNotification(`Error: ${error.message}`, "error");
+            } finally {
+                button.disabled = false;
+            }
+        };
+
+        const handleSettingDelete = async (e) => {
+            const button = e.target.closest('.setting-delete-btn');
+            if (!button) return;
+            if (!authUser) {
+                showNotification("Authentication error. Please refresh.", "error");
+                return;
+            }
+            
+            const { key, value } = button.dataset;
+            if (!key || !value) return;
+
+            button.disabled = true;
+            
+            try {
+                await updateDoc(settingsDocRef, {
+                    [key]: arrayRemove(value)
+                });
+                appSettings[key] = appSettings[key].filter(item => item !== value);
+                renderSettingsView(); // Re-render
+                showNotification("Item removed from settings.", "success");
+            } catch (error) {
+                console.error("Error removing setting:", error);
+                showNotification(`Error: ${error.message}`, "error");
+                button.disabled = false;
+            }
+        };
+
+        // --- Initial App Render (is now called by onAuthStateChanged) ---
+
+        // --- Global Event Listeners ---
+        
+        appRoot.addEventListener("click", (e) => {
+            handleNavClick(e);
+            handleDeleteClick(e);
+            handleSettingDelete(e);
+            
+            if (e.target.id === 'show-all-btn') {
+                handleShowAll();
+            }
+            if (e.target.id === 'sign-out-btn' || e.target.closest('#sign-out-btn')) {
+                handleSignOut();
+            }
+        });
+        
+        appRoot.addEventListener("change", (e) => {
+            handleFormChange(e);
+        });
+        
+        appRoot.addEventListener("submit", (e) => {
+            if (e.target.id === 'login-form') {
+                handleLogin(e);
+            } else if (e.target.id === 'add-vehicle-form') {
+                handleAddVehicle(e);
+            } else if (e.target.id === 'search-vehicle-form') {
+                handleSearch(e);
+            } else if (e.target.classList.contains('setting-add-form')) {
+                handleSettingAdd(e); 
+            }
+        });
+        
+        modalCancelBtn.addEventListener("click", hideModal);
+        modalConfirmBtn.addEventListener("click", () => {
+            if (typeof confirmCallback === 'function') {
+                confirmCallback();
+            }
+        });
+
+    </script>
+</body>
+</html>
+
+
