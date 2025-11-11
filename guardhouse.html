@@ -301,6 +301,35 @@
             color: white;
         }
         
+        /* Grid View Table Styles */
+        .grid-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        .grid-table th {
+            text-align: left;
+            padding: 0.75rem;
+            color: #94a3b8;
+            font-weight: 600;
+            border-bottom: 1px solid #334155;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .grid-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #1e293b;
+            color: #cbd5e1;
+        }
+        .grid-row:hover {
+            background-color: #1e293b;
+        }
+        /* Left border status indicator */
+        .status-border-success { border-left: 4px solid #16a34a; }
+        .status-border-warning { border-left: 4px solid #f59e0b; }
+        .status-border-error { border-left: 4px solid #dc2626; }
+        
     </style>
 </head>
 <body>
@@ -331,7 +360,7 @@
         import { 
             getFirestore, collection, addDoc, Timestamp, query, where, getDocs, 
             doc, deleteDoc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, setLogLevel,
-            onSnapshot
+            onSnapshot, writeBatch
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Configuration ---
@@ -346,7 +375,8 @@
         
         // --- App State ---
         let app, auth, db, authUser;
-        let currentView = 'add'; 
+        let currentView = 'add'; // 'add', 'search', 'settings'
+        let isGridView = false; // New state for grid view toggle
         let allRows = []; 
         let filtered = [];
         let confirmCallback = null;
@@ -389,7 +419,9 @@
             motorcycle: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16H3a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h2m16 0h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2m-3-11 3 3m-3-3-3 3m-2 11h3l3-6-4-3-4 3 3 6Z"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`,
             settings: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
             signOut: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
-            keypadBackspace: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM18 13H9.83l1.59 1.59L10 16l-4-4 4-4 1.41 1.41L9.83 11H18v2z"/></svg>`
+            keypadBackspace: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM18 13H9.83l1.59 1.59L10 16l-4-4 4-4 1.41 1.41L9.83 11H18v2z"/></svg>`,
+            list: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`,
+            grid: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`
         };
 
         // --- Firebase Initialization ---
@@ -467,7 +499,11 @@
                     allRows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     console.log(`Vehicle cache updated: ${allRows.length} vehicles.`);
                     if (currentView === 'search') {
-                        applyFilter();
+                        if (isGridView) {
+                            renderGridView();
+                        } else {
+                            applyFilter();
+                        }
                     }
                 }, (error) => {
                     console.error("Error fetching all vehicles:", error);
@@ -514,15 +550,13 @@
             return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
         };
 
-        // *** NEW: Status Checker Function ***
+        // *** Status Checker Function ***
         const getVehicleStatus = (vehicle) => {
             if (!vehicle.expiryDate) return 'error';
             
             const now = new Date();
-            // Normalize current date to start of day for comparison, OR keep precise if time matters.
-            // Usually clearance expires at the end of the day.
             const expiry = vehicle.expiryDate.toDate();
-            expiry.setHours(23, 59, 59, 999); // Set expiry to end of that day
+            expiry.setHours(23, 59, 59, 999); 
 
             if (now > expiry) {
                 return 'expired';
@@ -619,7 +653,12 @@
             if (currentView === 'add') {
                 renderAddVehicleForm();
             } else if (currentView === 'search') {
-                renderSearchView();
+                // If we were in Grid View, stay there, else show search
+                if (isGridView) {
+                    renderGridView();
+                } else {
+                    renderSearchView();
+                }
             } else if (currentView === 'settings') {
                 renderSettingsView();
             }
@@ -798,8 +837,13 @@
                         <!-- Keypad will be rendered by renderKeypad() -->
                     </div>
                     
-                    <!-- Clear Button -->
-                    <button id="clear-search-btn" class="w-full mt-3 py-3 rounded-lg bg-slate-600 text-slate-200 hover:bg-slate-500 font-medium">Clear Search</button>
+                    <!-- Control Buttons -->
+                    <div class="flex gap-3 mt-3">
+                        <button id="clear-search-btn" class="flex-1 py-3 rounded-lg bg-slate-600 text-slate-200 hover:bg-slate-500 font-medium">Clear Search</button>
+                        <button id="show-all-btn" class="flex-none px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-500 font-medium flex items-center justify-center">
+                            <span class="mr-2">Show All</span> ${icons.grid}
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Search Results Area -->
@@ -819,6 +863,80 @@
                 searchBox.value = currentVal;
             }
             render();
+        };
+
+        // *** NEW: Grid View Renderer ***
+        const renderGridView = () => {
+            const contentEl = document.getElementById("view-content");
+            if (!contentEl) return;
+
+            const expiredCount = allRows.filter(v => getVehicleStatus(v) === 'expired').length;
+
+            contentEl.innerHTML = `
+                <div class="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-lg overflow-hidden">
+                    <!-- Grid Header / Toolbar -->
+                    <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
+                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                            ${icons.list} All Vehicles (${allRows.length})
+                        </h2>
+                        <div class="flex gap-2">
+                            ${expiredCount > 0 ? `
+                            <button id="batch-delete-expired-btn" class="px-3 py-1.5 text-sm rounded-lg bg-red-900/50 text-red-200 border border-red-800 hover:bg-red-900 hover:text-white transition-colors">
+                                Delete Expired (${expiredCount})
+                            </button>` : ''}
+                            <button id="back-to-search-btn" class="px-3 py-1.5 text-sm rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors">
+                                Back to Search
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Scrollable Grid Area -->
+                    <div class="overflow-x-auto max-h-[65vh]">
+                        <table class="grid-table w-full text-left">
+                            <thead class="bg-slate-900/80 sticky top-0 z-10">
+                                <tr>
+                                    <th>Vehicle</th>
+                                    <th>Location</th>
+                                    <th class="hidden sm:table-cell">Type</th>
+                                    <th>Expiry</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800">
+                                ${allRows.length === 0 ? `<tr><td colspan="6" class="text-center py-8 text-slate-500">No records found.</td></tr>` : 
+                                  allRows.map(v => {
+                                    const status = getVehicleStatus(v);
+                                    let statusColorClass = 'status-border-success'; // Default green
+                                    let statusText = '<span class="text-green-400">Active</span>';
+                                    
+                                    if (status === 'expired') {
+                                        statusColorClass = 'status-border-error';
+                                        statusText = '<span class="text-red-400 font-bold">Expired</span>';
+                                    } else if (status === 'escort') {
+                                        statusColorClass = 'status-border-warning';
+                                        statusText = '<span class="text-amber-400 font-bold">Escort</span>';
+                                    }
+
+                                    return `
+                                    <tr class="grid-row ${statusColorClass}">
+                                        <td class="font-mono font-bold text-white">${v.vehicleNumber}</td>
+                                        <td>${v.location}</td>
+                                        <td class="hidden sm:table-cell text-slate-400">${v.vehicleType}</td>
+                                        <td class="text-slate-400 whitespace-nowrap">${formatDate(v.expiryDate)}</td>
+                                        <td>${statusText}</td>
+                                        <td>
+                                            <button class="text-red-400 hover:text-red-200 p-1 rounded hover:bg-red-900/20 transition-colors delete-single-btn" data-id="${v.id}" data-number="${v.vehicleNumber}">
+                                                ${icons.trash}
+                                            </button>
+                                        </td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
         };
 
         const render = () => {
@@ -1062,7 +1180,11 @@
             filtered.sort((a, b) => (b.expiryDate?.toMillis() || 0) - (a.expiryDate?.toMillis() || 0));
             
             if (currentView === 'search') {
-                render();
+                if (isGridView) {
+                    // no specific action needed, renderGridView handles it
+                } else {
+                    render();
+                }
             }
         };
 
@@ -1125,6 +1247,10 @@
             const view = e.target.closest('button')?.dataset.view;
             if (view && view !== currentView) {
                 currentView = view;
+                // Reset Grid View when leaving Search Tab
+                if (view !== 'search') {
+                    isGridView = false;
+                }
                 renderApp();
             }
         };
@@ -1229,11 +1355,20 @@
         };
 
         const handleDeleteClick = (e) => {
-            const deleteBtn = e.target.closest('.dropdown-item[data-action="delete"]');
-            if (!deleteBtn) return;
-            
-            const docId = deleteBtn.dataset.id;
-            const vehicleNumber = deleteBtn.dataset.vehicleNumber;
+            // Handle dropdown delete (List View)
+            let docId, vehicleNumber;
+            const dropdownBtn = e.target.closest('.dropdown-item[data-action="delete"]');
+            const gridBtn = e.target.closest('.delete-single-btn');
+
+            if (dropdownBtn) {
+                docId = dropdownBtn.dataset.id;
+                vehicleNumber = dropdownBtn.dataset.vehicleNumber;
+            } else if (gridBtn) {
+                docId = gridBtn.dataset.id;
+                vehicleNumber = gridBtn.dataset.number;
+            } else {
+                return;
+            }
             
             if (!docId) return;
 
@@ -1342,6 +1477,37 @@
             }
         };
 
+        // *** NEW: Batch Delete Logic ***
+        const handleBatchDeleteExpired = () => {
+            const expiredDocs = allRows.filter(v => getVehicleStatus(v) === 'expired');
+            const count = expiredDocs.length;
+
+            if (count === 0) {
+                showNotification("No expired vehicles found.", "info");
+                return;
+            }
+
+            showModal(
+                "Delete Expired Vehicles?",
+                `Found ${count} expired vehicle records. This will permanently delete them from the database.`,
+                async () => {
+                    hideModal();
+                    try {
+                        const batch = writeBatch(db);
+                        expiredDocs.forEach(docData => {
+                            const docRef = doc(db, DB_COLLECTION, docData.id);
+                            batch.delete(docRef);
+                        });
+                        await batch.commit();
+                        showNotification(`Successfully deleted ${count} expired records.`, "success");
+                    } catch (error) {
+                        console.error("Batch delete error:", error);
+                        showNotification(`Batch delete failed: ${error.message}`, "error");
+                    }
+                }
+            );
+        };
+
         // --- Global Event Listeners ---
         
         appRoot.addEventListener("click", (e) => {
@@ -1354,6 +1520,25 @@
             const clearBtn = e.target.id === 'clear-search-btn';
             const exitBtn = e.target.id === 'exit-single-view-btn';
             const signOutBtn = e.target.id === 'sign-out-btn' || e.target.closest('#sign-out-btn');
+            
+            // New Grid View Buttons
+            const showAllBtn = e.target.closest('#show-all-btn');
+            const backSearchBtn = e.target.id === 'back-to-search-btn';
+            const batchDeleteBtn = e.target.closest('#batch-delete-expired-btn');
+
+            if (showAllBtn) {
+                isGridView = true;
+                renderGridView();
+            }
+            
+            if (backSearchBtn) {
+                isGridView = false;
+                renderSearchView();
+            }
+
+            if (batchDeleteBtn) {
+                handleBatchDeleteExpired();
+            }
 
             if (keypadBtn) {
                 const searchBox = document.getElementById('searchBox');
@@ -1364,16 +1549,16 @@
                 
                 if (toggleId === 'keypad-toggle-alpha') {
                     keypadMode = 'alpha';
-                    const currentSearch = searchBox.value; // Store value
-                    renderKeypad(); // Only render keypad
-                    document.getElementById('searchBox').value = currentSearch; // Restore value
+                    const currentSearch = searchBox.value; 
+                    renderKeypad(); 
+                    document.getElementById('searchBox').value = currentSearch;
                     return;
                 }
                 if (toggleId === 'keypad-toggle-numeric') {
                     keypadMode = 'numeric';
-                    const currentSearch = searchBox.value; // Store value
-                    renderKeypad(); // Only render keypad
-                    document.getElementById('searchBox').value = currentSearch; // Restore value
+                    const currentSearch = searchBox.value; 
+                    renderKeypad(); 
+                    document.getElementById('searchBox').value = currentSearch; 
                     return;
                 }
                 
