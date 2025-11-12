@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
-    <title>Batch Vehicle Registration</title>
+    <title>Registration with Optional Contact</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
@@ -13,7 +13,7 @@
             font-family: 'Inter', sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            background-color: #0f172a; /* Darker slate background */
+            background-color: #0f172a;
             color: #e2e8f0;
         }
         @keyframes fadeIn {
@@ -22,21 +22,20 @@
         }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
         
-        /* Mobile-friendly inputs */
         .mobile-input {
             width: 100%;
             max-width: 100%;
             font-size: 16px;
             padding: 0.875rem;
             box-sizing: border-box;
-            background-color: #1e293b; /* slate-800 */
-            border: 1px solid #334155; /* slate-700 */
+            background-color: #1e293b;
+            border: 1px solid #334155;
             border-radius: 0.5rem;
-            color: #f1f5f9; /* slate-100 */
+            color: #f1f5f9;
             transition: all 0.2s;
         }
         .mobile-input:focus {
-            border-color: #3b82f6; /* blue-500 */
+            border-color: #3b82f6;
             outline: none;
             box-shadow: 0 0 0 2px #1e293b, 0 0 0 4px #3b82f6;
         }
@@ -50,7 +49,6 @@
             cursor: pointer;
         }
         
-        /* Tab Styles */
         .tab-btn {
             padding: 10px 20px;
             border-radius: 8px;
@@ -72,27 +70,86 @@
             background-color: #334155;
             color: #cbd5e1;
         }
+
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
 <body>
-    <!-- Main Application Root -->
     <div id="app-root" class="max-w-3xl mx-auto p-4 sm:p-6"></div>
 
-    <!-- Notification Container -->
+    <!-- Search Modal -->
+    <div id="search-modal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4 animate-fade-in">
+        <div class="w-full max-w-xl bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 flex flex-col max-h-[85vh]">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-900/50 rounded-t-2xl">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">History Lookup</h3>
+                <button class="close-modal-btn text-slate-400 hover:text-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+            <div class="p-6 flex-grow overflow-y-auto">
+                <div class="mb-6 flex gap-2">
+                    <input type="text" id="search-input" class="mobile-input uppercase font-mono text-lg" placeholder="E.G. SGA 1234 X" />
+                    <button id="perform-search-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-6 rounded-lg font-semibold">Search</button>
+                </div>
+                <div id="search-results-area" class="space-y-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONFIRMATION MODAL -->
+    <div id="review-modal" class="hidden fixed inset-0 z-[60] modal-backdrop flex items-center justify-center p-4 animate-fade-in">
+        <div class="w-full max-w-lg bg-slate-900 rounded-2xl shadow-2xl border border-slate-600 flex flex-col max-h-[95vh]">
+            
+            <!-- 1. Summary Header -->
+            <div class="p-5 border-b border-slate-700 bg-slate-800/80 rounded-t-2xl">
+                <h3 class="text-xl font-bold text-white">Confirm Registration</h3>
+                <div class="mt-2 flex items-center justify-between text-sm text-slate-300">
+                    <span id="review-summary-text">...</span>
+                    <span id="review-count" class="bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-bold">0</span>
+                </div>
+            </div>
+            
+            <!-- 2. Scrollable List -->
+            <div class="p-5 flex-grow overflow-y-auto space-y-4">
+                <div class="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+                     <div id="review-list" class="text-sm font-mono text-slate-300 max-h-48 overflow-y-auto p-3 divide-y divide-slate-700"></div>
+                </div>
+                
+                <!-- Optional WhatsApp Section -->
+                <div class="pt-2">
+                    <button id="toggle-whatsapp-btn" class="flex items-center gap-2 text-emerald-500 hover:text-emerald-400 text-sm font-medium transition-colors w-full justify-center py-2 border border-dashed border-slate-700 rounded hover:bg-slate-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/></svg>
+                        Need Clarification? Chat with Requester
+                    </button>
+                    
+                    <div id="whatsapp-container" class="hidden mt-3 p-3 bg-emerald-900/20 border border-emerald-800/50 rounded-lg animate-fade-in">
+                        <div class="text-xs text-slate-400 mb-2">Draft Message (Editable in WhatsApp):</div>
+                        <textarea id="whatsapp-preview" rows="3" readonly class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-300 mb-3 font-mono"></textarea>
+                        <a id="send-whatsapp-btn" href="#" target="_blank" class="block w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-center text-sm font-bold rounded transition-colors">
+                            Open WhatsApp
+                        </a>
+                        <p id="no-contact-msg" class="hidden text-xs text-red-400 text-center mt-2">No mobile number provided.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 3. Footer Actions -->
+            <div class="p-5 border-t border-slate-700 flex gap-3 bg-slate-800/50 rounded-b-2xl">
+                <button id="cancel-review-btn" class="px-6 py-3 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 font-medium">Back</button>
+                <button id="confirm-save-btn" class="flex-1 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-500 font-bold text-lg shadow-lg shadow-blue-900/20">
+                    Confirm & Register
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="notification-container"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            onAuthStateChanged,
-            signInWithEmailAndPassword,
-            signOut
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, collection, addDoc, Timestamp, query, where, getDocs, 
-            doc, getDoc, onSnapshot, writeBatch
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, Timestamp, query, where, getDocs, doc, getDoc, onSnapshot, writeBatch, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Configuration ---
         const firebaseConfig = {
@@ -104,52 +161,39 @@
             appId: "1:187403368572:web:1f94845da67ef0c7ccf1f9"
         };
         
-        // --- App State ---
         let app, auth, db, authUser;
         let settingsUnsubscribe = null;
-        let currentMode = 'single'; // 'single' or 'batch'
+        let currentMode = 'single'; 
+        let pendingSubmissionData = null;
         
         const DB_COLLECTION = "vehicleClearances"; 
         const SETTINGS_COLLECTION = "publicConfig";
         const SETTINGS_DOC_ID = "panelSettings"; 
         
-        let appSettings = {
-            requesters: [],
-            escortBy: [],
-            vehicleTypes: [],
-            locations: [],
-            approvedBy: []
-        };
-
-        const defaultSettings = {
-            requesters: ["A DIV", "CID", "CAD"],
-            escortBy: ["SMM", "HTX", "Alpha"],
-            vehicleTypes: ["Car", "Motorcycle"],
-            locations: ["PCC"],
-            approvedBy: ["User A", "User B"]
-        };
+        let appSettings = { requesters: [], escortBy: [], vehicleTypes: [], locations: [], approvedBy: [] };
 
         const appRoot = document.getElementById("app-root");
+        const searchModal = document.getElementById("search-modal");
+        const reviewModal = document.getElementById("review-modal");
+        const waContainer = document.getElementById("whatsapp-container");
 
         const icons = {
             signOut: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
             plus: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`,
-            layers: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`
+            layers: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`,
+            whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#22c55e" viewBox="0 0 16 16"><path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/></svg>`,
+            search: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`
         };
 
-        // --- Firebase Init ---
         try {
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
-
             onAuthStateChanged(auth, async (user) => {
                 if (settingsUnsubscribe) settingsUnsubscribe();
-                
                 if (user) {
                     const adminDocRef = doc(db, "admins", user.uid);
                     const adminDocSnap = await getDoc(adminDocRef);
-
                     if (adminDocSnap.exists()) {
                         authUser = user;
                         await loadSettings(); 
@@ -164,9 +208,7 @@
                     renderLoginScreen();
                 }
             });
-
         } catch (err) {
-            console.error("Init error:", err);
             renderLoginScreen("Initialization error. Please refresh.");
         }
         
@@ -182,9 +224,7 @@
                         appSettings.vehicleTypes = data.vehicleTypes || [];
                         appSettings.locations = data.locations || [];
                         appSettings.approvedBy = data.approvedBy || [];
-                        if (document.getElementById("add-vehicle-form") || document.getElementById("batch-vehicle-form")) renderApp(); 
-                    } else {
-                        appSettings = { ...defaultSettings };
+                        if (document.getElementById("add-vehicle-form")) renderApp(); 
                     }
                 });
             } catch (error) {
@@ -220,6 +260,12 @@
             return clean;
         };
 
+        const formatDateDisplay = (date) => {
+            if (!date) return "N/A";
+            const d = date instanceof Date ? date : (date.toDate ? date.toDate() : new Date(date));
+            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
+        }
+
         // --- Render Functions ---
         const renderLoginScreen = (error = null) => {
             appRoot.innerHTML = `
@@ -245,51 +291,34 @@
             const createOptions = (arr) => arr ? arr.sort().map(item => `<option value="${item}">${item}</option>`).join('') : '';
 
             appRoot.innerHTML = `
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex flex-wrap justify-between items-center mb-6 gap-3">
                     <h1 class="text-2xl font-bold text-white">Registration Panel</h1>
-                    <button id="sign-out-btn" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 text-sm transition-colors">
-                        ${icons.signOut} Sign Out
-                    </button>
+                    
+                    <div class="flex gap-2">
+                        <button id="open-search-btn" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-700 border border-emerald-600 text-white hover:bg-emerald-600 text-sm font-medium transition-colors shadow-lg shadow-emerald-900/20">
+                            ${icons.search} History
+                        </button>
+                        <button id="sign-out-btn" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 text-sm transition-colors">
+                            ${icons.signOut}
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Mode Switcher -->
                 <div class="flex gap-2 mb-6">
-                    <button class="tab-btn flex-1 flex items-center justify-center gap-2 ${currentMode === 'single' ? 'active' : 'inactive'}" id="mode-single">
-                        ${icons.plus} Single Entry
-                    </button>
-                    <button class="tab-btn flex-1 flex items-center justify-center gap-2 ${currentMode === 'batch' ? 'active' : 'inactive'}" id="mode-batch">
-                        ${icons.layers} Batch Mode (10+)
-                    </button>
+                    <button class="tab-btn flex-1 flex items-center justify-center gap-2 ${currentMode === 'single' ? 'active' : 'inactive'}" id="mode-single">${icons.plus} Single Entry</button>
+                    <button class="tab-btn flex-1 flex items-center justify-center gap-2 ${currentMode === 'batch' ? 'active' : 'inactive'}" id="mode-batch">${icons.layers} Batch Mode</button>
                 </div>
 
                 <div class="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-lg p-6 animate-fade-in">
-                    <form id="${currentMode === 'batch' ? 'batch-vehicle-form' : 'add-vehicle-form'}" class="space-y-5">
-                        
-                        <!-- Section: Common Details (Shared) -->
+                    <form id="registration-form" class="space-y-5">
                         <div class="p-4 bg-slate-900/40 rounded-xl border border-slate-700/50 space-y-4">
                             <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Step 1: Common Details</h3>
-                            
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Requester <span class="text-red-400">*</span></label>
-                                    <select name="requester" class="mobile-input" required><option value="">Select...</option>${createOptions(appSettings.requesters)}</select>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Location <span class="text-red-400">*</span></label>
-                                    <select name="location" class="mobile-input" required><option value="">Select...</option>${createOptions(appSettings.locations)}</select>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Entry Date <span class="text-red-400">*</span></label>
-                                    <input type="date" name="entryDate" class="mobile-input" required />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Expiry Date <span class="text-red-400">*</span></label>
-                                    <input type="date" name="expiryDate" class="mobile-input" required />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-300 mb-1">Vehicle Type <span class="text-red-400">*</span></label>
-                                    <select name="vehicleType" class="mobile-input" required><option value="">Select...</option>${createOptions(appSettings.vehicleTypes)}</select>
-                                </div>
+                                <div><label class="block text-sm font-medium text-slate-300 mb-1">Requester <span class="text-red-400">*</span></label><select name="requester" class="mobile-input" required><option value="">Select...</option>${createOptions(appSettings.requesters)}</select></div>
+                                <div><label class="block text-sm font-medium text-slate-300 mb-1">Location <span class="text-red-400">*</span></label><select name="location" class="mobile-input" required><option value="">Select...</option>${createOptions(appSettings.locations)}</select></div>
+                                <div><label class="block text-sm font-medium text-slate-300 mb-1">Entry Date <span class="text-red-400">*</span></label><input type="date" name="entryDate" class="mobile-input" required /></div>
+                                <div><label class="block text-sm font-medium text-slate-300 mb-1">Expiry Date <span class="text-red-400">*</span></label><input type="date" name="expiryDate" class="mobile-input" required /></div>
+                                <div><label class="block text-sm font-medium text-slate-300 mb-1">Vehicle Type <span class="text-red-400">*</span></label><select name="vehicleType" class="mobile-input" required><option value="">Select...</option>${createOptions(appSettings.vehicleTypes)}</select></div>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-300 mb-1">Visiting Hours <span class="text-red-400">*</span></label>
                                     <select name="timeSlot" class="mobile-input" required>
@@ -301,68 +330,36 @@
                                         <option value="24 Hours">24 Hours</option>
                                     </select>
                                 </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-1 flex items-center gap-2">POC Mobile <span class="text-xs text-slate-500 font-normal">(Optional)</span></label>
+                                    <div class="relative"><input type="tel" name="contactNumber" class="mobile-input pl-10" placeholder="e.g. 9123 4567" /><div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-green-500">${icons.whatsapp}</div></div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Section: Variable Input -->
                         <div class="p-4 bg-slate-900/40 rounded-xl border border-slate-700/50 space-y-4">
                             <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Step 2: Vehicle Info</h3>
-
                             ${currentMode === 'single' ? `
-                                <!-- SINGLE ENTRY FIELDS -->
                                 <div class="space-y-4 animate-fade-in">
-                                    <div>
-                                        <label class="block text-sm font-medium text-slate-300 mb-1">Vehicle Number <span class="text-red-400">*</span></label>
-                                        <input type="text" id="vehicleNumber" name="vehicleNumber" 
-                                            class="mobile-input uppercase tracking-wider font-mono text-lg" 
-                                            placeholder="E.G. SGA 1234 X" required autocomplete="off" />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-slate-300 mb-1">Driver/Owner Name</label>
-                                        <input type="text" name="ownerName" class="mobile-input" placeholder="e.g. John Doe" />
-                                    </div>
-                                </div>
-                            ` : `
-                                <!-- BATCH ENTRY FIELDS -->
+                                    <div><label class="block text-sm font-medium text-slate-300 mb-1">Vehicle Number <span class="text-red-400">*</span></label><input type="text" id="vehicleNumber" name="vehicleNumber" class="mobile-input uppercase tracking-wider font-mono text-lg" placeholder="E.G. SGA 1234 X" required autocomplete="off" /></div>
+                                    <div><label class="block text-sm font-medium text-slate-300 mb-1">Driver/Owner Name</label><input type="text" name="ownerName" class="mobile-input" placeholder="e.g. John Doe" /></div>
+                                </div>` : `
                                 <div class="space-y-4 animate-fade-in">
-                                    <div>
-                                        <label class="block text-sm font-medium text-slate-300 mb-1">Batch Vehicle List (One per line) <span class="text-red-400">*</span></label>
-                                        <textarea name="batchInput" rows="8" class="mobile-input font-mono uppercase" placeholder="SGA1234X&#10;SBB5678Y&#10;SKL9999A"></textarea>
-                                        <p class="text-xs text-slate-500 mt-1">Tip: You can copy-paste a list directly from Excel or Email.</p>
-                                    </div>
-                                </div>
-                            `}
+                                    <div><label class="block text-sm font-medium text-slate-300 mb-1">Batch Vehicle List (One per line) <span class="text-red-400">*</span></label><textarea name="batchInput" rows="8" class="mobile-input font-mono uppercase" placeholder="SGA1234X&#10;SBB5678Y"></textarea></div>
+                                </div>`}
                         </div>
                         
-                        <!-- Shared Bottom Section -->
                         <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-300 mb-1">Notes / Purpose</label>
-                                <textarea name="notes" rows="2" class="mobile-input" placeholder="Optional remarks..."></textarea>
+                            <div><label class="block text-sm font-medium text-slate-300 mb-1">Notes / Purpose</label><textarea name="notes" rows="2" class="mobile-input" placeholder="Optional remarks..."></textarea></div>
+                            <div class="bg-slate-700/30 p-3 rounded-lg border border-slate-700/50">
+                                <div class="flex items-center gap-3"><input type="checkbox" id="escortRequired" name="escortRequired" class="mobile-checkbox"/><label for="escortRequired" class="text-sm font-medium text-slate-300 cursor-pointer select-none">Escort Required</label></div>
+                                <div id="escort-details-container" class="hidden pl-8 mt-2"><label class="block text-sm font-medium text-slate-400 mb-1">Escort By <span class="text-red-400">*</span></label><select id="escortBy" name="escortBy" class="mobile-input"><option value="">Select team...</option>${createOptions(appSettings.escortBy)}</select></div>
                             </div>
-
-                             <div class="bg-slate-700/30 p-3 rounded-lg border border-slate-700/50">
-                                <div class="flex items-center gap-3">
-                                    <input type="checkbox" id="escortRequired" name="escortRequired" class="mobile-checkbox"/>
-                                    <label for="escortRequired" class="text-sm font-medium text-slate-300 cursor-pointer select-none">Escort Required</label>
-                                </div>
-                                <div id="escort-details-container" class="hidden pl-8 mt-2">
-                                    <label class="block text-sm font-medium text-slate-400 mb-1">Escort By <span class="text-red-400">*</span></label>
-                                    <select id="escortBy" name="escortBy" class="mobile-input">
-                                        <option value="">Select team...</option>
-                                        ${createOptions(appSettings.escortBy)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-slate-300 mb-1">Approved By <span class="text-red-400">*</span></label>
-                                <select name="approvedBy" class="mobile-input" required><option value="">Select...</option>${createOptions(appSettings.approvedBy)}</select>
-                            </div>
-
+                            <div><label class="block text-sm font-medium text-slate-300 mb-1">Approved By <span class="text-red-400">*</span></label><select name="approvedBy" class="mobile-input" required><option value="">Select...</option>${createOptions(appSettings.approvedBy)}</select></div>
+                            
                             <div class="pt-2">
-                                <button type="submit" id="submit-btn" class="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-blue-600 text-white text-lg font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
-                                    ${currentMode === 'batch' ? 'Process Batch Registration' : 'Submit Vehicle Reference'}
+                                <button type="submit" id="review-btn" class="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-blue-600 text-white text-lg font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
+                                    Proceed to Review
                                 </button>
                             </div>
                         </div>
@@ -370,32 +367,26 @@
                 </div>
             `;
             
-            // Attach Single Mode Input Formatter
             if (currentMode === 'single') {
                 const vInput = document.getElementById('vehicleNumber');
                 if (vInput) vInput.addEventListener('input', (e) => { e.target.value = formatVehicleNumber(e.target.value); });
             }
 
-            // Escort Toggle
             const escortCb = document.getElementById('escortRequired');
-            const escortDiv = document.getElementById('escort-details-container');
-            const escortSel = document.getElementById('escortBy');
             if(escortCb) {
                 escortCb.addEventListener('change', (e) => {
-                    if(e.target.checked) {
-                        escortDiv.classList.remove('hidden');
-                        escortSel.required = true;
-                    } else {
-                        escortDiv.classList.add('hidden');
-                        escortSel.required = false;
-                        escortSel.value = '';
-                    }
+                    document.getElementById('escort-details-container').classList.toggle('hidden', !e.target.checked);
+                    document.getElementById('escortBy').required = e.target.checked;
                 });
             }
 
-            // Tab Switching
             document.getElementById('mode-single').addEventListener('click', () => { currentMode = 'single'; renderApp(); });
             document.getElementById('mode-batch').addEventListener('click', () => { currentMode = 'batch'; renderApp(); });
+            
+            document.getElementById('open-search-btn').addEventListener('click', () => {
+                searchModal.classList.remove('hidden');
+                document.getElementById('search-input').focus();
+            });
         };
 
         // --- Logic Handlers ---
@@ -405,7 +396,6 @@
             const button = form.querySelector('button[type="submit"]');
             button.disabled = true;
             button.textContent = 'Verifying...';
-            
             try {
                 const q = query(collection(db, "admins"), where("username", "==", form.username.value));
                 const querySnap = await getDocs(q);
@@ -418,186 +408,186 @@
             }
         };
 
-        // --- Check Duplicate Logic ---
-        const checkDuplicate = async (cleanVehicleNumber, expiryDateObj) => {
-            const now = new Date();
-            now.setHours(0,0,0,0);
-            // Query active records for this plate
-            const q = query(collection(db, DB_COLLECTION), where("vehicleNumber", "==", cleanVehicleNumber));
-            const snap = await getDocs(q);
-            // Find any doc where expiry >= today
-            const active = snap.docs.find(d => d.data().expiryDate.toDate() >= now);
-            if (active) {
-                return `Already active (Expires: ${active.data().expiryDate.toDate().toLocaleDateString()})`;
-            }
-            return null; // No duplicate found
-        };
-
-        const handleSingleSubmit = async (e) => {
+        // --- PREPARE REVIEW (VALIDATION) ---
+        const prepareReview = async (e) => {
             e.preventDefault();
             const form = e.target;
-            const button = document.getElementById('submit-btn');
-            const originalText = button.innerHTML;
+            const button = document.getElementById('review-btn');
+            const originalText = button.innerText;
             button.disabled = true;
-            button.innerHTML = `<span class="animate-pulse">Processing...</span>`;
+            button.innerText = 'Validating...';
 
             try {
                 const data = Object.fromEntries(new FormData(form).entries());
-                const cleanNum = data.vehicleNumber.replace(/\s/g, '');
                 const entry = parseLocalDate(data.entryDate);
                 const expiry = parseLocalDate(data.expiryDate);
 
-                if (!cleanNum) throw new Error("Vehicle Number missing.");
-                if (expiry < entry) throw new Error("Expiry date is before entry date.");
+                if (expiry < entry) throw new Error("Expiry date cannot be before entry date.");
+                if (!data.requester) throw new Error("Requester is required.");
 
-                // Duplicate Check
-                const dupError = await checkDuplicate(cleanNum, expiry);
-                if (dupError) throw new Error(`Vehicle ${formatVehicleNumber(cleanNum)}: ${dupError}`);
+                let vehiclesToAdd = [];
+                if (currentMode === 'single') {
+                    const cleanNum = data.vehicleNumber.replace(/\s/g, '');
+                    if (!cleanNum) throw new Error("Vehicle Number required.");
+                    vehiclesToAdd.push({ plate: cleanNum, name: data.ownerName || "" });
+                } else {
+                    const lines = (data.batchInput || "").split(/\n/).map(l => l.trim()).filter(l => l.length > 0);
+                    if (lines.length === 0) throw new Error("Enter at least one vehicle.");
+                    lines.forEach(line => {
+                        let plate = line;
+                        let name = "";
+                        if (line.includes(',')) {
+                            const parts = line.split(',');
+                            plate = parts[0];
+                            name = parts.slice(1).join(',').trim();
+                        }
+                        const clean = plate.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                        if (clean.length >= 2) vehiclesToAdd.push({ plate: clean, name: name });
+                    });
+                }
+                
+                const now = new Date(); now.setHours(0,0,0,0);
+                const duplicates = [];
+                await Promise.all(vehiclesToAdd.map(async (v) => {
+                    const q = query(collection(db, DB_COLLECTION), where("vehicleNumber", "==", v.plate));
+                    const snap = await getDocs(q);
+                    const active = snap.docs.find(d => d.data().expiryDate.toDate() >= now);
+                    if (active) duplicates.push(v.plate);
+                }));
 
-                await addDoc(collection(db, DB_COLLECTION), {
-                    requester: data.requester,
-                    vehicleNumber: cleanNum,
-                    ownerName: data.ownerName || "",
-                    vehicleType: data.vehicleType,
-                    location: data.location,
-                    timeSlot: data.timeSlot,
-                    entryDate: Timestamp.fromDate(entry),
-                    expiryDate: Timestamp.fromDate(expiry),
-                    notes: data.notes || "",
+                if (duplicates.length > 0) throw new Error(`Duplicates active: ${duplicates.join(', ')}`);
+
+                pendingSubmissionData = {
+                    ...data,
+                    entry, expiry,
+                    vehicles: vehiclesToAdd,
                     escortRequired: data.escortRequired === 'on',
-                    escortBy: data.escortRequired === 'on' ? data.escortBy : "",
-                    approvedBy: data.approvedBy,
                     createdAt: Timestamp.now(),
-                    createdBy: authUser.uid 
-                });
+                    createdBy: authUser.uid
+                };
 
-                showNotification("Vehicle Added Successfully!", "success");
-                form.reset();
-                document.getElementById('escort-details-container').classList.add('hidden');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                // POPULATE MODAL
+                document.getElementById('review-count').textContent = vehiclesToAdd.length;
+                document.getElementById('review-summary-text').textContent = `${entry.toLocaleDateString()} • ${data.requester}`;
+                
+                const listHtml = vehiclesToAdd.map(v => `
+                    <div class="flex justify-between py-2">
+                        <span class="font-bold text-white">${formatVehicleNumber(v.plate)}</span>
+                        <span class="text-xs opacity-50">${v.name || '-'}</span>
+                    </div>`).join('');
+                document.getElementById('review-list').innerHTML = listHtml;
+
+                // WHATSAPP SETUP (BUT HIDDEN)
+                waContainer.classList.add('hidden'); // Always start hidden
+                const contactNum = data.contactNumber ? data.contactNumber.replace(/[^0-9]/g, '') : '';
+                
+                if (contactNum) {
+                    document.getElementById('send-whatsapp-btn').classList.remove('hidden');
+                    document.getElementById('no-contact-msg').classList.add('hidden');
+                    const vehicleListText = vehiclesToAdd.map(v => `- ${formatVehicleNumber(v.plate)}`).join('\n');
+                    const message = `Hi, verifying registration details for *${data.requester}*.\n\n📅 *Valid:* ${entry.toLocaleDateString()} to ${expiry.toLocaleDateString()}\n📍 *Location:* ${data.location}\n\n*Vehicles:* \n${vehicleListText}\n\nPlease confirm.`;
+                    document.getElementById('whatsapp-preview').value = message;
+                    document.getElementById('send-whatsapp-btn').href = `https://wa.me/65${contactNum}?text=${encodeURIComponent(message)}`;
+                } else {
+                    document.getElementById('send-whatsapp-btn').classList.add('hidden');
+                    document.getElementById('no-contact-msg').classList.remove('hidden');
+                }
+
+                reviewModal.classList.remove('hidden');
+
             } catch (err) {
                 showNotification(err.message, "error");
             } finally {
                 button.disabled = false;
-                button.innerHTML = originalText;
+                button.innerText = originalText;
             }
         };
 
-        const handleBatchSubmit = async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const button = document.getElementById('submit-btn');
-            const originalText = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = `<span class="animate-pulse">Verifying Batch...</span>`;
+        // --- CONFIRM SAVE ---
+        const handleConfirmRegistration = async () => {
+            if (!pendingSubmissionData) return;
+            const btn = document.getElementById('confirm-save-btn');
+            btn.disabled = true;
+            btn.innerText = "Saving...";
 
             try {
-                const data = Object.fromEntries(new FormData(form).entries());
-                const rawText = data.batchInput || "";
-                const entry = parseLocalDate(data.entryDate);
-                const expiry = parseLocalDate(data.expiryDate);
-
-                if (expiry < entry) throw new Error("Expiry date is before entry date.");
-
-                // 1. Parse Lines
-                const lines = rawText.split(/\n/).map(l => l.trim()).filter(l => l.length > 0);
-                if (lines.length === 0) throw new Error("Please enter at least one vehicle number.");
-
-                const vehiclesToAdd = [];
-                const errors = [];
-
-                // 2. Process each line (Check format & Duplicates)
-                // Use Promise.all for parallel checking
-                await Promise.all(lines.map(async (line, index) => {
-                    // Simple parse: assume whole line is vehicle number, stripping special chars
-                    // If user puts "SGA1234X, John", we might want to split. 
-                    // For now, let's strip everything except alphanum to get the plate
-                    
-                    // Logic: If comma exists, split it. Else take whole line.
-                    let plate = line;
-                    let name = "";
-                    if (line.includes(',')) {
-                        const parts = line.split(',');
-                        plate = parts[0];
-                        name = parts.slice(1).join(',').trim();
-                    }
-                    
-                    const cleanPlate = plate.replace(/[^A-Z0-9]/gi, '').toUpperCase();
-                    
-                    if (cleanPlate.length < 2) {
-                        errors.push(`Line ${index + 1}: Invalid format "${line}"`);
-                        return;
-                    }
-
-                    const dupMsg = await checkDuplicate(cleanPlate, expiry);
-                    if (dupMsg) {
-                        errors.push(`Line ${index + 1} (${cleanPlate}): ${dupMsg}`);
-                    } else {
-                        vehiclesToAdd.push({ 
-                            plate: cleanPlate, 
-                            name: name 
-                        });
-                    }
-                }));
-
-                if (errors.length > 0) {
-                    // Stop if any errors found to prevent partial bad state
-                    throw new Error(`Batch Failed:\n${errors.join('\n')}`);
-                }
-
-                // 3. Commit Batch
-                button.innerHTML = `<span class="animate-pulse">Saving ${vehiclesToAdd.length} Vehicles...</span>`;
-                
                 const batch = writeBatch(db);
-                
-                vehiclesToAdd.forEach(v => {
+                pendingSubmissionData.vehicles.forEach(v => {
                     const newDocRef = doc(collection(db, DB_COLLECTION));
                     batch.set(newDocRef, {
-                        requester: data.requester,
+                        requester: pendingSubmissionData.requester,
                         vehicleNumber: v.plate,
-                        ownerName: v.name, // From parsing or empty
-                        vehicleType: data.vehicleType,
-                        location: data.location,
-                        timeSlot: data.timeSlot,
-                        entryDate: Timestamp.fromDate(entry),
-                        expiryDate: Timestamp.fromDate(expiry),
-                        notes: data.notes || "Batch Entry",
-                        escortRequired: data.escortRequired === 'on',
-                        escortBy: data.escortRequired === 'on' ? data.escortBy : "",
-                        approvedBy: data.approvedBy,
-                        createdAt: Timestamp.now(),
-                        createdBy: authUser.uid 
+                        ownerName: v.name,
+                        vehicleType: pendingSubmissionData.vehicleType,
+                        location: pendingSubmissionData.location,
+                        timeSlot: pendingSubmissionData.timeSlot,
+                        entryDate: Timestamp.fromDate(pendingSubmissionData.entry),
+                        expiryDate: Timestamp.fromDate(pendingSubmissionData.expiry),
+                        notes: pendingSubmissionData.notes || "",
+                        contactNumber: pendingSubmissionData.contactNumber || "",
+                        escortRequired: pendingSubmissionData.escortRequired,
+                        escortBy: pendingSubmissionData.escortRequired ? pendingSubmissionData.escortBy : "",
+                        approvedBy: pendingSubmissionData.approvedBy,
+                        createdAt: pendingSubmissionData.createdAt,
+                        createdBy: pendingSubmissionData.createdBy
                     });
                 });
-
                 await batch.commit();
-
-                showNotification(`Successfully added ${vehiclesToAdd.length} vehicles!`, "success");
-                form.reset();
+                reviewModal.classList.add('hidden');
+                showNotification(`Registered ${pendingSubmissionData.vehicles.length} vehicles successfully.`, "success");
+                document.getElementById('registration-form').reset();
                 document.getElementById('escort-details-container').classList.add('hidden');
+                pendingSubmissionData = null;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-
-            } catch (err) {
-                // Format error message nicely if it has newlines (alert or just notification)
-                if (err.message.includes('\n')) {
-                    alert(err.message); // Alert is better for multi-line lists of errors
-                } else {
-                    showNotification(err.message, "error");
-                }
-            } finally {
-                button.disabled = false;
-                button.innerHTML = originalText;
+            } catch (error) {
+                showNotification("Save failed: " + error.message, "error");
+                btn.disabled = false;
+                btn.innerText = "Confirm & Register";
             }
         };
 
-        // --- Listeners ---
+        // --- Search Logic (Same) ---
+        const handleSearch = async () => {
+            const input = document.getElementById('search-input');
+            const resultsArea = document.getElementById('search-results-area');
+            if (!input.value.trim()) return;
+            resultsArea.innerHTML = '<div class="text-center text-slate-400">Searching...</div>';
+            const term = input.value.replace(/\s/g, '').toUpperCase();
+            try {
+                const q = query(collection(db, DB_COLLECTION), where("vehicleNumber", "==", term), orderBy("expiryDate", "desc"), limit(5));
+                const snap = await getDocs(q);
+                if (snap.empty) {
+                    resultsArea.innerHTML = `<div class="p-3 bg-slate-700/30 rounded border border-slate-600 text-center text-slate-300">No history found for ${term}</div>`;
+                } else {
+                    const now = new Date();
+                    const html = snap.docs.map(d => {
+                        const v = d.data();
+                        const isExpired = v.expiryDate.toDate() < now;
+                        return `<div class="p-3 bg-slate-700/50 rounded border border-slate-600"><div class="flex justify-between"><span class="font-mono font-bold text-white">${formatVehicleNumber(v.vehicleNumber)}</span><span class="text-xs font-bold px-2 rounded ${isExpired ? 'text-red-400 bg-red-900/20' : 'text-green-400 bg-green-900/20'}">${isExpired ? 'EXPIRED' : 'ACTIVE'}</span></div><div class="text-xs text-slate-400 mt-1">Requester: ${v.requester} • Expiry: ${formatDateDisplay(v.expiryDate)}</div>${v.contactNumber ? `<div class="text-xs text-slate-500 mt-1">Contact: ${v.contactNumber}</div>` : ''}</div>`;
+                    }).join('');
+                    resultsArea.innerHTML = `<div class="space-y-2">${html}</div>`;
+                }
+            } catch (err) { resultsArea.innerHTML = `<div class="text-red-400">Error: ${err.message}</div>`; }
+        };
+
         appRoot.addEventListener("submit", (e) => {
             if (e.target.id === 'login-form') handleLogin(e);
-            if (e.target.id === 'add-vehicle-form') handleSingleSubmit(e);
-            if (e.target.id === 'batch-vehicle-form') handleBatchSubmit(e);
+            if (e.target.id === 'registration-form') prepareReview(e);
         });
+        
         appRoot.addEventListener("click", async (e) => {
             if (e.target.closest('#sign-out-btn')) await signOut(auth);
+            if (e.target.closest('.close-modal-btn') || e.target === searchModal) searchModal.classList.add('hidden');
+            if (e.target.closest('#perform-search-btn')) handleSearch();
+            
+            // Toggle WhatsApp section
+            if (e.target.closest('#toggle-whatsapp-btn')) {
+                waContainer.classList.toggle('hidden');
+            }
+            
+            // Modal Actions
+            if (e.target === reviewModal || e.target.id === 'cancel-review-btn') reviewModal.classList.add('hidden');
+            if (e.target.id === 'confirm-save-btn') handleConfirmRegistration();
         });
     </script>
 </body>
