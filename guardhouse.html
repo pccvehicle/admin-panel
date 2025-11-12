@@ -32,6 +32,12 @@
             background-color: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(4px);
         }
+        /* Scrollable Modal Body Fix */
+        #modal-body {
+            max-height: 65vh; /* Limit height to 65% of view height */
+            overflow-y: auto; /* Enable vertical scrolling */
+            padding-right: 4px; /* Avoid scrollbar overlap */
+        }
         
         /* Mobile-friendly inputs */
         .mobile-input {
@@ -402,11 +408,14 @@
 
     <!-- Global Modal for Confirmations -->
     <div id="modal-backdrop" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-        <div id="modal-content" class="w-full max-w-md bg-slate-800 rounded-xl shadow-2xl p-6 space-y-4 border border-slate-700">
-            <h3 id="modal-title" class="text-xl font-bold text-white"></h3>
-            <p id="modal-body" class="text-slate-300"></p>
-            <!-- Default modal body content, will be replaced for custom modals -->
-            <div id="modal-actions" class="flex justify-end gap-3 pt-2">
+        <div id="modal-content" class="w-full max-w-md bg-slate-800 rounded-xl shadow-2xl p-6 border border-slate-700 flex flex-col max-h-[90vh]">
+            <div class="flex-shrink-0 mb-4">
+                <h3 id="modal-title" class="text-xl font-bold text-white"></h3>
+            </div>
+            
+            <div id="modal-body" class="text-slate-300 flex-grow overflow-y-auto pr-2 mb-4"></div>
+            
+            <div id="modal-actions" class="flex-shrink-0 flex justify-end gap-3 pt-2 border-t border-slate-700">
                 <button id="modal-cancel-btn" class="px-4 py-2 rounded-lg bg-slate-600 text-slate-200 hover:bg-slate-500 font-medium">Cancel</button>
                 <button id="modal-confirm-btn" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-500 font-medium">Confirm</button>
             </div>
@@ -485,7 +494,7 @@
             trash: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
             car: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1m-4 0H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1m0 0v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1M4 16v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1H4Zm0 0H3m16 0h1M5 11h14M5 8h14"/></svg>`,
             motorcycle: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16H3a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h2m16 0h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2m-3-11 3 3m-3-3-3 3m-2 11h3l3-6-4-3-4 3 3 6Z"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`,
-            settings: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
+            settings: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
             signOut: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
             keypadBackspace: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM18 13H9.83l1.59 1.59L10 16l-4-4 4-4 1.41 1.41L9.83 11H18v2z"/></svg>`,
             list: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`,
@@ -1422,7 +1431,7 @@
             `;
         };
 
-        // *** UPDATED: applyFilter to be alphanumeric OR numeric-only ***
+        // *** UPDATED: applyFilter with contains search ***
         const applyFilter = () => {
             const searchBox = document.getElementById("searchBox");
             if (!searchBox) { 
@@ -1430,8 +1439,11 @@
                 return; 
             }
             
-            const term = searchBox.value.replace(/\s/g, '').trim().toUpperCase(); // Remove spaces for search logic
-            const isNumericTerm = /^\d+$/.test(term); // Check if term is ONLY numbers
+            // Clean search term: remove spaces, uppercase
+            const term = searchBox.value.replace(/\s/g, '').trim().toUpperCase();
+            
+            // Check if term is purely numeric
+            const isNumericTerm = /^\d+$/.test(term); 
             
             if (!term) {
                 filtered = [...allRows];
@@ -1448,6 +1460,7 @@
                         return numericPartOfPlate.includes(term);
                     } else {
                         // Alphanumeric search: Check if the CLEAN plate includes the CLEAN term
+                        // CHANGED from startsWith() to includes() to allow partial suffix matches (e.g. "18K")
                         return cleanPlate.includes(term);
                     }
                 });
