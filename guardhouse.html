@@ -1404,7 +1404,7 @@
             `;
         };
 
-        // *** UPDATED: applyFilter to be alphanumeric OR numeric-only ***
+        // *** UPDATED: applyFilter with contains search ***
         const applyFilter = () => {
             const searchBox = document.getElementById("searchBox");
             if (!searchBox) { 
@@ -1412,8 +1412,11 @@
                 return; 
             }
             
-            const term = searchBox.value.replace(/\s/g, '').trim().toUpperCase(); // Remove spaces for search logic
-            const isNumericTerm = /^\d+$/.test(term); // Check if term is ONLY numbers
+            // Clean search term: remove spaces, uppercase
+            const term = searchBox.value.replace(/\s/g, '').trim().toUpperCase();
+            
+            // Check if term is purely numeric
+            const isNumericTerm = /^\d+$/.test(term); 
             
             if (!term) {
                 filtered = [...allRows];
@@ -1421,13 +1424,17 @@
                 filtered = allRows.filter(r => {
                     if (!r.vehicleNumber) return false;
                     
+                    // Normalize stored plate: remove spaces, uppercase (just in case)
+                    const cleanPlate = r.vehicleNumber.replace(/\s/g, '').toUpperCase();
+                    
                     if (isNumericTerm) {
-                        // If term is just numbers, check if numeric part of plate *contains* it
-                        const numericPartOfPlate = r.vehicleNumber.replace(/[^0-9]/g, '');
+                        // Numeric search: Check if the NUMBER sequence exists in the plate's numbers
+                        const numericPartOfPlate = cleanPlate.replace(/[^0-9]/g, '');
                         return numericPartOfPlate.includes(term);
                     } else {
-                        // Otherwise, check if plate *starts with* the alphanumeric term
-                        return r.vehicleNumber.startsWith(term);
+                        // Alphanumeric search: Check if the CLEAN plate includes the CLEAN term
+                        // CHANGED from startsWith() to includes() to allow partial suffix matches (e.g. "18K")
+                        return cleanPlate.includes(term);
                     }
                 });
             }
