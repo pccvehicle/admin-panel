@@ -454,12 +454,14 @@
         const SETTINGS_DOC_ID = "panelSettings"; 
         let settingsDocRef;
         let appSettings = {
+            requesters: [],
             escortBy: [],
             vehicleTypes: [],
             locations: [],
             approvedBy: []
         };
         const defaultSettings = {
+            requesters: ["A DIV", "CID", "CAD"],
             escortBy: ["SMM", "HTX", "Alpha"],
             vehicleTypes: ["Car", "Motorcycle"],
             locations: ["PCC"],
@@ -483,7 +485,7 @@
             trash: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
             car: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1m-4 0H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1m0 0v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1M4 16v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1H4Zm0 0H3m16 0h1M5 11h14M5 8h14"/></svg>`,
             motorcycle: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16H3a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h2m16 0h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2m-3-11 3 3m-3-3-3 3m-2 11h3l3-6-4-3-4 3 3 6Z"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`,
-            settings: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
+            settings: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
             signOut: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
             keypadBackspace: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM18 13H9.83l1.59 1.59L10 16l-4-4 4-4 1.41 1.41L9.83 11H18v2z"/></svg>`,
             list: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`,
@@ -542,6 +544,7 @@
                 settingsUnsubscribe = onSnapshot(settingsDocRef, (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
+                        appSettings.requesters = data.requesters || [];
                         appSettings.escortBy = data.escortBy || [];
                         appSettings.vehicleTypes = data.vehicleTypes || [];
                         appSettings.locations = data.locations || [];
@@ -813,6 +816,15 @@
                 <div class="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-lg p-6 sm:p-8">
                     <h2 class="text-2xl font-semibold text-white mb-6">Add New Vehicle Reference</h2>
                     <form id="add-vehicle-form" class="space-y-5">
+                        <!-- Requester (New Field) -->
+                        <div>
+                            <label for="requester" class="block text-sm font-medium text-slate-300 mb-1">Requester</label>
+                            <select id="requester" name="requester" class="mobile-input" required>
+                                <option value="">Select requester...</option>
+                                ${createOptions(appSettings.requesters)}
+                            </select>
+                        </div>
+
                         <!-- Vehicle Number -->
                         <div>
                             <label for="vehicleNumber" class="block text-sm font-medium text-slate-300 mb-1">Vehicle Number (Required)</label>
@@ -1305,6 +1317,11 @@
                                         <p class="text-xs text-slate-500 uppercase font-bold mb-1">Notes</p>
                                         <p class="text-sm text-slate-300 italic">"${v.notes}"</p>
                                     </div>` : ''}
+                                     ${v.requester ? `
+                                    <div class="col-span-2 pt-2 border-t border-slate-700">
+                                        <p class="text-xs text-slate-500 uppercase font-bold mb-1">Requester</p>
+                                        <p class="text-sm text-slate-300">${v.requester}</p>
+                                    </div>` : ''}
                                 </div>
 
                                 <button id="exit-single-view-btn" class="exit-btn w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition-all">Back to Full List</button>
@@ -1396,6 +1413,7 @@
                         <p class="text-slate-400 mt-1">Changes are saved instantly and shared with all staff.</p>
                     </div>
                     
+                    ${renderCategory('requesters', 'Requesters', 'e.g. A DIV')}
                     ${renderCategory('escortBy', 'Escort By', 'e.g. SMM')}
                     ${renderCategory('vehicleTypes', 'Vehicle Types', 'e.g. Lorry')}
                     ${renderCategory('locations', 'Locations', 'e.g. HQ')}
@@ -1404,7 +1422,7 @@
             `;
         };
 
-        // *** UPDATED: applyFilter with contains search ***
+        // *** UPDATED: applyFilter to be alphanumeric OR numeric-only ***
         const applyFilter = () => {
             const searchBox = document.getElementById("searchBox");
             if (!searchBox) { 
@@ -1412,11 +1430,8 @@
                 return; 
             }
             
-            // Clean search term: remove spaces, uppercase
-            const term = searchBox.value.replace(/\s/g, '').trim().toUpperCase();
-            
-            // Check if term is purely numeric
-            const isNumericTerm = /^\d+$/.test(term); 
+            const term = searchBox.value.replace(/\s/g, '').trim().toUpperCase(); // Remove spaces for search logic
+            const isNumericTerm = /^\d+$/.test(term); // Check if term is ONLY numbers
             
             if (!term) {
                 filtered = [...allRows];
@@ -1433,7 +1448,6 @@
                         return numericPartOfPlate.includes(term);
                     } else {
                         // Alphanumeric search: Check if the CLEAN plate includes the CLEAN term
-                        // CHANGED from startsWith() to includes() to allow partial suffix matches (e.g. "18K")
                         return cleanPlate.includes(term);
                     }
                 });
@@ -1558,6 +1572,7 @@
                 // Clean vehicle number before saving (remove spaces)
                 const cleanVehicleNumber = data.vehicleNumber.replace(/\s/g, '');
 
+                if (!data.requester) throw new Error("Requester is required.");
                 if (!cleanVehicleNumber) throw new Error("Vehicle Number is required.");
                 if (!data.vehicleType) throw new Error("Vehicle Type is required.");
                 if (!data.location) throw new Error("Location is required.");
@@ -1578,6 +1593,7 @@
                 }
 
                 const payload = {
+                    requester: data.requester,
                     vehicleNumber: cleanVehicleNumber,
                     ownerName: data.ownerName || "",
                     vehicleType: data.vehicleType,
@@ -1677,6 +1693,13 @@
                 <form id="edit-vehicle-form" class="space-y-4">
                     <input type="hidden" name="docId" value="${vehicle.id}">
                     <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Requester</label>
+                        <select name="requester" class="mobile-input" required>
+                            <option value="">Select requester...</option>
+                            ${createOptions(appSettings.requesters, vehicle.requester)}
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-slate-300 mb-1">Vehicle Number</label>
                         <input type="text" name="vehicleNumber" class="mobile-input uppercase font-mono" value="${formatVehicleNumber(vehicle.vehicleNumber)}" required>
                     </div>
@@ -1772,6 +1795,7 @@
 
                     try {
                         await updateDoc(doc(db, DB_COLLECTION, data.docId), {
+                            requester: data.requester,
                             vehicleNumber: cleanVehicleNumber,
                             ownerName: data.ownerName || "",
                             vehicleType: data.vehicleType,
@@ -2032,4 +2056,5 @@
     </script>
 </body>
 </html>
+
 
