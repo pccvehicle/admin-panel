@@ -224,7 +224,7 @@
                         appSettings.vehicleTypes = data.vehicleTypes || [];
                         appSettings.locations = data.locations || [];
                         appSettings.approvedBy = data.approvedBy || [];
-                        if (document.getElementById("add-vehicle-form")) renderApp(); 
+                        if (document.getElementById("registration-form")) renderApp(); 
                     }
                 });
             } catch (error) {
@@ -482,13 +482,17 @@
                 const contactNum = data.contactNumber ? data.contactNumber.replace(/[^0-9]/g, '') : '';
                 
                 if (contactNum) {
-                    document.getElementById('send-whatsapp-btn').classList.remove('hidden');
-                    document.getElementById('no-contact-msg').classList.add('hidden');
+                    // Enable toggle button
+                    document.getElementById('toggle-whatsapp-btn').classList.remove('hidden');
+                    // Setup draft
                     const vehicleListText = vehiclesToAdd.map(v => `- ${formatVehicleNumber(v.plate)}`).join('\n');
                     const message = `Hi, verifying registration details for *${data.requester}*.\n\n📅 *Valid:* ${entry.toLocaleDateString()} to ${expiry.toLocaleDateString()}\n📍 *Location:* ${data.location}\n\n*Vehicles:* \n${vehicleListText}\n\nPlease confirm.`;
                     document.getElementById('whatsapp-preview').value = message;
                     document.getElementById('send-whatsapp-btn').href = `https://wa.me/65${contactNum}?text=${encodeURIComponent(message)}`;
+                    document.getElementById('no-contact-msg').classList.add('hidden');
+                    document.getElementById('send-whatsapp-btn').classList.remove('hidden');
                 } else {
+                    // Still show toggle, but inside it says "No contact"
                     document.getElementById('send-whatsapp-btn').classList.add('hidden');
                     document.getElementById('no-contact-msg').classList.remove('hidden');
                 }
@@ -570,24 +574,29 @@
             } catch (err) { resultsArea.innerHTML = `<div class="text-red-400">Error: ${err.message}</div>`; }
         };
 
-        appRoot.addEventListener("submit", (e) => {
+        // --- GLOBAL Event Wiring ---
+        document.addEventListener("submit", (e) => {
             if (e.target.id === 'login-form') handleLogin(e);
             if (e.target.id === 'registration-form') prepareReview(e);
         });
         
-        appRoot.addEventListener("click", async (e) => {
-            if (e.target.closest('#sign-out-btn')) await signOut(auth);
+        // IMPORTANT: Listening on DOCUMENT, not appRoot
+        document.addEventListener("click", async (e) => {
+            // Modal Logic (Global)
             if (e.target.closest('.close-modal-btn') || e.target === searchModal) searchModal.classList.add('hidden');
-            if (e.target.closest('#perform-search-btn')) handleSearch();
             
-            // Toggle WhatsApp section
+            // Review Modal Logic
+            if (e.target === reviewModal || e.target.closest('#cancel-review-btn')) reviewModal.classList.add('hidden');
+            
+            // Using closest() to catch clicks on icons/text inside buttons
+            if (e.target.closest('#confirm-save-btn')) handleConfirmRegistration();
             if (e.target.closest('#toggle-whatsapp-btn')) {
                 waContainer.classList.toggle('hidden');
             }
-            
-            // Modal Actions
-            if (e.target === reviewModal || e.target.id === 'cancel-review-btn') reviewModal.classList.add('hidden');
-            if (e.target.id === 'confirm-save-btn') handleConfirmRegistration();
+            if (e.target.closest('#perform-search-btn')) handleSearch();
+
+            // App Logic
+            if (e.target.closest('#sign-out-btn')) await signOut(auth);
         });
     </script>
 </body>
