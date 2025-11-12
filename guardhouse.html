@@ -123,13 +123,15 @@
             border-radius: 1rem;
             text-align: center;
             display: flex;
+            flex-direction: column; /* CHANGED: Stack vertically */
             align-items: center;
-            justify-content: space-between;
-            padding: 1.5rem 1rem;
+            justify-content: center;
+            padding: 2rem 1rem; /* Increased padding */
             width: 100%;
             max-width: 100%;
             margin: 0 auto;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.1);
+            gap: 1rem; /* Spacing between number and badge */
         }
         /* Status: CLEARED (Green) */
         .car-plate-display-cleared {
@@ -151,21 +153,25 @@
             font-family: 'Courier New', monospace;
             font-weight: 900;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
-            letter-spacing: 4px;
+            letter-spacing: 2px;
             color: white !important;
-            font-size: 2.25rem; /* 36px */
+            font-size: 2.5rem; /* Slightly larger */
             flex-grow: 1;
             text-align: center;
+            white-space: normal; /* Allow wrap if absolutely necessary */
+            word-break: break-word;
+            line-height: 1.1;
         }
         .plate-status-badge {
             display: inline-flex;
             align-items: center;
-            padding: 0.5rem 1rem;
+            padding: 0.5rem 1.5rem;
             border-radius: 9999px;
-            font-size: 0.875rem;
-            font-weight: 700;
+            font-size: 1rem;
+            font-weight: 800;
             flex-shrink: 0;
             color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
         .plate-status-badge.success { background-color: #16a34a; }
         .plate-status-badge.warning { background-color: #f59e0b; color: #000; }
@@ -224,6 +230,7 @@
             font-weight: 700;
             font-size: 1.1rem;
             color: #e2e8f0;
+            white-space: nowrap;
         }
         .list-item-location {
             font-size: 0.9rem;
@@ -329,6 +336,47 @@
         .status-border-success { border-left: 4px solid #16a34a; }
         .status-border-warning { border-left: 4px solid #f59e0b; }
         .status-border-error { border-left: 4px solid #dc2626; }
+
+        /* PRINT STYLES - 24hr Log */
+        @media print {
+            body { background-color: white; color: black; }
+            header, nav, #modal-backdrop, #print-btn-container { display: none !important; }
+            #app-root { max-width: none; padding: 0; margin: 0; }
+            
+            /* Hide everything except the daily log container when printing */
+            #view-content > div:not(#daily-log-container) { display: none; }
+            #daily-log-container { display: block !important; background: white !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+            
+            .print-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-family: 'Inter', sans-serif;
+                font-size: 12px;
+            }
+            .print-table th {
+                background-color: #f3f4f6;
+                color: #111827;
+                border: 1px solid #000;
+                padding: 8px;
+                text-align: left;
+                font-weight: bold;
+                white-space: nowrap; /* Prevent header wrapping */
+            }
+            .print-table td {
+                border: 1px solid #000;
+                padding: 8px;
+                color: #000;
+                white-space: nowrap; /* Prevent cell wrapping */
+            }
+            .print-header {
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 2px solid black;
+                padding-bottom: 10px;
+            }
+            .print-header h1 { font-size: 24px; font-weight: bold; margin: 0; color: black; }
+            .print-header p { margin: 5px 0 0; color: #333; }
+        }
         
     </style>
 </head>
@@ -375,8 +423,8 @@
         
         // --- App State ---
         let app, auth, db, authUser;
-        let currentView = 'add'; // 'add', 'search', 'settings'
-        let isGridView = false; // New state for grid view toggle
+        let currentView = 'add'; // 'add', 'search', 'settings', 'log'
+        let isGridView = false; 
         let allRows = []; 
         let filtered = [];
         let confirmCallback = null;
@@ -421,7 +469,9 @@
             signOut: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
             keypadBackspace: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM18 13H9.83l1.59 1.59L10 16l-4-4 4-4 1.41 1.41L9.83 11H18v2z"/></svg>`,
             list: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`,
-            grid: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`
+            grid: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`,
+            clipboard: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>`,
+            print: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>`
         };
 
         // --- Firebase Initialization ---
@@ -504,6 +554,8 @@
                         } else {
                             applyFilter();
                         }
+                    } else if (currentView === 'log') {
+                        renderDailyLogView();
                     }
                 }, (error) => {
                     console.error("Error fetching all vehicles:", error);
@@ -548,6 +600,35 @@
             if (!date) return "N/A";
             const d = date instanceof Date ? date : (date.toDate ? date.toDate() : new Date(date));
             return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
+        };
+
+        // --- Auto-Formatter for Vehicle Number ---
+        const formatVehicleNumber = (val) => {
+            if (!val) return '';
+            
+            // Remove existing spaces first to get clean string
+            const clean = val.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            
+            // Pattern: Letters + Numbers + Letters (e.g., SBS 1234 J)
+            // Group 1: Initial Letters (1-3)
+            // Group 2: Numbers (1-4)
+            // Group 3: Suffix Letter (1)
+            
+            // Attempt to match: (LETTERS)(NUMBERS)(LETTER)
+            const match = clean.match(/^([A-Z]+)(\d+)([A-Z]?)$/);
+            
+            if (match) {
+                return `${match[1]} ${match[2]} ${match[3]}`.trim();
+            }
+            
+            // Fallback if incomplete (e.g. just letters or letters+numbers)
+            // Try: Letters + Numbers
+            const matchPartial = clean.match(/^([A-Z]+)(\d+)$/);
+            if (matchPartial) {
+                return `${matchPartial[1]} ${matchPartial[2]}`.trim();
+            }
+            
+            return clean;
         };
 
         // *** Status Checker Function ***
@@ -628,14 +709,17 @@
                     <p class="text-slate-400">Manage vehicle clearance database.</p>
                 </header>
                 
-                <nav class="flex gap-2 mb-6">
-                    <button id="nav-add" data-view="add" class="nav-button flex items-center gap-2" data-active="${currentView === 'add'}">
+                <nav class="flex gap-2 mb-6 overflow-x-auto pb-2">
+                    <button id="nav-add" data-view="add" class="nav-button flex items-center gap-2 whitespace-nowrap" data-active="${currentView === 'add'}">
                         <span class="w-5 h-5">${icons.add}</span> Add Vehicle
                     </button>
-                    <button id="nav-search" data-view="search" class="nav-button flex items-center gap-2" data-active="${currentView === 'search'}">
+                    <button id="nav-search" data-view="search" class="nav-button flex items-center gap-2 whitespace-nowrap" data-active="${currentView === 'search'}">
                         <span class="w-5 h-5">${icons.search}</span> Search & Manage
                     </button>
-                    <button id="nav-settings" data-view="settings" class="nav-button flex items-center gap-2" data-active="${currentView === 'settings'}">
+                    <button id="nav-log" data-view="log" class="nav-button flex items-center gap-2 whitespace-nowrap" data-active="${currentView === 'log'}">
+                        <span class="w-5 h-5">${icons.clipboard}</span> Daily Log
+                    </button>
+                    <button id="nav-settings" data-view="settings" class="nav-button flex items-center gap-2 whitespace-nowrap" data-active="${currentView === 'settings'}">
                         <span class="w-5 h-5">${icons.settings}</span> Settings
                     </button>
                 </nav>
@@ -659,11 +743,15 @@
                 } else {
                     renderSearchView();
                 }
+            } else if (currentView === 'log') {
+                renderDailyLogView();
             } else if (currentView === 'settings') {
                 renderSettingsView();
             }
         };
 
+        // ... (Other render functions remain the same: Add, Keypad, Search) ...
+        
         const renderAddVehicleForm = () => {
             const contentEl = document.getElementById("view-content");
             if (!contentEl) return;
@@ -681,9 +769,8 @@
                         <div>
                             <label for="vehicleNumber" class="block text-sm font-medium text-slate-300 mb-1">Vehicle Number (Required)</label>
                             <input type="text" id="vehicleNumber" name="vehicleNumber" 
-                                   oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" 
                                    class="mobile-input uppercase tracking-wider font-mono" 
-                                   placeholder="E.G. SGA1234X" required />
+                                   placeholder="E.G. SGA 1234 X" required />
                         </div>
                         
                         <!-- Owner Name (Optional) -->
@@ -777,6 +864,16 @@
                     </form>
                 </div>
             `;
+            
+            // Attach formatter to input
+            setTimeout(() => {
+                const vInput = document.getElementById('vehicleNumber');
+                if (vInput) {
+                    vInput.addEventListener('input', (e) => {
+                        e.target.value = formatVehicleNumber(e.target.value);
+                    });
+                }
+            }, 0);
         };
         
         const renderKeypad = () => {
@@ -858,14 +955,13 @@
             const searchBox = document.getElementById("searchBox");
             if (searchBox) {
                  const currentVal = filtered.length > 0 && filtered.length < allRows.length ? 
-                                   filtered[0].vehicleNumber.substring(0, searchBox.value.length) :
+                                   formatVehicleNumber(filtered[0].vehicleNumber.substring(0, searchBox.value.replace(/\s/g, '').length)) :
                                    searchBox.value;
                 searchBox.value = currentVal;
             }
             render();
         };
 
-        // *** NEW: Grid View Renderer ***
         const renderGridView = () => {
             const contentEl = document.getElementById("view-content");
             if (!contentEl) return;
@@ -907,7 +1003,7 @@
                                 ${allRows.length === 0 ? `<tr><td colspan="6" class="text-center py-8 text-slate-500">No records found.</td></tr>` : 
                                   allRows.map(v => {
                                     const status = getVehicleStatus(v);
-                                    let statusColorClass = 'status-border-success'; // Default green
+                                    let statusColorClass = 'status-border-success'; 
                                     let statusText = '<span class="text-green-400">Active</span>';
                                     
                                     if (status === 'expired') {
@@ -920,7 +1016,7 @@
 
                                     return `
                                     <tr class="grid-row ${statusColorClass}">
-                                        <td class="font-mono font-bold text-white">${v.vehicleNumber}</td>
+                                        <td class="font-mono font-bold text-white">${formatVehicleNumber(v.vehicleNumber)}</td>
                                         <td>${v.location}</td>
                                         <td class="hidden sm:table-cell text-slate-400">${v.vehicleType}</td>
                                         <td class="text-slate-400 whitespace-nowrap">${formatDate(v.expiryDate)}</td>
@@ -935,6 +1031,107 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            `;
+        };
+
+        // *** NEW: Daily Log View Renderer ***
+        const renderDailyLogView = () => {
+            const contentEl = document.getElementById("view-content");
+            if (!contentEl) return;
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            // Filter vehicles that are valid for TODAY
+            let todaysVehicles = allRows.filter(v => {
+                if (!v.entryDate || !v.expiryDate) return false;
+                const entry = v.entryDate.toDate();
+                const expiry = v.expiryDate.toDate();
+                expiry.setHours(23,59,59,999); // Include the full expiry day
+                
+                // Check if today falls within the valid range
+                return entry <= tomorrow && expiry >= today;
+            });
+
+            // Sort: FOYER first, then Vehicle Number
+            todaysVehicles.sort((a, b) => {
+                const locA = (a.location || '').toUpperCase();
+                const locB = (b.location || '').toUpperCase();
+                const isFoyerA = locA.includes('FOYER');
+                const isFoyerB = locB.includes('FOYER');
+
+                if (isFoyerA && !isFoyerB) return -1;
+                if (!isFoyerA && isFoyerB) return 1;
+                return a.vehicleNumber.localeCompare(b.vehicleNumber);
+            });
+
+            const todayString = today.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            contentEl.innerHTML = `
+                <div id="daily-log-container" class="bg-white text-black rounded-2xl shadow-lg overflow-hidden sm:p-8 p-4">
+                    <!-- Web View Header -->
+                    <div class="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">Daily Vehicle Log</h2>
+                            <p class="text-gray-600">${todayString}</p>
+                        </div>
+                        <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden">
+                            ${icons.print} Print Log
+                        </button>
+                    </div>
+
+                    <!-- Print Header (Hidden in Web, Visible in Print) -->
+                    <div class="print-header hidden">
+                        <h1>DAILY VEHICLE CLEARANCE LOG</h1>
+                        <p>Date: ${todayString} | Shift: 24 Hours</p>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="print-table w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100 border-b-2 border-gray-300">
+                                    <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Vehicle No</th>
+                                    <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Type</th>
+                                    <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Location</th>
+                                    <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Approved By</th>
+                                    <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Hours</th>
+                                    <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Remarks / Escort</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${todaysVehicles.length === 0 ? 
+                                    `<tr><td colspan="6" class="p-8 text-center text-gray-500 border border-gray-300">No vehicles scheduled for today.</td></tr>` : 
+                                    todaysVehicles.map(v => `
+                                    <tr class="border-b border-gray-200">
+                                        <td class="p-3 border border-gray-300 font-mono font-bold text-lg whitespace-nowrap">${formatVehicleNumber(v.vehicleNumber)}</td>
+                                        <td class="p-3 border border-gray-300 whitespace-nowrap">${v.vehicleType}</td>
+                                        <td class="p-3 border border-gray-300 font-bold whitespace-nowrap">${v.location}</td>
+                                        <td class="p-3 border border-gray-300 font-bold whitespace-nowrap">${v.approvedBy || ''}</td>
+                                        <td class="p-3 border border-gray-300 font-bold whitespace-nowrap">${v.timeSlot || ''}</td>
+                                        <td class="p-3 border border-gray-300 text-sm whitespace-nowrap">
+                                            ${v.escortRequired ? `<strong>⚠️ Escort: ${v.escortBy}</strong> ` : ''}
+                                            ${v.notes ? `<span class="italic">${v.notes}</span>` : ''}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                                <!-- Extra blank rows for manual entries -->
+                                ${Array(5).fill(0).map(() => `
+                                    <tr class="border-b border-gray-200">
+                                        <td class="p-3 border border-gray-300 h-12"></td>
+                                        <td class="p-3 border border-gray-300"></td>
+                                        <td class="p-3 border border-gray-300"></td>
+                                        <td class="p-3 border border-gray-300"></td>
+                                        <td class="p-3 border border-gray-300"></td>
+                                        <td class="p-3 border border-gray-300"></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-4 text-center print:block hidden">Generated on ${new Date().toLocaleString()}</p>
                 </div>
             `;
         };
@@ -964,7 +1161,7 @@
                         <div class="animate-fade-in" style="width: 100%;">
                             <div class="car-plate-display car-plate-display-not-found" style="margin-bottom: 16px;">
                                 <div class="car-plate-text">
-                                    <span class="search-highlight glow-red">${searchTerm}</span>
+                                    <span class="search-highlight glow-red">${formatVehicleNumber(searchTerm.replace(/\s/g, ''))}</span>
                                 </div>
                                 <div class="plate-status-badge error">
                                     NOT FOUND
@@ -972,7 +1169,7 @@
                             </div>
                             <div class="bg-slate-800 rounded-2xl p-6 text-center">
                                 <h3 class="text-xl font-semibold text-white">Access Denied</h3>
-                                <p class="text-slate-400 mt-2">Vehicle <strong>${searchTerm}</strong> is not on the list.</p>
+                                <p class="text-slate-400 mt-2">Vehicle <strong>${formatVehicleNumber(searchTerm.replace(/\s/g, ''))}</strong> is not on the list.</p>
                             </div>
                         </div>`;
                 } 
@@ -1014,7 +1211,7 @@
                         <div class="animate-fade-in" style="width: 100%;">
                             <div class="car-plate-display ${plateClass} animate-fade-in" style="margin-bottom: 16px;">
                                 <div class="car-plate-text">
-                                    <span class="${textClass}">${v.vehicleNumber}</span>
+                                    <span class="${textClass}">${formatVehicleNumber(v.vehicleNumber)}</span>
                                 </div>
                                 <div class="plate-status-badge ${badgeClass}">
                                     ${statusText}
@@ -1087,7 +1284,7 @@
                 return `
                 <div class="list-item animate-fade-in">
                     <div class="list-item-content">
-                        <div class="list-item-plate">${v.vehicleNumber}</div>
+                        <div class="list-item-plate">${formatVehicleNumber(v.vehicleNumber)}</div>
                         <div class="list-item-location">${v.location || 'N/A'}</div>
                     </div>
                     <div class="list-item-right">
@@ -1157,7 +1354,7 @@
                 return; 
             }
             
-            const term = searchBox.value.trim().toUpperCase();
+            const term = searchBox.value.replace(/\s/g, '').trim().toUpperCase(); // Remove spaces for search logic
             const isNumericTerm = /^\d+$/.test(term); // Check if term is ONLY numbers
             
             if (!term) {
@@ -1270,7 +1467,10 @@
                 const expiryDate = parseLocalDate(data.expiryDate);
                 const isEscortRequired = data.escortRequired === 'on';
 
-                if (!data.vehicleNumber) throw new Error("Vehicle Number is required.");
+                // Clean vehicle number before saving (remove spaces)
+                const cleanVehicleNumber = data.vehicleNumber.replace(/\s/g, '');
+
+                if (!cleanVehicleNumber) throw new Error("Vehicle Number is required.");
                 if (!data.vehicleType) throw new Error("Vehicle Type is required.");
                 if (!data.location) throw new Error("Location is required.");
                 if (!data.timeSlot) throw new Error("Visiting Hours are required.");
@@ -1281,16 +1481,16 @@
 
                 const now = new Date();
                 const existingActive = allRows.find(v => 
-                    v.vehicleNumber === data.vehicleNumber &&
+                    v.vehicleNumber === cleanVehicleNumber &&
                     v.expiryDate.toDate() >= now
                 );
 
                 if (existingActive) {
-                    throw new Error(`Vehicle ${data.vehicleNumber} already has an active clearance.`);
+                    throw new Error(`Vehicle ${cleanVehicleNumber} already has an active clearance.`);
                 }
 
                 const payload = {
-                    vehicleNumber: data.vehicleNumber,
+                    vehicleNumber: cleanVehicleNumber,
                     ownerName: data.ownerName || "",
                     vehicleType: data.vehicleType,
                     location: data.location,
@@ -1563,11 +1763,17 @@
                 }
                 
                 if (action === 'backspace') {
-                    searchBox.value = searchBox.value.slice(0, -1);
+                    // Handle backspace logic while preserving format
+                    const clean = searchBox.value.replace(/\s/g, '');
+                    const newClean = clean.slice(0, -1);
+                    searchBox.value = formatVehicleNumber(newClean);
                 } else {
                     const t = keypadBtn.textContent.trim();
-                    if (t && searchBox.value.length < 10) {
-                        searchBox.value += t;
+                    if (t) {
+                        const clean = searchBox.value.replace(/\s/g, '');
+                        if (clean.length < 10) {
+                            searchBox.value = formatVehicleNumber(clean + t);
+                        }
                     }
                 }
                 applyFilter();
