@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
-    <title>Staff Vehicle Panel</title>
+    <title>Vehicle Clearance Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
@@ -123,7 +123,7 @@
             border-radius: 1rem;
             text-align: center;
             display: flex;
-            flex-direction: column; /* CHANGED: Stack vertically */
+            flex-direction: column; /* Stack vertically */
             align-items: center;
             justify-content: center;
             padding: 2rem 1rem; /* Increased padding */
@@ -378,6 +378,22 @@
             .print-header p { margin: 5px 0 0; color: #333; }
         }
         
+        /* Secondary Nav Dropdown */
+        .nav-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #334155;
+            border: 1px solid #475569;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            z-index: 50;
+            min-width: 160px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .nav-dropdown.show { display: block; }
+        
     </style>
 </head>
 <body>
@@ -467,13 +483,14 @@
             trash: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
             car: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1m-4 0H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1m0 0v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1M4 16v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1H4Zm0 0H3m16 0h1M5 11h14M5 8h14"/></svg>`,
             motorcycle: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16H3a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h2m16 0h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2m-3-11 3 3m-3-3-3 3m-2 11h3l3-6-4-3-4 3 3 6Z"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`,
-            settings: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
+            settings: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
             signOut: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
             keypadBackspace: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM18 13H9.83l1.59 1.59L10 16l-4-4 4-4 1.41 1.41L9.83 11H18v2z"/></svg>`,
             list: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`,
             grid: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`,
             clipboard: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>`,
-            print: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>`
+            print: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>`,
+            menu: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`
         };
 
         // --- Firebase Initialization ---
@@ -716,7 +733,7 @@
             appRoot.innerHTML = `
                 <header class="mb-6 space-y-3">
                     <div class="flex justify-between items-center">
-                        <h1 class="text-4xl font-bold text-white tracking-tight">Staff Vehicle Panel</h1>
+                        <h1 class="text-4xl font-bold text-white tracking-tight">Vehicle Clearance Panel</h1>
                         <button id="sign-out-btn" title="Sign Out" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-red-700 hover:text-white transition-colors">
                             <span class="w-5 h-5">${icons.signOut}</span>
                             <span class="hidden sm:block text-sm font-medium">Sign Out</span>
@@ -725,19 +742,34 @@
                     <p class="text-slate-400">Manage vehicle clearance database.</p>
                 </header>
                 
-                <nav class="flex gap-2 mb-6 overflow-x-auto pb-2">
-                    <button id="nav-add" data-view="add" class="nav-button flex items-center gap-2 whitespace-nowrap" data-active="${currentView === 'add'}">
-                        <span class="w-5 h-5">${icons.add}</span> Add Vehicle
-                    </button>
-                    <button id="nav-search" data-view="search" class="nav-button flex items-center gap-2 whitespace-nowrap" data-active="${currentView === 'search'}">
-                        <span class="w-5 h-5">${icons.search}</span> Search & Manage
-                    </button>
-                    <button id="nav-log" data-view="log" class="nav-button flex items-center gap-2 whitespace-nowrap" data-active="${currentView === 'log'}">
-                        <span class="w-5 h-5">${icons.clipboard}</span> Daily Log
-                    </button>
-                    <button id="nav-settings" data-view="settings" class="nav-button flex items-center gap-2 whitespace-nowrap" data-active="${currentView === 'settings'}">
-                        <span class="w-5 h-5">${icons.settings}</span> Settings
-                    </button>
+                <nav class="flex gap-2 mb-6 overflow-visible relative">
+                    <div class="flex-1 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                        <button id="nav-add" data-view="add" class="nav-button flex items-center gap-2 whitespace-nowrap" data-active="${currentView === 'add'}">
+                            <span class="w-5 h-5">${icons.add}</span> Add Vehicle
+                        </button>
+                        <button id="nav-search" data-view="search" class="nav-button flex items-center gap-2 whitespace-nowrap" data-active="${currentView === 'search'}">
+                            <span class="w-5 h-5">${icons.search}</span> Search & Manage
+                        </button>
+                        
+                        <!-- HIDDEN BY DEFAULT: Log and Settings are moved to dropdown -->
+                    </div>
+                    
+                    <!-- More Menu Button -->
+                    <div class="relative">
+                        <button id="nav-menu-btn" class="nav-button flex items-center justify-center w-10 h-10" data-active="false">
+                            ${icons.menu}
+                        </button>
+                        
+                        <!-- Dropdown Menu for Extra Tools -->
+                        <div id="nav-dropdown-menu" class="nav-dropdown">
+                            <button data-view="log" class="dropdown-item flex items-center gap-3 mb-1">
+                                <span class="w-5 h-5 text-slate-400">${icons.clipboard}</span> Daily Log
+                            </button>
+                            <button data-view="settings" class="dropdown-item flex items-center gap-3">
+                                <span class="w-5 h-5 text-slate-400">${icons.settings}</span> Settings
+                            </button>
+                        </div>
+                    </div>
                 </nav>
 
                 <main id="view-content" class="animate-fade-in"></main>
@@ -1091,6 +1123,9 @@
             });
 
             const todayString = today.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            // Filename format: Vehicle_Clearance_YYYY-MM-DD.pdf (implied)
+            const fileNameDate = today.toISOString().split('T')[0];
+            const fileName = `Vehicle_Clearance_${fileNameDate}`;
 
             contentEl.innerHTML = `
                 <div id="daily-log-container" class="bg-white text-black rounded-2xl shadow-lg overflow-hidden sm:p-8 p-4">
@@ -1100,7 +1135,7 @@
                             <h2 class="text-2xl font-bold text-gray-900">Daily Vehicle Log</h2>
                             <p class="text-gray-600">${todayString}</p>
                         </div>
-                        <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden">
+                        <button onclick="document.title='${fileName}'; window.print(); setTimeout(() => { document.title = 'Vehicle Clearance Panel'; }, 500);" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden">
                             ${icons.print} Print Log
                         </button>
                     </div>
@@ -1471,6 +1506,29 @@
                 if (view !== 'search') {
                     isGridView = false;
                 }
+                renderApp();
+            }
+        };
+
+        // Handle Nav Dropdown
+        const handleNavDropdownToggle = (e) => {
+            const btn = e.target.closest('#nav-menu-btn');
+            const dropdown = document.getElementById('nav-dropdown-menu');
+            if (btn && dropdown) {
+                dropdown.classList.toggle('show');
+                e.stopPropagation();
+            } else if (dropdown && !e.target.closest('.nav-dropdown')) {
+                dropdown.classList.remove('show');
+            }
+        };
+        
+        // Handle Dropdown Item Click
+        const handleNavDropdownItemClick = (e) => {
+            const item = e.target.closest('.dropdown-item[data-view]');
+            if (item) {
+                const view = item.dataset.view;
+                currentView = view;
+                if (view !== 'search') isGridView = false;
                 renderApp();
             }
         };
@@ -1862,7 +1920,9 @@
         
         appRoot.addEventListener("click", (e) => {
             handleNavClick(e);
-            handleMenuAction(e); // UPDATED: Handles both Edit and Delete
+            handleNavDropdownToggle(e);
+            handleNavDropdownItemClick(e);
+            handleMenuAction(e); // Handles both Edit and Delete
             handleSettingDelete(e);
             handleDropdownClick(e);
             
