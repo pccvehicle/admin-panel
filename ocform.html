@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
-    <title>Registration with Optional Contact</title>
+    <title>Registration with Flexible Search</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
@@ -89,7 +89,7 @@
             </div>
             <div class="p-6 flex-grow overflow-y-auto">
                 <div class="mb-6 flex gap-2">
-                    <input type="text" id="search-input" class="mobile-input uppercase font-mono text-lg" placeholder="E.G. SGA 1234 X" />
+                    <input type="text" id="search-input" class="mobile-input uppercase font-mono text-lg" placeholder="E.G. SK23..." />
                     <button id="perform-search-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-6 rounded-lg font-semibold">Search</button>
                 </div>
                 <div id="search-results-area" class="space-y-4"></div>
@@ -568,28 +568,46 @@
             }
         };
 
-        // --- Search Logic (Same) ---
+        // --- Flexible Search Logic (PREFIX MATCH) ---
         const handleSearch = async () => {
             const input = document.getElementById('search-input');
             const resultsArea = document.getElementById('search-results-area');
             if (!input.value.trim()) return;
             resultsArea.innerHTML = '<div class="text-center text-slate-400">Searching...</div>';
+            
+            // Clean term (remove spaces, etc.)
             const term = input.value.replace(/\s/g, '').toUpperCase();
+            
             try {
-                const q = query(collection(db, DB_COLLECTION), where("vehicleNumber", "==", term), orderBy("expiryDate", "desc"), limit(5));
+                // Use Range Queries for "Starts With" search logic
+                // This finds any plate >= term AND <= term + special_char
+                const q = query(
+                    collection(db, DB_COLLECTION), 
+                    where("vehicleNumber", ">=", term),
+                    where("vehicleNumber", "<=", term + '\uf8ff'),
+                    limit(20)
+                );
+                
                 const snap = await getDocs(q);
+                
                 if (snap.empty) {
                     resultsArea.innerHTML = `<div class="p-3 bg-slate-700/30 rounded border border-slate-600 text-center text-slate-300">No history found for ${term}</div>`;
                 } else {
                     const now = new Date();
-                    const html = snap.docs.map(d => {
+                    // Sort locally by Expiry Date (Newest first)
+                    const docs = snap.docs.sort((a, b) => b.data().expiryDate.toMillis() - a.data().expiryDate.toMillis());
+                    
+                    const html = docs.slice(0, 5).map(d => {
                         const v = d.data();
                         const isExpired = v.expiryDate.toDate() < now;
                         return `<div class="p-3 bg-slate-700/50 rounded border border-slate-600"><div class="flex justify-between"><span class="font-mono font-bold text-white">${formatVehicleNumber(v.vehicleNumber)}</span><span class="text-xs font-bold px-2 rounded ${isExpired ? 'text-red-400 bg-red-900/20' : 'text-green-400 bg-green-900/20'}">${isExpired ? 'EXPIRED' : 'ACTIVE'}</span></div><div class="text-xs text-slate-400 mt-1">Requester: ${v.requester} • Expiry: ${formatDateDisplay(v.expiryDate)}</div>${v.contactNumber ? `<div class="text-xs text-slate-500 mt-1">Contact: ${v.contactNumber}</div>` : ''}</div>`;
                     }).join('');
                     resultsArea.innerHTML = `<div class="space-y-2">${html}</div>`;
                 }
-            } catch (err) { resultsArea.innerHTML = `<div class="text-red-400">Error: ${err.message}</div>`; }
+            } catch (err) { 
+                console.error(err);
+                resultsArea.innerHTML = `<div class="text-red-400">Error: ${err.message}</div>`; 
+            }
         };
 
         // --- GLOBAL Event Wiring ---
