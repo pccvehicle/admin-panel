@@ -419,9 +419,13 @@
 
             try {
                 const data = Object.fromEntries(new FormData(form).entries());
+                
+                // STRICT DATE CHECK
+                if (!data.entryDate || !data.expiryDate) throw new Error("Please select both Entry and Expiry dates.");
                 const entry = parseLocalDate(data.entryDate);
                 const expiry = parseLocalDate(data.expiryDate);
 
+                if (!entry || !expiry) throw new Error("Invalid date selected. Please re-select.");
                 if (expiry < entry) throw new Error("Expiry date cannot be before entry date.");
                 if (!data.requester) throw new Error("Requester is required.");
 
@@ -509,8 +513,19 @@
 
         // --- CONFIRM SAVE ---
         const handleConfirmRegistration = async () => {
-            if (!pendingSubmissionData) return;
             const btn = document.getElementById('confirm-save-btn');
+
+            // 1. Check Logic
+            if (!pendingSubmissionData) {
+                 reviewModal.classList.add('hidden');
+                 return;
+            }
+            if (!authUser) {
+                showNotification("Session expired. Please reload.", "error");
+                reviewModal.classList.add('hidden');
+                return;
+            }
+
             btn.disabled = true;
             btn.innerText = "Saving...";
 
@@ -544,7 +559,10 @@
                 pendingSubmissionData = null;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } catch (error) {
+                console.error("Batch Save Error:", error);
                 showNotification("Save failed: " + error.message, "error");
+            } finally {
+                // SAFETY VALVE: Always reset button
                 btn.disabled = false;
                 btn.innerText = "Confirm & Register";
             }
