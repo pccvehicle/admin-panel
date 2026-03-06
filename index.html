@@ -230,6 +230,88 @@
         return isNaN(year) ? null : new Date(year, month - 1, day);
     };
     
+    // --- VPS Email Notification Helper ---
+    const generateNotificationEmail = (status, data) => {
+        const orgName = "OC/DOC";
+        const footerText = `This is an automated notification from the Vehicle Clearance System. Please do not reply to this email.`;
+
+        const template = (title, content) => `
+            <div style="font-family: Inter, Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                <div style="background-color: #0f172a; color: #ffffff; padding: 20px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 24px;">Vehicle Clearance System</h1>
+                </div>
+                <div style="padding: 25px;">
+                    <h2 style="font-size: 20px; color: #1e293b; margin-top: 0;">${title}</h2>
+                    ${content}
+                    <p style="margin-top: 25px;">Regards,<br/><b>${orgName}</b></p>
+                </div>
+                <div style="background-color: #f1f5f9; color: #64748b; padding: 15px; text-align: center; font-size: 12px;">
+                    ${footerText}
+                </div>
+            </div>`;
+
+        let title = '';
+        let content = '';
+
+        if (status === 'pending') {
+            title = 'Request Received';
+            content = `
+                <p>Hi ${data.requesterName || 'User'},</p>
+                <p>Thank you for your submission. Your vehicle clearance request for <b>${data.vehicleNumber}</b> is now pending review.</p>
+                <p>You will receive another email once the status of your request is updated.</p>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                <p style="font-size: 14px; color: #475569;"><b>Submitted On:</b> ${data.submittedAt}</p>`;
+        } else if (status === 'approved') {
+            title = 'Request Approved';
+            content = `
+                <p>Hi ${data.ownerName || 'User'},</p>
+                <p>Good news! Your vehicle clearance request for <b>${data.vehicleNumber}</b> has been <strong>approved</strong>.</p>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                <p style="font-size: 14px; color: #475569;"><b>Location:</b> ${data.location}</p>
+                <p style="font-size: 14px; color: #475569;"><b>Valid From:</b> ${data.entryDate}</p>
+                <p style="font-size: 14px; color: #475569;"><b>Valid Until:</b> ${data.expiryDate}</p>`;
+        } else if (status === 'rejected') {
+            title = 'Request Update';
+            content = `
+                <p>Hi ${data.requesterName || 'User'},</p>
+                <p>We have reviewed your vehicle clearance request for <b>${data.vehicleNumber}</b>. Unfortunately, it could not be approved at this time.</p>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                <p style="font-size: 14px; color: #475569;"><b>Reason for Rejection:</b></p>
+                <p style="padding: 10px; border-left: 3px solid #ef4444; background-color: #fee2e2;">${data.rejectionReason}</p>
+                <p>If you believe this is an error, please contact administration or submit a new request with corrected information.</p>`;
+        }
+        return template(title, content);
+    };
+
+    const sendEmail = async (to, subject, htmlBody) => {
+        const VPS_API_URL = 'https://email.th3va.com/send-email';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        try {
+            const response = await fetch(VPS_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': '7873&;@:$/);&;84$:&;73638($'
+                },
+                body: JSON.stringify({ to, subject, htmlBody }),
+                signal: controller.signal
+            });
+            if (!response.ok) {
+                throw new Error('Email service HTTP ' + response.status);
+            }
+            showNotification(`Email notification sent to ${to}.`, "success");
+            return true;
+        } catch (error) {
+            console.error('Failed to send email via VPS:', error);
+            showNotification("Action successful, but failed to send email notification.", "error");
+            return false;
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    };
+    
     // — Icon Library —
     const icons = {
         logout: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
@@ -451,7 +533,11 @@
         const listContainer = document.getElementById(listId);
         if (!listContainer) return;
 
-        const listToRender = vehicleList ? vehicleList : clearances.filter(c => c.expiryDate.toDate() >= new Date());
+        const listToRender = vehicleList ? vehicleList : clearances.filter(c => {
+             const expiryDate = c.expiryDate.toDate();
+             expiryDate.setHours(23, 59, 59, 999);
+             return expiryDate >= new Date();
+        });
 
         if (!listToRender.length) {
             listContainer.innerHTML = `<div class="col-span-full text-center py-8 text-slate-500 bg-slate-800/50 rounded-lg">${vehicleList ? 'No vehicles found.' : 'No active clearances.'}</div>`;
@@ -710,6 +796,63 @@
         modal.querySelector('#cancel').onclick = () => modal.remove();
     };
 
+    const renderRejectionModal = (requestId) => {
+        const modal = document.createElement('div');
+        modal.innerHTML = `
+        <div id="rejection-modal-backdrop" class="mobile-modal bg-black/70 z-[60]">
+            <div class="mobile-modal-content bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-sm animate-fade-in relative">
+                <form id="rejection-form">
+                    <h2 class="text-xl font-bold text-white mb-4">Reject Request</h2>
+                    <p class="text-sm text-slate-400 mb-2">Provide a reason for rejection (this will be emailed to the user):</p>
+                    <textarea name="rejectionReason" class="mobile-input w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" rows="3" required></textarea>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button type="button" id="cancel-rejection" class="px-4 py-2 rounded-lg bg-slate-600 text-white hover:bg-slate-500 transition-colors">Cancel</button>
+                        <button type="submit" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Confirm Reject</button>
+                    </div>
+                </form>
+            </div>
+        </div>`;
+        document.getElementById('modal-container').appendChild(modal);
+        
+        modal.querySelector('#cancel-rejection').onclick = () => modal.remove();
+        modal.querySelector('#rejection-modal-backdrop').onclick = (e) => {
+             if (e.target.id === 'rejection-modal-backdrop') modal.remove();
+        };
+        
+        modal.querySelector('form').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = modal.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = 'Rejecting...';
+            const reason = modal.querySelector('textarea[name="rejectionReason"]').value.trim();
+            const originalRequest = clearanceRequests.find(r => r.id === requestId);
+            
+            try {
+                await updateDoc(doc(db, "clearanceRequests", requestId), { 
+                    status: 'rejected',
+                    rejectionReason: reason
+                });
+                showNotification("Request rejected.");
+
+                if (originalRequest && (originalRequest.requesterEmail || originalRequest.ownerEmail)) {
+                    showNotification("Sending rejection email...", "info");
+                    const emailData = {
+                        requesterName: originalRequest.requesterName || originalRequest.ownerName,
+                        vehicleNumber: originalRequest.vehicleNumber,
+                        rejectionReason: reason
+                    };
+                    const emailBody = generateNotificationEmail('rejected', emailData);
+                    const toEmail = originalRequest.requesterEmail || originalRequest.ownerEmail;
+                    await sendEmail(toEmail, `Request Update: ${originalRequest.vehicleNumber}`, emailBody);
+                }
+            } catch (err) {
+                showNotification(`Error: ${err.message}`, "error");
+            } finally {
+                document.getElementById('modal-container').innerHTML = '';
+            }
+        };
+    };
+
     const renderSearchModal = () => {
         document.getElementById("modal-container").innerHTML = `
         <div id="search-modal-backdrop" class="mobile-modal bg-black/70 z-50">
@@ -801,6 +944,20 @@
         } else {
             await addDoc(collection(db, "vehicleClearances"), payload);
             showNotification(`Clearance for ${payload.vehicleNumber} created.`);
+            
+            // Email Notification for Fast Track Approval
+            if (payload.ownerEmail) {
+                showNotification("Sending approval email...", "info");
+                const emailData = {
+                    ownerName: payload.ownerName,
+                    vehicleNumber: payload.vehicleNumber,
+                    location: payload.location,
+                    entryDate: formatDate(payload.entryDate),
+                    expiryDate: formatDate(payload.expiryDate)
+                };
+                const emailBody = generateNotificationEmail('approved', emailData);
+                await sendEmail(payload.ownerEmail, `Vehicle Clearance Approved: ${payload.vehicleNumber}`, emailBody);
+            }
         }
         document.getElementById('modal-container').innerHTML = '';
     };
@@ -923,9 +1080,7 @@
                 if(request) renderClearanceFormModal(request, 'review');
             }
             else if (button.classList.contains("reject-request-btn")) {
-                 await updateDoc(doc(db, "clearanceRequests", id), { status: 'rejected' });
-                 showNotification("Request rejected.");
-                 document.getElementById('modal-container').innerHTML = '';
+                 renderRejectionModal(id);
             }
             else if (button.classList.contains("approve-request-btn")) {
                 const form = button.closest('form');
@@ -942,7 +1097,7 @@
                 const clearancePayload = {
                     ownerName: formData.ownerName,
                     ownerContact: formData.contact,
-                    ownerEmail: formData.email,
+                    ownerEmail: formData.email, // Form saves this as "email" in the modal
                     vehicleNumber: formData.vehicleNumber.toUpperCase(),
                     vehicleType: formData.vehicleType,
                     location: formData.location === 'Other' ? formData.customLocation : formData.location,
@@ -959,6 +1114,21 @@
 
                 await addDoc(collection(db, "vehicleClearances"), clearancePayload);
                 await updateDoc(doc(db, "clearanceRequests", id), { status: 'approved' });
+                
+                // --- Email Notification ---
+                const requesterEmail = formData.email || originalRequest?.requesterEmail;
+                if (requesterEmail) {
+                    showNotification("Sending approval email...", "info");
+                    const emailData = {
+                        ownerName: formData.ownerName || originalRequest?.requesterName,
+                        vehicleNumber: clearancePayload.vehicleNumber,
+                        location: clearancePayload.location,
+                        entryDate: formatDate(clearancePayload.entryDate),
+                        expiryDate: formatDate(clearancePayload.expiryDate)
+                    };
+                    const emailBody = generateNotificationEmail('approved', emailData);
+                    await sendEmail(requesterEmail, `Vehicle Clearance Approved: ${clearancePayload.vehicleNumber}`, emailBody);
+                }
                 
                 showNotification(`Request for ${clearancePayload.vehicleNumber} approved.`);
                 document.getElementById('modal-container').innerHTML = '';
