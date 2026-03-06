@@ -1031,6 +1031,21 @@
                 await Promise.all(promises);
                 document.getElementById('modal-container').innerHTML = '';
                 showNotification(`Successfully created ${vehicleNumbers.length} clearance records.`, "success");
+
+                // --- NEW: Trigger Email for Batch Updates ---
+                if (commonPayload.ownerEmail) {
+                    const emailData = {
+                        ownerName: commonPayload.ownerName,
+                        vehicleNumber: vehicleNumbers.join(', '), // Send the entire list in one email
+                        location: commonPayload.location,
+                        entryDate: formatDate(commonPayload.entryDate),
+                        expiryDate: formatDate(commonPayload.expiryDate)
+                    };
+                    const emailBody = generateNotificationEmail('approved', emailData);
+                    // Dispatched silently
+                    sendEmail(commonPayload.ownerEmail, `Vehicle Clearance Approved: Batch Registration`, emailBody);
+                }
+
                 renderBatchWhatsAppModal(data, vehicleNumbers);
             } catch (err) {
                 showNotification(`Error during batch save: ${err.message}`, 'error');
