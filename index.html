@@ -850,6 +850,14 @@
     };
     
     const renderSettingsPanel = () => {
+        const now = new Date();
+        const expiredCount = clearances.filter(c => {
+             if (!c.expiryDate) return false;
+             const exp = c.expiryDate.toDate();
+             exp.setHours(23, 59, 59, 999);
+             return exp < now;
+        }).length;
+
          document.getElementById('modal-container').innerHTML = `
             <div id="settings-backdrop" class="fixed inset-0 bg-black/50 z-40 backdrop"></div>
             <div id="settings-panel" class="fixed top-0 right-0 h-full w-full max-w-sm bg-slate-800 shadow-xl z-50 flex flex-col transform translate-x-0">
@@ -899,9 +907,20 @@
                             <div><label class="text-xs font-semibold text-slate-400">Designation</label><input name="designation" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg text-white" required></div>
                             <button type="submit" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add VVIP</button>
                         </form>
-                        <div class="mt-6">
+                        <div class="mt-6 mb-6">
                             <h3 class="text-lg font-semibold text-slate-100">Current VVIPs</h3>
                             <div id="vvip-list-container-settings" class="mt-2 space-y-2"></div>
+                        </div>
+
+                        <!-- Data Cleanup Section -->
+                        <div class="mt-8 p-4 bg-slate-900/50 rounded-lg border border-red-500/20">
+                            <h3 class="text-lg font-semibold text-red-400 flex items-center gap-2">
+                                ${icons.trash} Data Cleanup
+                            </h3>
+                            <p class="text-sm text-slate-400 mt-1 mb-3">Permanently remove all vehicle clearances that have expired. Currently, there are <strong class="text-slate-200">${expiredCount}</strong> expired records in the database.</p>
+                            <button id="delete-expired-btn" class="w-full px-4 py-2 bg-red-600/10 text-red-400 border border-red-600/30 rounded-lg hover:bg-red-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${expiredCount === 0 ? 'disabled' : ''}>
+                                Delete ${expiredCount} Expired Record(s)
+                            </button>
                         </div>
 
                     </div>
@@ -1032,17 +1051,15 @@
                 document.getElementById('modal-container').innerHTML = '';
                 showNotification(`Successfully created ${vehicleNumbers.length} clearance records.`, "success");
 
-                // --- NEW: Trigger Email for Batch Updates ---
                 if (commonPayload.ownerEmail) {
                     const emailData = {
                         ownerName: commonPayload.ownerName,
-                        vehicleNumber: vehicleNumbers.join(', '), // Send the entire list in one email
+                        vehicleNumber: vehicleNumbers.join(', '),
                         location: commonPayload.location,
                         entryDate: formatDate(commonPayload.entryDate),
                         expiryDate: formatDate(commonPayload.expiryDate)
                     };
                     const emailBody = generateNotificationEmail('approved', emailData);
-                    // Dispatched silently
                     sendEmail(commonPayload.ownerEmail, `Vehicle Clearance Approved: Batch Registration`, emailBody);
                 }
 
@@ -1129,6 +1146,30 @@
         // If capacity check passes (or no zone selected), proceed to save
         await executeSave(form, editingId, isBatchMode, vehicleNumbers);
     };
+
+    const deleteExpiredClearances = async () => {
+        const now = new Date();
+        const expiredDocs = clearances.filter(c => {
+            if (!c.expiryDate) return false;
+            const exp = c.expiryDate.toDate();
+            exp.setHours(23, 59, 59, 999);
+            return exp < now;
+        });
+
+        if (expiredDocs.length === 0) return;
+
+        showNotification("Deleting expired records...", "info");
+        try {
+            const batchPromises = expiredDocs.map(docData => deleteDoc(doc(db, "vehicleClearances", docData.id)));
+            await Promise.all(batchPromises);
+            showNotification(`Successfully deleted ${expiredDocs.length} expired clearance(s).`, "success");
+            // The settings panel is still open, re-render it to update the count to 0
+            renderSettingsPanel();
+        } catch (err) {
+            console.error("Error deleting expired clearances:", err);
+            showNotification(`Error: ${err.message}`, "error");
+        }
+    };
     
     const handleEscortCheckboxChange = (checkbox) => {
         const form = checkbox.closest('form');
@@ -1173,6 +1214,15 @@
             else if (button.id === "settings-btn") renderSettingsPanel();
             else if (button.id === "close-settings-panel-btn") document.getElementById('modal-container').innerHTML = '';
             else if (button.classList.contains("delete-vvip-btn")) renderConfirmationModal('Delete VVIP', 'Are you sure?', () => deleteDoc(doc(db, "vvips", id)));
+            else if (button.id === "delete-expired-btn") {
+                renderConfirmationModal(
+                    'Delete Expired Clearances', 
+                    'Are you sure you want to permanently delete ALL expired clearances? This action cannot be undone.', 
+                    async () => {
+                        await deleteExpiredClearances();
+                    }
+                );
+            }
             else if(button.classList.contains("whatsapp-card-btn")) {
                 const clearance = clearances.find(c => c.id === id);
                 if (clearance) renderWhatsAppModal(clearance);
