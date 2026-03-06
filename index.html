@@ -141,7 +141,7 @@
     // --- Configuration ---
     const ADMIN_INVITE_CODE = "ADMIN2025";
     
-    // This is now dynamically loaded from Firebase config
+    // Dynamically loaded from Firebase config
     let PARKING_ZONES = {
         Red: { name: "Red Zone", allocated: 10, buffer: 5, color: 'red' },
         White: { name: "White Zone", allocated: 10, buffer: 5, color: 'white' },
@@ -272,9 +272,6 @@
     const sendEmail = async (to, subject, htmlBody) => {
         const VPS_API_URL = 'https://email.th3va.com/send-email';
         try {
-            // Awaiting the fetch ensures the email fires immediately,
-            // but we gracefully ignore non-standard response codes (like 500 or CORS issues)
-            // since the email server often successfully delivers the email regardless.
             await fetch(VPS_API_URL, {
                 method: 'POST',
                 headers: {
@@ -285,7 +282,6 @@
             });
         } catch (error) {
             console.warn('Email API returned a warning, but the email likely still sent:', error);
-            // Red error popup intentionally suppressed here to prevent false alarms to users.
         }
     };
     
@@ -571,7 +567,7 @@
         const isReview = mode === 'review';
         const title = isReview ? 'Review Request' : (mode === 'edit' ? 'Edit Clearance' : 'Fast Track Clearance');
         
-        const vehicleTypeOptions = ["Car", "Motorcycle"];
+        const vehicleTypeOptions = ["Car", "Motorcycle", "Delivery Vehicle"];
         const locationOptions = ["PCC", "Foyer Parking", "Basement 1", "Basement 2", "Basement 3", "Basement 4", "Courtyard", "E3", "Other"];
 
         const contact = isReview ? data.requesterContact : data.ownerContact;
@@ -613,7 +609,7 @@
                     </div>
                      <div id="batch-vehicle-content" class="hidden">
                         <label class="text-sm">Vehicle Numbers (one per line)</label>
-                        <textarea name="vehicleNumbers" rows="5" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" placeholder="WXX1234\nWYX5678\n..."></textarea>
+                        <textarea name="vehicleNumbers" rows="5" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" placeholder="WXX1234\nWYX5678\n..." oninput="this.value=this.value.toUpperCase()" style="text-transform: uppercase;"></textarea>
                     </div>
 
                     <div><label class="text-sm">Name</label><input name="ownerName" value="${name || ''}" class="mobile-input mt-1 w-full p-3 bg-slate-900/70 border border-slate-700 rounded-lg text-white" required></div>
@@ -672,7 +668,7 @@
                 singleTab.classList.remove('border-blue-500', 'text-white');
                 batchContent.classList.remove('hidden');
                 singleContent.classList.add('hidden');
-                parkingZoneContainer.classList.add('hidden');
+                parkingZoneContainer.classList.remove('hidden'); // Ensure it stays visible for Batch mode
                 vehicleNumberInput.required = false;
                 vehicleNumbersTextarea.required = true;
             };
@@ -994,7 +990,6 @@
             await addDoc(collection(db, "vehicleClearances"), payload);
             showNotification(`Clearance for ${payload.vehicleNumber} created.`);
             
-            // Email Notification for Fast Track Approval
             if (payload.ownerEmail) {
                 const emailData = {
                     ownerName: payload.ownerName,
@@ -1010,9 +1005,13 @@
         document.getElementById('modal-container').innerHTML = '';
     };
     
-    const handleSaveClearance = async (form, editingId) => {
+    // Extracted actual saving execution
+    const executeSave = async (form, editingId, isBatchMode, vehicleNumbers) => {
         const saveButton = form.querySelector('.save-clearance-btn');
-        const isBatchMode = document.getElementById('batch-vehicle-tab')?.classList.contains('border-blue-500');
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.innerHTML = `<span class="spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></span> Processing...`;
+        }
 
         if (editingId) {
             await saveSingleClearance(form, editingId);
@@ -1020,19 +1019,12 @@
         }
 
         if (isBatchMode) {
-            saveButton.disabled = true;
-            saveButton.innerHTML = `<span class="spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></span> Processing...`;
             const data = getFormObj(form);
-            const vehicleNumbers = (data.vehicleNumbers || '').split('\n').map(v => v.trim().toUpperCase()).filter(Boolean);
-
-            if (vehicleNumbers.length === 0) {
-                showNotification("Enter at least one vehicle number for batch registration.", "error");
-                saveButton.disabled = false; saveButton.innerHTML = 'Save'; return;
-            }
-            
             const commonPayload = getCommonPayload(form);
-            if (!commonPayload) { saveButton.disabled = false; saveButton.innerHTML = 'Save'; return; }
-            delete commonPayload.parkingZone; 
+            if (!commonPayload) { 
+                if(saveButton) { saveButton.disabled = false; saveButton.innerHTML = 'Save'; }
+                return; 
+            }
 
             try {
                 const promises = vehicleNumbers.map(vNum => addDoc(collection(db, "vehicleClearances"), { ...commonPayload, vehicleNumber: vNum.replace(/[^A-Z0-9]/g, '') }));
@@ -1042,11 +1034,85 @@
                 renderBatchWhatsAppModal(data, vehicleNumbers);
             } catch (err) {
                 showNotification(`Error during batch save: ${err.message}`, 'error');
-                saveButton.disabled = false; saveButton.innerHTML = 'Save';
+                if(saveButton) { saveButton.disabled = false; saveButton.innerHTML = 'Save'; }
             }
         } else {
             await saveSingleClearance(form, null);
         }
+    };
+
+    // Capacity checking wrapper
+    const handleSaveClearance = async (form, editingId) => {
+        const saveButton = form.querySelector('.save-clearance-btn');
+        const isBatchMode = document.getElementById('batch-vehicle-tab')?.classList.contains('border-blue-500');
+        const data = getFormObj(form);
+
+        let countToAdd = 1;
+        let vehicleNumbers = [];
+        
+        if (isBatchMode && !editingId) {
+            vehicleNumbers = (data.vehicleNumbers || '').split('\n').map(v => v.trim().toUpperCase()).filter(Boolean);
+            if (vehicleNumbers.length === 0) {
+                showNotification("Enter at least one vehicle number for batch registration.", "error");
+                return;
+            }
+            countToAdd = vehicleNumbers.length;
+        }
+
+        const zone = data.parkingZone;
+        const entryDate = parseLocalDate(data.entryDate);
+
+        // Only check capacity if a zone is selected and we have a valid date
+        if (zone && entryDate) {
+            try {
+                if(saveButton) {
+                    saveButton.disabled = true;
+                    saveButton.innerHTML = `<span class="spinner w-5 h-5 border-2 border-white border-t-transparent rounded-full"></span> Checking Capacity...`;
+                }
+
+                const maxZoneCapacity = (parseInt(PARKING_ZONES[zone]?.allocated) || 0) + (parseInt(PARKING_ZONES[zone]?.buffer) || 0);
+
+                const startOfDay = new Date(entryDate);
+                startOfDay.setHours(0,0,0,0);
+                const endOfDay = new Date(startOfDay);
+                endOfDay.setHours(23, 59, 59, 999);
+
+                const q = query(
+                    collection(db, "vehicleClearances"),
+                    where("parkingZone", "==", zone),
+                    where("entryDate", ">=", Timestamp.fromDate(startOfDay)),
+                    where("entryDate", "<=", Timestamp.fromDate(endOfDay))
+                );
+                
+                const snap = await getDocs(q);
+                let currentCount = snap.docs.length;
+                
+                // If we are editing, don't count this exact record against the limit again
+                if (editingId) {
+                    const existingDoc = snap.docs.find(d => d.id === editingId);
+                    if (existingDoc) currentCount--;
+                }
+
+                if (currentCount + countToAdd > maxZoneCapacity) {
+                    if (saveButton) {
+                        saveButton.disabled = false;
+                        saveButton.innerHTML = editingId ? 'Update' : 'Save';
+                    }
+                    
+                    renderConfirmationModal(
+                        'Capacity Exceeded', 
+                        `Adding ${countToAdd} vehicle(s) will exceed the maximum capacity (${maxZoneCapacity}) for the ${zone} Zone. Do you want to override this limit and proceed?`, 
+                        () => executeSave(form, editingId, isBatchMode, vehicleNumbers)
+                    );
+                    return; // Stop here, wait for admin to click "Confirm" or "Cancel"
+                }
+            } catch (err) {
+                console.error("Error checking capacity", err);
+            }
+        }
+
+        // If capacity check passes (or no zone selected), proceed to save
+        await executeSave(form, editingId, isBatchMode, vehicleNumbers);
     };
     
     const handleEscortCheckboxChange = (checkbox) => {
