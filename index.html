@@ -140,7 +140,9 @@
 
     // --- Configuration ---
     const ADMIN_INVITE_CODE = "ADMIN2025";
-    const PARKING_ZONES = {
+    
+    // This is now dynamically loaded from Firebase config
+    let PARKING_ZONES = {
         Red: { name: "Red Zone", allocated: 10, buffer: 5, color: 'red' },
         White: { name: "White Zone", allocated: 10, buffer: 5, color: 'white' },
     };
@@ -172,7 +174,7 @@
     let vvips = [];
     let parkingAssignments = [];
     let currentAdminProfile = null;
-    let unsubClearances = null, unsubRequests = null, unsubVVIPs = null, unsubParking = null;
+    let unsubClearances = null, unsubRequests = null, unsubVVIPs = null, unsubParking = null, unsubParkingConfig = null;
     let authMode = "login";
     let activeParkingTab = 'Red';
     let selectedParkingDate = new Date();
@@ -181,30 +183,14 @@
     const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
     const toISODate = d => d ? new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0] : "";
     
-    // UPDATED: Smarter WhatsApp number normalization for MY (+60) and SG (+65)
     const normalizePhoneNumberForWhatsApp = (phone) => {
         if (!phone || typeof phone !== 'string') return '';
-        let cleaned = phone.replace(/\D/g, ''); // Remove all non-digit characters
-
-        // Case 1: Already has a valid international prefix (60 for MY, 65 for SG)
-        if (cleaned.startsWith('60') || cleaned.startsWith('65')) {
-            return cleaned;
-        }
-
-        // Case 2: Malaysian local number starting with 0 (e.g., 012...)
-        if (cleaned.startsWith('0')) {
-            return '6' + cleaned; // Becomes 60...
-        }
-
-        // Case 3: Singaporean local number (typically 8 digits starting with 8 or 9)
-        if ((cleaned.startsWith('8') || cleaned.startsWith('9')) && cleaned.length === 8) {
-            return '65' + cleaned;
-        }
-
-        // Default Case: Assume Malaysian number if ambiguous (maintains original behavior)
+        let cleaned = phone.replace(/\D/g, ''); 
+        if (cleaned.startsWith('60') || cleaned.startsWith('65')) { return cleaned; }
+        if (cleaned.startsWith('0')) { return '6' + cleaned; }
+        if ((cleaned.startsWith('8') || cleaned.startsWith('9')) && cleaned.length === 8) { return '65' + cleaned; }
         return '60' + cleaned;
     };
-
 
     const formatDate = (date) => {
         if (!date) return "N/A";
@@ -409,7 +395,9 @@
 
         unsubVVIPs = onSnapshot(query(collection(db, "vvips")), snap => {
             vvips = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderVVIPListForSettings();
+            if (document.getElementById('vvip-list-container-settings')) {
+                renderVVIPListForSettings();
+            }
         });
     }
 
@@ -881,17 +869,55 @@
             <div id="settings-panel" class="fixed top-0 right-0 h-full w-full max-w-sm bg-slate-800 shadow-xl z-50 flex flex-col transform translate-x-0">
                 <div class="flex-shrink-0 flex justify-between items-center p-4 border-b border-slate-700"><h2 class="text-2xl font-semibold text-slate-100">Settings</h2><button id="close-settings-panel-btn" class="p-2 text-slate-400 hover:text-white rounded-full">${icons.x}</button></div>
                 <div class="flex-grow p-6 overflow-y-auto">
-                    <div class="space-y-4">
-                        <form id="add-vvip-form" class="space-y-3 p-4 bg-slate-900/50 rounded-lg">
+                    <div class="space-y-6">
+                        
+                        <!-- Parking Configuration Form -->
+                        <form id="parking-config-form" class="space-y-3 p-4 bg-slate-900/50 rounded-lg border border-slate-700/50">
+                            <h3 class="text-lg font-semibold text-slate-100">Parking Capacity</h3>
+                            <p class="text-xs text-slate-400">Set maximum lots (allocated + buffer) up to 30 per zone.</p>
+                            
+                            <div class="mt-3">
+                                <label class="text-sm font-bold text-red-400">Red Zone</label>
+                                <div class="grid grid-cols-2 gap-2 mt-1">
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-400">Allocated Lots</label>
+                                        <input type="number" name="redAllocated" value="${PARKING_ZONES.Red.allocated}" min="0" max="30" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg text-white" required>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-400">Buffer Lots</label>
+                                        <input type="number" name="redBuffer" value="${PARKING_ZONES.Red.buffer}" min="0" max="30" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg text-white" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-3 mb-4">
+                                <label class="text-sm font-bold text-slate-200">White Zone</label>
+                                <div class="grid grid-cols-2 gap-2 mt-1">
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-400">Allocated Lots</label>
+                                        <input type="number" name="whiteAllocated" value="${PARKING_ZONES.White.allocated}" min="0" max="30" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg text-white" required>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-400">Buffer Lots</label>
+                                        <input type="number" name="whiteBuffer" value="${PARKING_ZONES.White.buffer}" min="0" max="30" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg text-white" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Configuration</button>
+                        </form>
+
+                        <!-- VVIP Configuration Form -->
+                        <form id="add-vvip-form" class="space-y-3 p-4 bg-slate-900/50 rounded-lg border border-slate-700/50">
                             <h3 class="text-lg font-semibold text-slate-100">Add New VVIP</h3>
-                            <div><label class="text-xs font-semibold text-slate-400">Vehicle Number</label><input name="vehicleNumber" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg" required></div>
-                            <div><label class="text-xs font-semibold text-slate-400">Designation</label><input name="designation" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg" required></div>
+                            <div><label class="text-xs font-semibold text-slate-400">Vehicle Number</label><input name="vehicleNumber" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg text-white" required></div>
+                            <div><label class="text-xs font-semibold text-slate-400">Designation</label><input name="designation" class="mobile-input mt-1 w-full p-2 bg-slate-700 border border-slate-600 rounded-lg text-white" required></div>
                             <button type="submit" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add VVIP</button>
                         </form>
                         <div class="mt-6">
                             <h3 class="text-lg font-semibold text-slate-100">Current VVIPs</h3>
                             <div id="vvip-list-container-settings" class="mt-2 space-y-2"></div>
                         </div>
+
                     </div>
                 </div>
             </div>`;
@@ -899,10 +925,43 @@
     };
 
     onAuthStateChanged(auth, async (user) => {
-        unsubClearances?.(); unsubRequests?.(); unsubVVIPs?.(); unsubParking?.();
+        unsubClearances?.(); unsubRequests?.(); unsubVVIPs?.(); unsubParking?.(); unsubParkingConfig?.();
         if (user && !user.isAnonymous) {
             const adminDoc = await getDoc(doc(db, "admins", user.uid));
-            if (adminDoc.exists()) { currentAdminProfile = adminDoc.data(); renderAdminDashboard(currentAdminProfile); } else { signOut(auth); }
+            if (adminDoc.exists()) { 
+                currentAdminProfile = adminDoc.data(); 
+
+                // Listen to Global Parking Settings
+                const configRef = doc(db, "publicConfig", "parkingSettings");
+                unsubParkingConfig = onSnapshot(configRef, async (snap) => {
+                    if (!snap.exists()) {
+                        await setDoc(configRef, {
+                            Red: { allocated: 10, buffer: 5 },
+                            White: { allocated: 10, buffer: 5 }
+                        });
+                    } else {
+                        const data = snap.data();
+                        PARKING_ZONES.Red.allocated = data.Red.allocated;
+                        PARKING_ZONES.Red.buffer = data.Red.buffer;
+                        PARKING_ZONES.White.allocated = data.White.allocated;
+                        PARKING_ZONES.White.buffer = data.White.buffer;
+                        
+                        // Update settings panel if it's currently open
+                        const form = document.getElementById('parking-config-form');
+                        if (form) {
+                            form.elements['redAllocated'].value = data.Red.allocated;
+                            form.elements['redBuffer'].value = data.Red.buffer;
+                            form.elements['whiteAllocated'].value = data.White.allocated;
+                            form.elements['whiteBuffer'].value = data.White.buffer;
+                        }
+                        renderParkingMonitor();
+                    }
+                });
+
+                renderAdminDashboard(currentAdminProfile); 
+            } else { 
+                signOut(auth); 
+            }
         } else { renderAdminLogin(); }
     });
 
@@ -1160,7 +1219,26 @@
         const button = form.querySelector('button[type="submit"]');
         if (button) button.disabled = true;
         try {
-            if (form.id === "search-form") {
+            if (form.id === "parking-config-form") {
+                const data = getFormObj(form);
+                const redAlloc = parseInt(data.redAllocated);
+                const redBuff = parseInt(data.redBuffer);
+                const whiteAlloc = parseInt(data.whiteAllocated);
+                const whiteBuff = parseInt(data.whiteBuffer);
+                
+                if (redAlloc + redBuff > 30 || whiteAlloc + whiteBuff > 30) {
+                    showNotification("Total capacity (Allocated + Buffer) cannot exceed 30 lots per zone.", "error");
+                    return;
+                }
+
+                await setDoc(doc(db, "publicConfig", "parkingSettings"), {
+                    Red: { allocated: redAlloc, buffer: redBuff },
+                    White: { allocated: whiteAlloc, buffer: whiteBuff }
+                });
+                
+                showNotification("Parking capacity configuration saved successfully!");
+            }
+            else if (form.id === "search-form") {
                 const data = getFormObj(form);
                 const searchTerm = data.searchTerm.toUpperCase().trim();
                 if (!searchTerm) return;
@@ -1223,5 +1301,4 @@
 </script>
 </body>
 </html>
-
 
