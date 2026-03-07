@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -594,7 +593,7 @@
             content=`<p>Hi <strong>${data.requesterName||'User'}</strong>,</p><p>Your clearance request for <strong style="font-family:monospace;">${data.vehicleNumber}</strong> is now <strong>pending review</strong>. You'll receive an update once it's processed.</p><hr style="border:none;border-top:1px solid #e2e8f0;margin:18px 0;"><p style="font-size:13px;color:#64748b;">Submitted: ${data.submittedAt}</p>`;
         } else if (status==='approved') {
             title='Request Approved ✓';
-            content=`<p>Hi <strong>${data.ownerName||'User'}</strong>,</p><p>Your vehicle clearance for <strong style="font-family:monospace;">${data.vehicleNumber}</strong> has been <strong style="color:#16a34a;">approved</strong>.</p><hr style="border:none;border-top:1px solid #e2e8f0;margin:18px 0;"><table style="font-size:13px;color:#475569;width:100%;border-collapse:collapse;"><tr><td style="padding:6px 0;"><strong>Location</strong></td><td>${data.location}</td></tr><tr><td style="padding:6px 0;"><strong>Valid From</strong></td><td>${data.entryDate}</td></tr><tr><td style="padding:6px 0;"><strong>Valid Until</strong></td><td>${data.expiryDate}</td></tr></table>`;
+            content=`<p>Hi <strong>${data.ownerName||'User'}</strong>,</p><p>Your vehicle clearance for <strong style="font-family:monospace;">${data.vehicleNumber}</strong> has been <strong style="color:#16a34a;">approved</strong>.</p><hr style="border:none;border-top:1px solid #e2e8f0;margin:18px 0;"><table style="font-size:13px;color:#475569;width:100%;border-collapse:collapse;"><tr><td style="padding:6px 0;"><strong>Parking Location</strong></td><td>${data.location}</td></tr><tr><td style="padding:6px 0;"><strong>Valid From</strong></td><td>${data.entryDate}</td></tr><tr><td style="padding:6px 0;"><strong>Valid Until</strong></td><td>${data.expiryDate}</td></tr></table>`;
         } else if (status==='rejected') {
             title='Request Update';
             content=`<p>Hi <strong>${data.requesterName||'User'}</strong>,</p><p>Your request for <strong style="font-family:monospace;">${data.vehicleNumber}</strong> could not be approved at this time.</p><div style="padding:12px;border-left:3px solid #ef4444;background:#fff5f5;border-radius:4px;margin:16px 0;font-size:13px;"><strong>Reason:</strong> ${data.rejectionReason}</div>`;
@@ -941,10 +940,11 @@
                 <div style="display:grid;grid-template-columns:1fr auto;gap:12px;padding-top:12px;">
                     <div style="display:flex;flex-direction:column;gap:5px;">
                         ${[
-                            ['Owner', c.ownerName],
+                            ['Driver/Owner Name', c.ownerName],
+                            ['Host', c.host || '—'],
                             ['Contact', c.ownerContact||'—'],
                             ['Email', c.ownerEmail||'—'],
-                            ['Location', c.location],
+                            ['Parking Location', c.location],
                             ['Vehicle Type', c.vehicleType],
                             ['Hours', c.timeSlot],
                             ['Validity', `${formatDate(c.entryDate)} → ${formatDate(c.expiryDate)}`],
@@ -997,6 +997,12 @@
         const email = isReview ? data.requesterEmail : data.ownerEmail;
         const name = isReview ? data.requesterName : data.ownerName;
 
+        const hostOptions = ["A DIV", "CAD", "CID", "CNB", "CPG/SMM", "HTX", "PRD", "VSC HQ", "Others"];
+        const presetHosts = ["A DIV", "CAD", "CID", "CNB", "CPG/SMM", "HTX", "PRD", "VSC HQ"];
+        const isCustomHost = data.host && !presetHosts.includes(data.host);
+        const hostSelectVal = isCustomHost ? "Others" : (data.host || "");
+        const customHostVal = isCustomHost ? data.host : "";
+
         const whatsAppButton = `<button type="button" id="whatsapp-form-btn" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.2);border-radius:8px;color:#34d399;cursor:pointer;flex-shrink:0;" data-id="${data.id||''}">${icons.whatsapp}</button>`;
 
         let actionButtonsHTML;
@@ -1035,10 +1041,19 @@
 
             </div>
 
-            ${FL('Full Name')}
-            <input name="ownerName" value="${name||''}" style="${inputStyle}" required>
+            ${FL('Driver/Owner Name')}
+            <input name="ownerName" value="${name||''}" style="${inputStyle};margin-bottom:4px;" required>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+                ${FL('Host')}
+                <select id="host-select" name="host_select" style="${selectStyle}" required>
+                    <option value="" style="background:var(--bg-elevated);">Select host...</option>
+                    ${hostOptions.map(h => `<option value="${h}" style="background:var(--bg-elevated);" ${hostSelectVal === h ? 'selected' : ''}>${h}</option>`).join('')}
+                </select>
+                <input type="text" id="host-other-input" name="host_other" value="${customHostVal}" style="${inputStyle}margin-top:8px;${hostSelectVal === 'Others' ? '' : 'display:none;'}" placeholder="Please specify host">
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
                 <div>${FL('Contact No.')}<input name="contact" value="${contact||''}" type="tel" style="${inputStyle}"></div>
                 <div>${FL('Email')}
                 <input name="email" value="${email||''}" type="email" style="${inputStyle}"></div>
@@ -1059,7 +1074,7 @@
                 <div>${FL('Expiry Date')}<input type="date" name="expiryDate" value="${toISODate(data.expiryDate?.toDate()||new Date())}" style="${inputStyle}"></div>
             </div>
 
-            ${FL('Location')}
+            ${FL('Parking Location')}
             <select name="location" style="${selectStyle}">${locationOptions.map(l=>`<option style="background:var(--bg-elevated);" ${data.location===l?'selected':''}>${l}</option>`).join('')}</select>
             <input name="customLocation" style="${inputStyle}display:none;" class="hidden" placeholder="Enter custom location...">
 
@@ -1331,14 +1346,20 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ─────────────────────────────────────────
-//  CLEARANCE SAVE LOGIC (unchanged)
+//  CLEARANCE SAVE LOGIC 
 // ─────────────────────────────────────────
 const getCommonPayload = (form) => {
     const data=getFormObj(form); const entryDate=parseLocalDate(data.entryDate), expiryDate=parseLocalDate(data.expiryDate);
     if(!entryDate||!expiryDate||!form.checkValidity()){showNotification("Invalid form data. Fill all required fields.","error");return null;}
     if(!currentAdminProfile){showNotification("Admin profile not loaded.","error");return null;}
+    
+    let host = data.host_select;
+    if (host === 'Others') {
+        host = data.host_other || '';
+    }
+
     const location=data.location==="Other"?data.customLocation:data.location;
-    return { ownerName:data.ownerName, ownerContact:data.contact, ownerEmail:data.email, vehicleType:data.vehicleType, location:location, timeSlot:data.timeSlot, entryDate:Timestamp.fromDate(entryDate), expiryDate:Timestamp.fromDate(expiryDate), notes:data.notes||"", escortRequired:!!data.escortRequired, parkingZone:data.parkingZone||"", createdAt:Timestamp.now(), approvedAt:Timestamp.now(), approvedByUsername:currentAdminProfile.username };
+    return { ownerName:data.ownerName, host:host, ownerContact:data.contact, ownerEmail:data.email, vehicleType:data.vehicleType, location:location, timeSlot:data.timeSlot, entryDate:Timestamp.fromDate(entryDate), expiryDate:Timestamp.fromDate(expiryDate), notes:data.notes||"", escortRequired:!!data.escortRequired, parkingZone:data.parkingZone||"", createdAt:Timestamp.now(), approvedAt:Timestamp.now(), approvedByUsername:currentAdminProfile.username };
 };
 
 const saveSingleClearance = async (form, editingId=null) => {
@@ -1455,7 +1476,13 @@ document.body.addEventListener("click", async(e) => {
             button.disabled=true; button.innerHTML="Approving...";
             const originalRequest=clearanceRequests.find(r=>r.id===id);
             const formData=getFormObj(form);
-            const clearancePayload={ownerName:formData.ownerName,ownerContact:formData.contact,ownerEmail:formData.email,vehicleNumber:formData.vehicleNumber.toUpperCase(),vehicleType:formData.vehicleType,location:formData.location==='Other'?formData.customLocation:formData.location,timeSlot:formData.timeSlot,entryDate:Timestamp.fromDate(parseLocalDate(formData.entryDate)),expiryDate:Timestamp.fromDate(parseLocalDate(formData.expiryDate)),parkingZone:formData.parkingZone||"",createdAt:originalRequest.createdAt,approvedAt:Timestamp.now(),approvedByUsername:currentAdminProfile.username,notes:formData.notes||"",escortRequired:!!formData.escortRequired};
+            
+            let host = formData.host_select;
+            if (host === 'Others') {
+                host = formData.host_other || '';
+            }
+
+            const clearancePayload={ownerName:formData.ownerName,host:host,ownerContact:formData.contact,ownerEmail:formData.email,vehicleNumber:formData.vehicleNumber.toUpperCase(),vehicleType:formData.vehicleType,location:formData.location==='Other'?formData.customLocation:formData.location,timeSlot:formData.timeSlot,entryDate:Timestamp.fromDate(parseLocalDate(formData.entryDate)),expiryDate:Timestamp.fromDate(parseLocalDate(formData.expiryDate)),parkingZone:formData.parkingZone||"",createdAt:originalRequest.createdAt,approvedAt:Timestamp.now(),approvedByUsername:currentAdminProfile.username,notes:formData.notes||"",escortRequired:!!formData.escortRequired};
             await addDoc(collection(db,"vehicleClearances"),clearancePayload);
             await updateDoc(doc(db,"clearanceRequests",id),{status:'approved'});
             const requesterEmail=formData.email||originalRequest?.requesterEmail;
@@ -1509,9 +1536,11 @@ document.body.addEventListener("change",(e)=>{
     const target=e.target;
     if(target.id==='parking-date-selector'){selectedParkingDate=parseLocalDate(target.value)||new Date();subscribeToParkingForDate(selectedParkingDate);}
     else if(target.name==="location"){const form=target.closest('form');const customInput=form.querySelector('input[name="customLocation"]');if(customInput){customInput.style.display=target.value==='Other'?'block':'none';}}
+    else if(target.name==="host_select"){const form=target.closest('form');const customInput=form.querySelector('input[name="host_other"]');if(customInput){customInput.style.display=target.value==='Others'?'block':'none';customInput.required=target.value==='Others';}}
     else if(target.name==="escortRequired")handleEscortCheckboxChange(target);
 });
 
 </script>
 </body>
 </html>
+
