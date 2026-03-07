@@ -993,12 +993,14 @@
         const title = isReview ? 'Review Request' : (mode === 'edit' ? 'Edit Clearance' : 'Fast Track');
         const vehicleTypeOptions = ["Car","Motorcycle","Delivery Vehicle"];
         
-        // Remove PCC from standard valid options, force assignment
         const locationOptions = ["Foyer Parking","Basement 1","Basement 2","Basement 3","Basement 4","Courtyard","E3","Other"];
         const isStandardLocation = locationOptions.includes(data.location) || data.location === 'PCC' || !data.location;
         const selectLocationValue = isStandardLocation ? (data.location || 'PCC') : 'Other';
         const customLocationValue = isStandardLocation ? '' : data.location;
         
+        // Check if location requires a zone 
+        const isBasementInitial = selectLocationValue.includes('Basement');
+
         const contact = isReview ? data.requesterContact : data.ownerContact;
         const email = isReview ? data.requesterEmail : data.ownerEmail;
         const name = isReview ? data.requesterName : data.ownerName;
@@ -1069,7 +1071,8 @@
                 <div>${FL('Vehicle Type')}<select name="vehicleType" style="${selectStyle}" required>${vehicleTypeOptions.map(v=>`<option style="background:var(--bg-elevated);" ${data.vehicleType===v?'selected':''}>${v}</option>`).join('')}</select></div>
                 <div id="parking-zone-assignment-container">
                     ${FL('Parking Zone')}
-                    <select name="parkingZone" style="${selectStyle}" required>
+                    <!-- Note: Only required/enabled if a Basement location is active -->
+                    <select name="parkingZone" style="${selectStyle} ${!isBasementInitial ? 'opacity:0.5;cursor:not-allowed;' : ''}" ${!isBasementInitial ? 'disabled' : ''}>
                         <option value="" style="background:var(--bg-elevated);" disabled ${!data.parkingZone ? 'selected' : ''}>Select Zone...</option>
                         <option value="Red" style="background:var(--bg-elevated);" ${data.parkingZone==='Red'?'selected':''}>Red Zone</option>
                         <option value="White" style="background:var(--bg-elevated);" ${data.parkingZone==='White'?'selected':''}>White Zone</option>
@@ -1370,7 +1373,6 @@ const getCommonPayload = (form) => {
     const data=getFormObj(form); const entryDate=parseLocalDate(data.entryDate), expiryDate=parseLocalDate(data.expiryDate);
     if(!entryDate||!expiryDate||!form.checkValidity()){showNotification("Invalid form data. Fill all required fields.","error");return null;}
     if(!currentAdminProfile){showNotification("Admin profile not loaded.","error");return null;}
-    if(!data.parkingZone) {showNotification("Please select a Parking Zone.","error");return null;}
     
     let host = data.host_select;
     if (host === 'Others') {
@@ -1386,7 +1388,15 @@ const getCommonPayload = (form) => {
         return null;
     }
 
-    return { ownerName:data.ownerName, host:host, ownerContact:data.contact, ownerEmail:data.email, vehicleType:data.vehicleType, location:location, timeSlot:data.timeSlot, entryDate:Timestamp.fromDate(entryDate), expiryDate:Timestamp.fromDate(expiryDate), notes:data.notes||"", escortRequired:!!data.escortRequired, parkingZone:data.parkingZone, createdAt:Timestamp.now(), approvedAt:Timestamp.now(), approvedByUsername:currentAdminProfile.username };
+    const isBasement = location.includes('Basement');
+    const pZone = data.parkingZone || "";
+
+    if(isBasement && !pZone) {
+        showNotification("Please select a Parking Zone for Basement locations.", "error");
+        return null;
+    }
+
+    return { ownerName:data.ownerName, host:host, ownerContact:data.contact, ownerEmail:data.email, vehicleType:data.vehicleType, location:location, timeSlot:data.timeSlot, entryDate:Timestamp.fromDate(entryDate), expiryDate:Timestamp.fromDate(expiryDate), notes:data.notes||"", escortRequired:!!data.escortRequired, parkingZone:pZone, createdAt:Timestamp.now(), approvedAt:Timestamp.now(), approvedByUsername:currentAdminProfile.username };
 };
 
 const saveSingleClearance = async (form, editingId=null) => {
@@ -1419,15 +1429,18 @@ const handleSaveClearance = async (form, editingId) => {
 
     let countToAdd=1, vehicleNumbers=[];
     if(isBatchMode&&!editingId){vehicleNumbers=(data.vehicleNumbers||'').split('\n').map(v=>v.trim().toUpperCase()).filter(Boolean);if(!vehicleNumbers.length){showNotification("Enter at least one vehicle number.","error");return;}countToAdd=vehicleNumbers.length;}
-    const zone=data.parkingZone, entryDate=parseLocalDate(data.entryDate);
+    const entryDate=parseLocalDate(data.entryDate);
     
-    if(!zone){ showNotification("Please select a Parking Zone.", "error"); return; }
-
     let locVal = data.location;
     if (locVal === 'Other') { locVal = (data.customLocation || '').trim(); }
     if(!locVal || locVal === 'PCC') { showNotification("Please select a specific Parking Location.", "error"); return; }
+    
+    const isBasement = locVal.includes('Basement');
+    const zone = data.parkingZone || "";
+    
+    if(isBasement && !zone){ showNotification("Please select a Parking Zone for Basement locations.", "error"); return; }
 
-    if(zone&&entryDate){
+    if(isBasement && zone && entryDate){
         try{
             if(saveButton){saveButton.disabled=true;saveButton.innerHTML='Checking...';}
             const maxZoneCapacity=(parseInt(PARKING_ZONES[zone]?.allocated)||0)+(parseInt(PARKING_ZONES[zone]?.buffer)||0);
@@ -1512,12 +1525,6 @@ document.body.addEventListener("click", async(e) => {
             if(!form.checkValidity()){form.reportValidity();return;}
             
             const formData=getFormObj(form);
-            
-            // Explicitly enforce that Parking Zone MUST be filled out for Approval
-            if(!formData.parkingZone){
-                showNotification("Please select a Parking Zone before approving.", "error");
-                return;
-            }
 
             let locationVal = formData.location;
             if (locationVal === 'Other') {
@@ -1525,6 +1532,15 @@ document.body.addEventListener("click", async(e) => {
             }
             if(!locationVal || locationVal === 'PCC'){
                 showNotification("Please select a specific Parking Location before approving.", "error");
+                return;
+            }
+
+            // Only enforce Parking Zone if Location is a Basement
+            const isBasement = locationVal.includes('Basement');
+            const pZone = formData.parkingZone || "";
+            
+            if(isBasement && !pZone){
+                showNotification("Please select a Parking Zone for Basement locations.", "error");
                 return;
             }
 
@@ -1547,7 +1563,7 @@ document.body.addEventListener("click", async(e) => {
                 timeSlot:formData.timeSlot,
                 entryDate:Timestamp.fromDate(parseLocalDate(formData.entryDate)),
                 expiryDate:Timestamp.fromDate(parseLocalDate(formData.expiryDate)),
-                parkingZone:formData.parkingZone,
+                parkingZone:pZone,
                 createdAt:originalRequest.createdAt,
                 approvedAt:Timestamp.now(),
                 approvedByUsername:currentAdminProfile.username,
@@ -1560,7 +1576,7 @@ document.body.addEventListener("click", async(e) => {
             // Save the newly updated Parking Zone and Location back into the clearanceRequests
             await updateDoc(doc(db,"clearanceRequests",id),{
                 status:'approved',
-                parkingZone: formData.parkingZone,
+                parkingZone: pZone,
                 location: locationVal,
                 host: host
             });
@@ -1615,7 +1631,25 @@ document.body.addEventListener("reset",(e)=>{ if(e.target.id==='search-form'){do
 document.body.addEventListener("change",(e)=>{
     const target=e.target;
     if(target.id==='parking-date-selector'){selectedParkingDate=parseLocalDate(target.value)||new Date();subscribeToParkingForDate(selectedParkingDate);}
-    else if(target.name==="location"){const form=target.closest('form');const customInput=form.querySelector('input[name="customLocation"]');if(customInput){customInput.style.display=target.value==='Other'?'block':'none';customInput.required=target.value==='Other';}}
+    else if(target.name==="location"){
+        const form=target.closest('form');
+        const customInput=form.querySelector('input[name="customLocation"]');
+        if(customInput){customInput.style.display=target.value==='Other'?'block':'none';customInput.required=target.value==='Other';}
+        
+        const zoneSelect=form.querySelector('select[name="parkingZone"]');
+        if(zoneSelect){
+            if(target.value.includes('Basement')){
+                zoneSelect.disabled=false;
+                zoneSelect.style.opacity='1';
+                zoneSelect.style.cursor='pointer';
+            }else{
+                zoneSelect.disabled=true;
+                zoneSelect.value='';
+                zoneSelect.style.opacity='0.5';
+                zoneSelect.style.cursor='not-allowed';
+            }
+        }
+    }
     else if(target.name==="host_select"){const form=target.closest('form');const customInput=form.querySelector('input[name="host_other"]');if(customInput){customInput.style.display=target.value==='Others'?'block':'none';customInput.required=target.value==='Others';}}
     else if(target.name==="escortRequired")handleEscortCheckboxChange(target);
 });
