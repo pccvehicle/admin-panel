@@ -1061,7 +1061,14 @@
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div>${FL('Vehicle Type')}<select name="vehicleType" style="${selectStyle}" required>${vehicleTypeOptions.map(v=>`<option style="background:var(--bg-elevated);" ${data.vehicleType===v?'selected':''}>${v}</option>`).join('')}</select></div>
-                <div id="parking-zone-assignment-container">${FL('Parking Zone')}<select name="parkingZone" style="${selectStyle}"><option value="" style="background:var(--bg-elevated);">None</option><option value="Red" style="background:var(--bg-elevated);" ${data.parkingZone==='Red'?'selected':''}>Red Zone</option><option value="White" style="background:var(--bg-elevated);" ${data.parkingZone==='White'?'selected':''}>White Zone</option></select></div>
+                <div id="parking-zone-assignment-container">
+                    ${FL('Parking Zone')}
+                    <select name="parkingZone" style="${selectStyle}" required>
+                        <option value="" style="background:var(--bg-elevated);" disabled ${!data.parkingZone ? 'selected' : ''}>Select Zone...</option>
+                        <option value="Red" style="background:var(--bg-elevated);" ${data.parkingZone==='Red'?'selected':''}>Red Zone</option>
+                        <option value="White" style="background:var(--bg-elevated);" ${data.parkingZone==='White'?'selected':''}>White Zone</option>
+                    </select>
+                </div>
             </div>
 
             ${FL('Visiting Hours')}
@@ -1352,6 +1359,7 @@ const getCommonPayload = (form) => {
     const data=getFormObj(form); const entryDate=parseLocalDate(data.entryDate), expiryDate=parseLocalDate(data.expiryDate);
     if(!entryDate||!expiryDate||!form.checkValidity()){showNotification("Invalid form data. Fill all required fields.","error");return null;}
     if(!currentAdminProfile){showNotification("Admin profile not loaded.","error");return null;}
+    if(!data.parkingZone) {showNotification("Please select a Parking Zone.","error");return null;}
     
     let host = data.host_select;
     if (host === 'Others') {
@@ -1359,7 +1367,7 @@ const getCommonPayload = (form) => {
     }
 
     const location=data.location==="Other"?data.customLocation:data.location;
-    return { ownerName:data.ownerName, host:host, ownerContact:data.contact, ownerEmail:data.email, vehicleType:data.vehicleType, location:location, timeSlot:data.timeSlot, entryDate:Timestamp.fromDate(entryDate), expiryDate:Timestamp.fromDate(expiryDate), notes:data.notes||"", escortRequired:!!data.escortRequired, parkingZone:data.parkingZone||"", createdAt:Timestamp.now(), approvedAt:Timestamp.now(), approvedByUsername:currentAdminProfile.username };
+    return { ownerName:data.ownerName, host:host, ownerContact:data.contact, ownerEmail:data.email, vehicleType:data.vehicleType, location:location, timeSlot:data.timeSlot, entryDate:Timestamp.fromDate(entryDate), expiryDate:Timestamp.fromDate(expiryDate), notes:data.notes||"", escortRequired:!!data.escortRequired, parkingZone:data.parkingZone, createdAt:Timestamp.now(), approvedAt:Timestamp.now(), approvedByUsername:currentAdminProfile.username };
 };
 
 const saveSingleClearance = async (form, editingId=null) => {
@@ -1387,9 +1395,15 @@ const handleSaveClearance = async (form, editingId) => {
     const saveButton=form.querySelector('.save-clearance-btn');
     const isBatchMode=document.getElementById('batch-vehicle-tab')?.style.color==='#38bdf8';
     const data=getFormObj(form);
+    
+    if(!form.checkValidity()){form.reportValidity();return;}
+
     let countToAdd=1, vehicleNumbers=[];
     if(isBatchMode&&!editingId){vehicleNumbers=(data.vehicleNumbers||'').split('\n').map(v=>v.trim().toUpperCase()).filter(Boolean);if(!vehicleNumbers.length){showNotification("Enter at least one vehicle number.","error");return;}countToAdd=vehicleNumbers.length;}
     const zone=data.parkingZone, entryDate=parseLocalDate(data.entryDate);
+    
+    if(!zone){ showNotification("Please select a Parking Zone.", "error"); return; }
+
     if(zone&&entryDate){
         try{
             if(saveButton){saveButton.disabled=true;saveButton.innerHTML='Checking...';}
@@ -1473,18 +1487,54 @@ document.body.addEventListener("click", async(e) => {
         else if(button.classList.contains("approve-request-btn")){
             const form=button.closest('form');
             if(!form.checkValidity()){form.reportValidity();return;}
+            
+            const formData=getFormObj(form);
+            
+            // Explicitly enforce that Parking Zone MUST be filled out for Approval
+            if(!formData.parkingZone){
+                showNotification("Please select a Parking Zone before approving.", "error");
+                return;
+            }
+
             button.disabled=true; button.innerHTML="Approving...";
             const originalRequest=clearanceRequests.find(r=>r.id===id);
-            const formData=getFormObj(form);
             
             let host = formData.host_select;
             if (host === 'Others') {
                 host = formData.host_other || '';
             }
 
-            const clearancePayload={ownerName:formData.ownerName,host:host,ownerContact:formData.contact,ownerEmail:formData.email,vehicleNumber:formData.vehicleNumber.toUpperCase(),vehicleType:formData.vehicleType,location:formData.location==='Other'?formData.customLocation:formData.location,timeSlot:formData.timeSlot,entryDate:Timestamp.fromDate(parseLocalDate(formData.entryDate)),expiryDate:Timestamp.fromDate(parseLocalDate(formData.expiryDate)),parkingZone:formData.parkingZone||"",createdAt:originalRequest.createdAt,approvedAt:Timestamp.now(),approvedByUsername:currentAdminProfile.username,notes:formData.notes||"",escortRequired:!!formData.escortRequired};
+            const locationVal = formData.location==='Other'?formData.customLocation:formData.location;
+
+            const clearancePayload={
+                ownerName:formData.ownerName,
+                host:host,
+                ownerContact:formData.contact,
+                ownerEmail:formData.email,
+                vehicleNumber:formData.vehicleNumber.toUpperCase(),
+                vehicleType:formData.vehicleType,
+                location:locationVal,
+                timeSlot:formData.timeSlot,
+                entryDate:Timestamp.fromDate(parseLocalDate(formData.entryDate)),
+                expiryDate:Timestamp.fromDate(parseLocalDate(formData.expiryDate)),
+                parkingZone:formData.parkingZone,
+                createdAt:originalRequest.createdAt,
+                approvedAt:Timestamp.now(),
+                approvedByUsername:currentAdminProfile.username,
+                notes:formData.notes||"",
+                escortRequired:!!formData.escortRequired
+            };
+
             await addDoc(collection(db,"vehicleClearances"),clearancePayload);
-            await updateDoc(doc(db,"clearanceRequests",id),{status:'approved'});
+            
+            // Save the newly updated Parking Zone and Location back into the clearanceRequests
+            await updateDoc(doc(db,"clearanceRequests",id),{
+                status:'approved',
+                parkingZone: formData.parkingZone,
+                location: locationVal,
+                host: host
+            });
+            
             const requesterEmail=formData.email||originalRequest?.requesterEmail;
             if(requesterEmail){const emailData={ownerName:formData.ownerName||originalRequest?.requesterName,vehicleNumber:clearancePayload.vehicleNumber,location:clearancePayload.location,entryDate:formatDate(clearancePayload.entryDate),expiryDate:formatDate(clearancePayload.expiryDate)}; await sendEmail(requesterEmail,`Vehicle Clearance Approved: ${clearancePayload.vehicleNumber}`,generateNotificationEmail('approved',emailData));}
             showNotification(`${clearancePayload.vehicleNumber} approved.`);
@@ -1543,4 +1593,5 @@ document.body.addEventListener("change",(e)=>{
 </script>
 </body>
 </html>
+
 
