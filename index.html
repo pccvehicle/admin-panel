@@ -992,7 +992,13 @@
         const isReview = mode === 'review';
         const title = isReview ? 'Review Request' : (mode === 'edit' ? 'Edit Clearance' : 'Fast Track');
         const vehicleTypeOptions = ["Car","Motorcycle","Delivery Vehicle"];
-        const locationOptions = ["PCC","Foyer Parking","Basement 1","Basement 2","Basement 3","Basement 4","Courtyard","E3","Other"];
+        
+        // Remove PCC from standard valid options, force assignment
+        const locationOptions = ["Foyer Parking","Basement 1","Basement 2","Basement 3","Basement 4","Courtyard","E3","Other"];
+        const isStandardLocation = locationOptions.includes(data.location) || data.location === 'PCC' || !data.location;
+        const selectLocationValue = isStandardLocation ? (data.location || 'PCC') : 'Other';
+        const customLocationValue = isStandardLocation ? '' : data.location;
+        
         const contact = isReview ? data.requesterContact : data.ownerContact;
         const email = isReview ? data.requesterEmail : data.ownerEmail;
         const name = isReview ? data.requesterName : data.ownerName;
@@ -1081,9 +1087,14 @@
                 <div>${FL('Expiry Date')}<input type="date" name="expiryDate" value="${toISODate(data.expiryDate?.toDate()||new Date())}" style="${inputStyle}"></div>
             </div>
 
-            ${FL('Parking Location')}
-            <select name="location" style="${selectStyle}">${locationOptions.map(l=>`<option style="background:var(--bg-elevated);" ${data.location===l?'selected':''}>${l}</option>`).join('')}</select>
-            <input name="customLocation" style="${inputStyle}display:none;" class="hidden" placeholder="Enter custom location...">
+            <div>
+                ${FL('Parking Location')}
+                <select name="location" style="${selectStyle}" required>
+                    <option value="PCC" style="background:var(--bg-elevated);color:var(--text-muted);" ${selectLocationValue==='PCC'?'selected':''}>-- Select Specific Location --</option>
+                    ${locationOptions.map(l=>`<option value="${l}" style="background:var(--bg-elevated);" ${selectLocationValue===l?'selected':''}>${l}</option>`).join('')}
+                </select>
+                <input name="customLocation" value="${customLocationValue}" style="${inputStyle}display:${selectLocationValue==='Other'?'block':'none'};margin-top:8px;" ${selectLocationValue==='Other'?'required':''} placeholder="Enter custom location...">
+            </div>
 
             ${FL('Notes')}
             <textarea name="notes" rows="2" style="${inputStyle}resize:vertical;">${data.notes||''}</textarea>
@@ -1363,10 +1374,18 @@ const getCommonPayload = (form) => {
     
     let host = data.host_select;
     if (host === 'Others') {
-        host = data.host_other || '';
+        host = (data.host_other || '').trim();
     }
 
-    const location=data.location==="Other"?data.customLocation:data.location;
+    let location = data.location;
+    if (location === 'Other') {
+        location = (data.customLocation || '').trim();
+    }
+    if(!location || location === 'PCC') {
+        showNotification("Please select a specific Parking Location.", "error");
+        return null;
+    }
+
     return { ownerName:data.ownerName, host:host, ownerContact:data.contact, ownerEmail:data.email, vehicleType:data.vehicleType, location:location, timeSlot:data.timeSlot, entryDate:Timestamp.fromDate(entryDate), expiryDate:Timestamp.fromDate(expiryDate), notes:data.notes||"", escortRequired:!!data.escortRequired, parkingZone:data.parkingZone, createdAt:Timestamp.now(), approvedAt:Timestamp.now(), approvedByUsername:currentAdminProfile.username };
 };
 
@@ -1403,6 +1422,10 @@ const handleSaveClearance = async (form, editingId) => {
     const zone=data.parkingZone, entryDate=parseLocalDate(data.entryDate);
     
     if(!zone){ showNotification("Please select a Parking Zone.", "error"); return; }
+
+    let locVal = data.location;
+    if (locVal === 'Other') { locVal = (data.customLocation || '').trim(); }
+    if(!locVal || locVal === 'PCC') { showNotification("Please select a specific Parking Location.", "error"); return; }
 
     if(zone&&entryDate){
         try{
@@ -1496,15 +1519,22 @@ document.body.addEventListener("click", async(e) => {
                 return;
             }
 
+            let locationVal = formData.location;
+            if (locationVal === 'Other') {
+                locationVal = (formData.customLocation || '').trim();
+            }
+            if(!locationVal || locationVal === 'PCC'){
+                showNotification("Please select a specific Parking Location before approving.", "error");
+                return;
+            }
+
             button.disabled=true; button.innerHTML="Approving...";
             const originalRequest=clearanceRequests.find(r=>r.id===id);
             
             let host = formData.host_select;
             if (host === 'Others') {
-                host = formData.host_other || '';
+                host = (formData.host_other || '').trim();
             }
-
-            const locationVal = formData.location==='Other'?formData.customLocation:formData.location;
 
             const clearancePayload={
                 ownerName:formData.ownerName,
@@ -1585,7 +1615,7 @@ document.body.addEventListener("reset",(e)=>{ if(e.target.id==='search-form'){do
 document.body.addEventListener("change",(e)=>{
     const target=e.target;
     if(target.id==='parking-date-selector'){selectedParkingDate=parseLocalDate(target.value)||new Date();subscribeToParkingForDate(selectedParkingDate);}
-    else if(target.name==="location"){const form=target.closest('form');const customInput=form.querySelector('input[name="customLocation"]');if(customInput){customInput.style.display=target.value==='Other'?'block':'none';}}
+    else if(target.name==="location"){const form=target.closest('form');const customInput=form.querySelector('input[name="customLocation"]');if(customInput){customInput.style.display=target.value==='Other'?'block':'none';customInput.required=target.value==='Other';}}
     else if(target.name==="host_select"){const form=target.closest('form');const customInput=form.querySelector('input[name="host_other"]');if(customInput){customInput.style.display=target.value==='Others'?'block':'none';customInput.required=target.value==='Others';}}
     else if(target.name==="escortRequired")handleEscortCheckboxChange(target);
 });
