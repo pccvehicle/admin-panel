@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Car Club — Member Registration</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+  /* ── TOKENS ── */
+  :root {
+    --pearl:        #F7F8FA;
+    --pearl-mid:    #EEF0F4;
+    --pearl-border: #DDE1EA;
+    --cobalt:       #1A56DB;
+    --cobalt-light: #2563EB;
+    --cobalt-glow:  rgba(26,86,219,0.15);
+    --cobalt-dim:   rgba(26,86,219,0.06);
+    --ink:          #0F172A;
+    --ink-muted:    #4B5675;
+    --ink-subtle:   #8B95A7;
+    --success:      #059669;
+    --warning:      #D97706;
+    --danger:       #DC2626;
+    --radius:       12px;
+    --radius-sm:    8px;
+    --shadow-card:  0 2px 16px rgba(15,23,42,0.08), 0 1px 4px rgba(15,23,42,0.04);
+    --shadow-focus: 0 0 0 3px var(--cobalt-glow);
+    --font-display: 'Syne', sans-serif;
+    --font-body:    'Plus Jakarta Sans', sans-serif;
+    --font-mono:    'JetBrains Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--pearl);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── BACKGROUND PATTERN ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(26,86,219,0.06) 0%, transparent 50%),
+      radial-gradient(circle at 85% 80%, rgba(26,86,219,0.04) 0%, transparent 50%),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, var(--pearl-border) 39px, var(--pearl-border) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, var(--pearl-border) 39px, var(--pearl-border) 40px);
+    background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /* ── HEADER ── */
+  .site-header {
+    position: relative; z-index: 10;
+    background: rgba(247,248,250,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--pearl-border);
+    padding: 0 clamp(16px, 4vw, 48px);
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-display); font-weight: 800; font-size: 1.1rem;
+    color: var(--ink); letter-spacing: -0.02em;
+  }
+  .logo-badge {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--cobalt);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-badge svg { width: 18px; height: 18px; }
+  .header-tag {
+    font-family: var(--font-mono); font-size: 0.7rem;
+    color: var(--cobalt); background: var(--cobalt-dim);
+    border: 1px solid rgba(26,86,219,0.2);
+    padding: 4px 10px; border-radius: 20px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative; z-index: 1;
+    text-align: center;
+    padding: clamp(40px, 6vw, 72px) clamp(16px, 4vw, 48px) clamp(24px, 4vw, 40px);
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--cobalt); letter-spacing: 0.1em; text-transform: uppercase;
+    background: var(--cobalt-dim); border: 1px solid rgba(26,86,219,0.18);
+    padding: 5px 14px; border-radius: 20px; margin-bottom: 20px;
+  }
+  .hero-eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--cobalt); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .hero h1 {
+    font-family: var(--font-display); font-weight: 800;
+    font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.1;
+    letter-spacing: -0.03em; color: var(--ink); margin-bottom: 14px;
+  }
+  .hero h1 span { color: var(--cobalt); }
+  .hero p {
+    font-size: 1.05rem; color: var(--ink-muted); max-width: 480px;
+    margin: 0 auto; line-height: 1.7; font-weight: 400;
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-wrap {
+    position: relative; z-index: 1;
+    max-width: 720px; margin: 0 auto;
+    padding: 0 clamp(16px, 4vw, 48px) 32px;
+  }
+  .steps {
+    display: flex; align-items: center; gap: 0;
+    background: white; border: 1px solid var(--pearl-border);
+    border-radius: var(--radius); padding: 6px;
+    box-shadow: var(--shadow-card);
+  }
+  .step-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 10px 8px; border-radius: var(--radius-sm);
+    border: none; background: transparent; cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body); font-size: 0.82rem; font-weight: 500;
+    color: var(--ink-subtle);
+  }
+  .step-btn.active {
+    background: var(--cobalt); color: white;
+    box-shadow: 0 2px 8px rgba(26,86,219,0.3);
+  }
+  .step-btn.done { color: var(--success); }
+  .step-num {
+    width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid currentColor;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 0.7rem; font-weight: 500;
+    flex-shrink: 0;
+  }
+  .step-btn.active .step-num { border-color: white; }
+  .step-btn.done .step-num { border-color: var(--success); background: var(--success); color: white; }
+  .step-label { display: none; }
+  @media(min-width: 480px){ .step-label { display: inline; } }
+
+  /* ── FORM WRAPPER ── */
+  .form-outer {
+    position: relative; z-index: 1;
+    max-width: 720px; margin: 0 auto;
+    padding: 0 clamp(16px, 4vw, 48px) 64px;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: white; border: 1px solid var(--pearl-border);
+    border-radius: 16px; padding: clamp(24px, 4vw, 40px);
+    box-shadow: var(--shadow-card);
+    animation: slideUp 0.35s cubic-bezier(.16,1,.3,1);
+  }
+  @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+
+  .section-header {
+    display: flex; align-items: flex-start; gap: 14px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--pearl-border);
+  }
+  .section-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    background: var(--cobalt-dim); border: 1px solid rgba(26,86,219,0.15);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 1.15rem;
+  }
+  .section-header h2 {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 1.25rem; letter-spacing: -0.02em; color: var(--ink);
+    margin-bottom: 3px;
+  }
+  .section-header p { font-size: 0.85rem; color: var(--ink-muted); }
+
+  /* ── GRID ── */
+  .grid { display: grid; gap: 18px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  @media(max-width: 580px){ .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .col-span-2 { grid-column: span 2; }
+  @media(max-width: 580px){ .col-span-2 { grid-column: span 1; } }
+
+  /* ── FIELD ── */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label {
+    font-size: 0.8rem; font-weight: 600; color: var(--ink);
+    letter-spacing: 0.01em;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .req { color: var(--cobalt); font-size: 0.75rem; }
+  .opt { color: var(--ink-subtle); font-size: 0.72rem; font-weight: 400; }
+
+  input, select, textarea {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--pearl-border);
+    border-radius: var(--radius-sm);
+    background: var(--pearl);
+    font-family: var(--font-body); font-size: 0.9rem; color: var(--ink);
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    outline: none; appearance: none;
+  }
+  input::placeholder, textarea::placeholder { color: var(--ink-subtle); }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--cobalt); background: white;
+    box-shadow: var(--shadow-focus);
+  }
+  input.error, select.error { border-color: var(--danger); }
+  .field-hint { font-size: 0.76rem; color: var(--ink-subtle); }
+  .field-error { font-size: 0.76rem; color: var(--danger); display: none; }
+  .field-error.show { display: block; }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238B95A7' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+    padding-right: 36px; cursor: pointer;
+  }
+
+  textarea { resize: vertical; min-height: 80px; }
+
+  /* ── PLATE INPUT ── */
+  .plate-input {
+    font-family: var(--font-mono) !important; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    font-size: 1rem !important;
+  }
+
+  /* ── RADIO GROUP ── */
+  .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
+  .radio-card {
+    flex: 1; min-width: 90px;
+    border: 1.5px solid var(--pearl-border);
+    border-radius: var(--radius-sm); padding: 10px 12px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: all 0.15s;
+    font-size: 0.85rem; font-weight: 500; color: var(--ink-muted);
+    background: var(--pearl);
+  }
+  .radio-card:hover { border-color: var(--cobalt); color: var(--ink); }
+  .radio-card input[type="radio"] { display: none; }
+  .radio-card.selected {
+    border-color: var(--cobalt); background: var(--cobalt-dim);
+    color: var(--cobalt);
+  }
+  .radio-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid currentColor; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .radio-dot::after {
+    content: ''; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--cobalt); display: none;
+  }
+  .radio-card.selected .radio-dot::after { display: block; }
+
+  /* ── CHECKBOX ── */
+  .checkbox-wrap {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 14px; border: 1.5px solid var(--pearl-border);
+    border-radius: var(--radius-sm); cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .checkbox-wrap:hover { border-color: var(--cobalt); }
+  .checkbox-wrap input[type="checkbox"] { display: none; }
+  .custom-check {
+    width: 18px; height: 18px; border: 2px solid var(--pearl-border);
+    border-radius: 4px; flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .checkbox-wrap.checked .custom-check {
+    background: var(--cobalt); border-color: var(--cobalt);
+  }
+  .checkbox-wrap.checked .custom-check::after {
+    content: ''; width: 5px; height: 9px;
+    border: 2px solid white; border-top: none; border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+    display: block;
+  }
+  .checkbox-wrap .cb-label { font-size: 0.83rem; color: var(--ink-muted); line-height: 1.5; }
+  .checkbox-wrap .cb-label a { color: var(--cobalt); text-decoration: none; }
+
+  /* ── FILE UPLOAD ── */
+  .upload-zone {
+    border: 2px dashed var(--pearl-border); border-radius: var(--radius-sm);
+    padding: 24px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--pearl);
+    position: relative;
+  }
+  .upload-zone:hover { border-color: var(--cobalt); background: var(--cobalt-dim); }
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    border: none; background: none; padding: 0;
+  }
+  .upload-icon { font-size: 1.8rem; margin-bottom: 8px; }
+  .upload-zone p { font-size: 0.83rem; color: var(--ink-muted); line-height: 1.6; }
+  .upload-zone strong { color: var(--cobalt); }
+  .upload-preview { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .preview-thumb {
+    width: 72px; height: 72px; border-radius: var(--radius-sm);
+    object-fit: cover; border: 1.5px solid var(--pearl-border);
+  }
+
+  /* ── SECTION DIVIDER ── */
+  .divider {
+    height: 1px; background: var(--pearl-border);
+    margin: 24px 0;
+  }
+
+  /* ── MEMBERSHIP TIER ── */
+  .tier-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  @media(max-width: 480px){ .tier-grid { grid-template-columns: 1fr; } }
+  .tier-card {
+    border: 1.5px solid var(--pearl-border); border-radius: var(--radius);
+    padding: 16px 12px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--pearl);
+    position: relative; overflow: hidden;
+  }
+  .tier-card:hover { border-color: var(--cobalt); transform: translateY(-1px); }
+  .tier-card.selected {
+    border-color: var(--cobalt); background: white;
+    box-shadow: 0 0 0 3px var(--cobalt-glow);
+  }
+  .tier-card input[type="radio"] { display: none; }
+  .tier-badge {
+    font-size: 1.5rem; margin-bottom: 8px; display: block;
+  }
+  .tier-name {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 0.95rem; color: var(--ink); margin-bottom: 4px;
+  }
+  .tier-price {
+    font-family: var(--font-mono); font-size: 0.8rem;
+    color: var(--cobalt); font-weight: 500;
+  }
+  .tier-card .tier-perks {
+    margin-top: 8px; font-size: 0.74rem; color: var(--ink-subtle); line-height: 1.6;
+  }
+  .tier-card.selected .tier-check {
+    position: absolute; top: 8px; right: 8px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--cobalt);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tier-check { display: none; }
+  .tier-card.selected .tier-check { display: flex; }
+  .tier-check::after {
+    content: ''; width: 4px; height: 7px;
+    border: 1.5px solid white; border-top: none; border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+  }
+
+  /* ── MODIFICATION TAG INPUT ── */
+  .tag-wrap {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    padding: 8px 10px; border: 1.5px solid var(--pearl-border);
+    border-radius: var(--radius-sm); background: var(--pearl);
+    min-height: 44px; transition: border-color 0.15s, box-shadow 0.15s;
+    cursor: text;
+  }
+  .tag-wrap:focus-within { border-color: var(--cobalt); background: white; box-shadow: var(--shadow-focus); }
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--cobalt-dim); border: 1px solid rgba(26,86,219,0.2);
+    color: var(--cobalt); font-size: 0.78rem; font-weight: 600;
+    padding: 3px 8px; border-radius: 20px;
+  }
+  .tag-remove { cursor: pointer; font-size: 0.9rem; line-height: 1; opacity: 0.6; }
+  .tag-remove:hover { opacity: 1; }
+  .tag-input-inner {
+    border: none; background: transparent; outline: none;
+    font-family: var(--font-body); font-size: 0.88rem; color: var(--ink);
+    min-width: 120px; flex: 1;
+  }
+
+  /* ── BUTTONS ── */
+  .btn-row { display: flex; gap: 10px; margin-top: 28px; justify-content: space-between; }
+  .btn {
+    padding: 12px 24px; border-radius: var(--radius-sm);
+    font-family: var(--font-body); font-weight: 600; font-size: 0.9rem;
+    cursor: pointer; border: none; transition: all 0.18s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary {
+    background: var(--cobalt); color: white;
+    box-shadow: 0 2px 8px rgba(26,86,219,0.3);
+  }
+  .btn-primary:hover { background: #1547C0; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(26,86,219,0.35); }
+  .btn-primary:active { transform: none; }
+  .btn-ghost {
+    background: transparent; color: var(--ink-muted);
+    border: 1.5px solid var(--pearl-border);
+  }
+  .btn-ghost:hover { border-color: var(--cobalt); color: var(--cobalt); background: var(--cobalt-dim); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+  /* ── SUCCESS SCREEN ── */
+  .success-card {
+    background: white; border: 1px solid var(--pearl-border);
+    border-radius: 16px; padding: clamp(40px, 6vw, 64px);
+    box-shadow: var(--shadow-card); text-align: center;
+    animation: slideUp 0.5s cubic-bezier(.16,1,.3,1);
+    display: none;
+  }
+  .success-card.show { display: block; }
+  .success-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: linear-gradient(135deg, #ECFDF5, #D1FAE5);
+    border: 2px solid #6EE7B7;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; margin: 0 auto 24px;
+  }
+  .success-card h2 {
+    font-family: var(--font-display); font-size: 1.8rem;
+    font-weight: 800; letter-spacing: -0.02em;
+    color: var(--ink); margin-bottom: 10px;
+  }
+  .success-card p { color: var(--ink-muted); line-height: 1.7; margin-bottom: 8px; }
+  .member-id {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--cobalt-dim); border: 1px solid rgba(26,86,219,0.2);
+    padding: 10px 18px; border-radius: 8px; margin: 16px 0;
+    font-family: var(--font-mono); font-size: 1rem; color: var(--cobalt); font-weight: 500;
+  }
+
+  /* ── LOADING ── */
+  .btn-loading { display: none; }
+  .btn.loading .btn-text { display: none; }
+  .btn.loading .btn-loading { display: inline-flex; align-items: center; gap: 6px; }
+  @keyframes spin { to{ transform: rotate(360deg); } }
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 100;
+    background: var(--ink); color: white;
+    padding: 12px 18px; border-radius: var(--radius-sm);
+    font-size: 0.85rem; font-weight: 500;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s cubic-bezier(.16,1,.3,1);
+    max-width: 320px; display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: none; opacity: 1; }
+  .toast.error { background: var(--danger); }
+  .toast.success { background: var(--success); }
+
+  /* ── MISC ── */
+  .hidden { display: none !important; }
+  .mt-4 { margin-top: 16px; }
+</style>
+
+</head>
+<body>
+
+<!-- HEADER -->
+
+<header class="site-header">
+  <div class="logo">
+    <div class="logo-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v5"/>
+        <circle cx="16" cy="17" r="3"/><circle cx="7" cy="17" r="3"/>
+      </svg>
+    </div>
+    PrecisionCC
+  </div>
+  <span class="header-tag">New Member Registration</span>
+</header>
+
+<!-- HERO -->
+
+<section class="hero">
+  <div class="hero-eyebrow">Open Enrollment</div>
+  <h1>Join the <span>Club</span></h1>
+  <p>Register your vehicle and become part of Malaysia's premier car enthusiast community.</p>
+</section>
+
+<!-- PROGRESS -->
+
+<div class="progress-wrap">
+  <div class="steps">
+    <button class="step-btn active" id="step-btn-1" onclick="goToStep(1)">
+      <span class="step-num">1</span>
+      <span class="step-label">Owner Info</span>
+    </button>
+    <button class="step-btn" id="step-btn-2" onclick="goToStep(2)">
+      <span class="step-num">2</span>
+      <span class="step-label">Vehicle</span>
+    </button>
+    <button class="step-btn" id="step-btn-3" onclick="goToStep(3)">
+      <span class="step-num">3</span>
+      <span class="step-label">Documents</span>
+    </button>
+    <button class="step-btn" id="step-btn-4" onclick="goToStep(4)">
+      <span class="step-num">4</span>
+      <span class="step-label">Membership</span>
+    </button>
+  </div>
+</div>
+
+<!-- FORM AREA -->
+
+<div class="form-outer">
+
+  <!-- ── STEP 1: OWNER ── -->
+
+  <div class="card" id="step-1">
+    <div class="section-header">
+      <div class="section-icon">👤</div>
+      <div>
+        <h2>Owner Information</h2>
+        <p>Your personal details and contact information</p>
+      </div>
+    </div>
+    <div class="grid grid-2">
+      <div class="field">
+        <label>Full Name <span class="req">*</span></label>
+        <input type="text" id="ownerName" placeholder="As per MyKad / Passport" />
+        <span class="field-error" id="err-ownerName">Full name is required</span>
+      </div>
+      <div class="field">
+        <label>IC / Passport No. <span class="req">*</span></label>
+        <input type="text" id="icNo" placeholder="e.g. 900101-01-1234" class="plate-input" />
+        <span class="field-error" id="err-icNo">IC / Passport number is required</span>
+      </div>
+      <div class="field">
+        <label>Date of Birth <span class="req">*</span></label>
+        <input type="date" id="dob" />
+        <span class="field-error" id="err-dob">Date of birth is required</span>
+      </div>
+      <div class="field">
+        <label>Gender</label>
+        <div class="radio-group">
+          <label class="radio-card" id="rc-male">
+            <input type="radio" name="gender" value="Male" onchange="selectRadio('gender','Male','rc-male')" />
+            <span class="radio-dot"></span> Male
+          </label>
+          <label class="radio-card" id="rc-female">
+            <input type="radio" name="gender" value="Female" onchange="selectRadio('gender','Female','rc-female')" />
+            <span class="radio-dot"></span> Female
+          </label>
+        </div>
+      </div>
+      <div class="field">
+        <label>Mobile Number <span class="req">*</span></label>
+        <input type="tel" id="phone" placeholder="+60 12-345 6789" />
+        <span class="field-error" id="err-phone">Mobile number is required</span>
+      </div>
+      <div class="field">
+        <label>Email Address <span class="req">*</span></label>
+        <input type="email" id="email" placeholder="you@example.com" />
+        <span class="field-error" id="err-email">Valid email is required</span>
+      </div>
+      <div class="field col-span-2">
+        <label>Home Address <span class="req">*</span></label>
+        <textarea id="address" placeholder="Street address, city, postcode..."></textarea>
+        <span class="field-error" id="err-address">Address is required</span>
+      </div>
+      <div class="field">
+        <label>State <span class="req">*</span></label>
+        <select id="state">
+          <option value="">Select state...</option>
+          <option>Johor</option><option>Kedah</option><option>Kelantan</option>
+          <option>Melaka</option><option>Negeri Sembilan</option><option>Pahang</option>
+          <option>Perak</option><option>Perlis</option><option>Pulau Pinang</option>
+          <option>Sabah</option><option>Sarawak</option><option>Selangor</option>
+          <option>Terengganu</option><option>Kuala Lumpur</option><option>Labuan</option>
+          <option>Putrajaya</option>
+        </select>
+        <span class="field-error" id="err-state">Please select a state</span>
+      </div>
+      <div class="field">
+        <label>Emergency Contact Name <span class="req">*</span></label>
+        <input type="text" id="emergencyName" placeholder="Full name" />
+        <span class="field-error" id="err-emergencyName">Emergency contact name required</span>
+      </div>
+      <div class="field col-span-2">
+        <label>Emergency Contact Number <span class="req">*</span></label>
+        <input type="tel" id="emergencyPhone" placeholder="+60 12-000 0000" />
+        <span class="field-error" id="err-emergencyPhone">Emergency contact number required</span>
+      </div>
+    </div>
+    <div class="btn-row">
+      <div></div>
+      <button class="btn btn-primary" onclick="nextStep(1)">
+        <span class="btn-text">Continue → Vehicle</span>
+        <span class="btn-loading"><span class="spinner"></span> Validating...</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: VEHICLE ── -->
+
+  <div class="card hidden" id="step-2">
+    <div class="section-header">
+      <div class="section-icon">🚗</div>
+      <div>
+        <h2>Vehicle Details</h2>
+        <p>Tell us about the car you're registering</p>
+      </div>
+    </div>
+    <div class="grid grid-2">
+      <div class="field">
+        <label>Registration Plate <span class="req">*</span></label>
+        <input type="text" id="plate" placeholder="e.g. JDT 1234" class="plate-input" oninput="this.value=this.value.toUpperCase()" />
+        <span class="field-error" id="err-plate">Plate number is required</span>
+      </div>
+      <div class="field">
+        <label>VIN / Chassis No. <span class="opt">(optional)</span></label>
+        <input type="text" id="vin" placeholder="17-character VIN" class="plate-input" oninput="this.value=this.value.toUpperCase()" />
+      </div>
+      <div class="field">
+        <label>Make / Brand <span class="req">*</span></label>
+        <select id="make" onchange="updateModels()">
+          <option value="">Select make...</option>
+          <option>Proton</option><option>Perodua</option><option>Toyota</option>
+          <option>Honda</option><option>Mazda</option><option>Mitsubishi</option>
+          <option>Nissan</option><option>Subaru</option><option>BMW</option>
+          <option>Mercedes-Benz</option><option>Audi</option><option>Volkswagen</option>
+          <option>Ford</option><option>Hyundai</option><option>Kia</option>
+          <option>Other</option>
+        </select>
+        <span class="field-error" id="err-make">Please select a make</span>
+      </div>
+      <div class="field">
+        <label>Model <span class="req">*</span></label>
+        <input type="text" id="model" placeholder="e.g. Supra, Civic, Saga" />
+        <span class="field-error" id="err-model">Model is required</span>
+      </div>
+      <div class="field">
+        <label>Variant / Trim <span class="opt">(optional)</span></label>
+        <input type="text" id="variant" placeholder="e.g. 2.0T Sport, GR" />
+      </div>
+      <div class="field">
+        <label>Year of Manufacture <span class="req">*</span></label>
+        <select id="year">
+          <option value="">Select year...</option>
+        </select>
+        <span class="field-error" id="err-year">Year is required</span>
+      </div>
+      <div class="field">
+        <label>Colour <span class="req">*</span></label>
+        <input type="text" id="colour" placeholder="e.g. Midnight Black, Pearl White" />
+        <span class="field-error" id="err-colour">Colour is required</span>
+      </div>
+      <div class="field">
+        <label>Engine Capacity (cc) <span class="req">*</span></label>
+        <input type="number" id="cc" placeholder="e.g. 1500" min="50" max="10000" />
+        <span class="field-error" id="err-cc">Engine capacity is required</span>
+      </div>
+      <div class="field">
+        <label>Transmission <span class="req">*</span></label>
+        <div class="radio-group">
+          <label class="radio-card" id="rc-manual">
+            <input type="radio" name="trans" value="Manual" onchange="selectRadio('trans','Manual','rc-manual')" />
+            <span class="radio-dot"></span> Manual
+          </label>
+          <label class="radio-card" id="rc-auto">
+            <input type="radio" name="trans" value="Automatic" onchange="selectRadio('trans','Automatic','rc-auto')" />
+            <span class="radio-dot"></span> Auto
+          </label>
+          <label class="radio-card" id="rc-cvt">
+            <input type="radio" name="trans" value="CVT" onchange="selectRadio('trans','CVT','rc-cvt')" />
+            <span class="radio-dot"></span> CVT
+          </label>
+        </div>
+        <span class="field-error" id="err-trans">Please select transmission type</span>
+      </div>
+      <div class="field">
+        <label>Fuel Type <span class="req">*</span></label>
+        <div class="radio-group">
+          <label class="radio-card" id="rc-petrol">
+            <input type="radio" name="fuel" value="Petrol" onchange="selectRadio('fuel','Petrol','rc-petrol')" />
+            <span class="radio-dot"></span> ⛽ Petrol
+          </label>
+          <label class="radio-card" id="rc-diesel">
+            <input type="radio" name="fuel" value="Diesel" onchange="selectRadio('fuel','Diesel','rc-diesel')" />
+            <span class="radio-dot"></span> 🛢️ Diesel
+          </label>
+          <label class="radio-card" id="rc-ev">
+            <input type="radio" name="fuel" value="EV" onchange="selectRadio('fuel','EV','rc-ev')" />
+            <span class="radio-dot"></span> ⚡ EV
+          </label>
+          <label class="radio-card" id="rc-hybrid">
+            <input type="radio" name="fuel" value="Hybrid" onchange="selectRadio('fuel','Hybrid','rc-hybrid')" />
+            <span class="radio-dot"></span> 🌿 Hybrid
+          </label>
+        </div>
+        <span class="field-error" id="err-fuel">Please select fuel type</span>
+      </div>
+      <div class="field col-span-2">
+        <label>Modifications Declared <span class="opt">(type and press Enter)</span></label>
+        <div class="tag-wrap" id="tags-wrap" onclick="document.getElementById('tag-input').focus()">
+          <input class="tag-input-inner" id="tag-input" placeholder="e.g. Lowered suspension, Body kit..." onkeydown="handleTagInput(event)" />
+        </div>
+        <span class="field-hint">Press Enter after each modification. Leave empty if stock.</span>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goToStep(1)">← Back</button>
+      <button class="btn btn-primary" onclick="nextStep(2)">
+        <span class="btn-text">Continue → Documents</span>
+        <span class="btn-loading"><span class="spinner"></span> Validating...</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: DOCUMENTS ── -->
+
+  <div class="card hidden" id="step-3">
+    <div class="section-header">
+      <div class="section-icon">📄</div>
+      <div>
+        <h2>Documents & Photos</h2>
+        <p>Upload vehicle photos and ownership documents</p>
+      </div>
+    </div>
+
+```
+<div class="grid">
+  <div class="field">
+    <label>Vehicle Photos <span class="opt">(front, side, rear — optional)</span></label>
+    <div class="upload-zone" id="upload-vehicle">
+      <input type="file" accept="image/*" multiple onchange="previewImages(event,'vehicle-preview')" />
+      <div class="upload-icon">📸</div>
+      <p><strong>Click to upload</strong> or drag & drop<br/>PNG, JPG up to 5MB each</p>
+    </div>
+    <div class="upload-preview" id="vehicle-preview"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="grid grid-2">
+    <div class="field">
+      <label>Road Tax Expiry <span class="req">*</span></label>
+      <input type="date" id="roadTaxExpiry" />
+      <span class="field-error" id="err-roadTaxExpiry">Road tax expiry date required</span>
+    </div>
+    <div class="field">
+      <label>Insurance Expiry <span class="req">*</span></label>
+      <input type="date" id="insuranceExpiry" />
+      <span class="field-error" id="err-insuranceExpiry">Insurance expiry date required</span>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Vehicle Grant / Ownership Proof <span class="opt">(optional)</span></label>
+    <div class="upload-zone" id="upload-grant">
+      <input type="file" accept="image/*,.pdf" onchange="previewImages(event,'grant-preview')" />
+      <div class="upload-icon">📋</div>
+      <p><strong>Upload vehicle grant</strong> or ownership document<br/>Image or PDF accepted</p>
+    </div>
+    <div class="upload-preview" id="grant-preview"></div>
+  </div>
+
+  <div class="field">
+    <label>How did you hear about us?</label>
+    <select id="referral">
+      <option value="">Select source...</option>
+      <option>Social Media (Instagram / Facebook)</option>
+      <option>Friend / Member Referral</option>
+      <option>Car Event / Gathering</option>
+      <option>Online Search</option>
+      <option>Flyer / Poster</option>
+      <option>Other</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Preferred Club Chapter / Zone</label>
+    <select id="chapter">
+      <option value="">Select zone...</option>
+      <option>Northern (Kedah / Penang / Perlis)</option>
+      <option>Central (KL / Selangor / Putrajaya)</option>
+      <option>Southern (Johor / Melaka / N.Sembilan)</option>
+      <option>East Coast (Pahang / Terengganu / Kelantan)</option>
+      <option>East Malaysia (Sabah / Sarawak)</option>
+    </select>
+  </div>
+</div>
+
+<div class="btn-row">
+  <button class="btn btn-ghost" onclick="goToStep(2)">← Back</button>
+  <button class="btn btn-primary" onclick="nextStep(3)">
+    <span class="btn-text">Continue → Membership</span>
+    <span class="btn-loading"><span class="spinner"></span> Validating...</span>
+  </button>
+</div>
+```
+
+  </div>
+
+  <!-- ── STEP 4: MEMBERSHIP ── -->
+
+  <div class="card hidden" id="step-4">
+    <div class="section-header">
+      <div class="section-icon">🏁</div>
+      <div>
+        <h2>Membership Tier</h2>
+        <p>Choose your membership level and confirm registration</p>
+      </div>
+    </div>
+
+```
+<div class="field">
+  <label>Select Membership Tier <span class="req">*</span></label>
+  <div class="tier-grid" id="tier-grid">
+    <label class="tier-card" id="tier-standard" onclick="selectTier('Standard')">
+      <input type="radio" name="tier" value="Standard" />
+      <span class="tier-check"></span>
+      <span class="tier-badge">🥈</span>
+      <div class="tier-name">Standard</div>
+      <div class="tier-price">RM 60 / year</div>
+      <div class="tier-perks">Club sticker · Events access · Newsletter</div>
+    </label>
+    <label class="tier-card" id="tier-premium" onclick="selectTier('Premium')">
+      <input type="radio" name="tier" value="Premium" />
+      <span class="tier-check"></span>
+      <span class="tier-badge">🥇</span>
+      <div class="tier-name">Premium</div>
+      <div class="tier-price">RM 120 / year</div>
+      <div class="tier-perks">All Standard + Track days · Member kit · Priority slots</div>
+    </label>
+    <label class="tier-card" id="tier-founding" onclick="selectTier('Founding')">
+      <input type="radio" name="tier" value="Founding" />
+      <span class="tier-check"></span>
+      <span class="tier-badge">💎</span>
+      <div class="tier-name">Founding</div>
+      <div class="tier-price">RM 200 / year</div>
+      <div class="tier-perks">All Premium + VIP badge · Lifetime discount · Name on plaque</div>
+    </label>
+  </div>
+  <span class="field-error" id="err-tier">Please select a membership tier</span>
+</div>
+
+<div class="divider"></div>
+
+<div class="field mt-4">
+  <label>Additional Notes <span class="opt">(optional)</span></label>
+  <textarea id="notes" placeholder="Any additional information about yourself or your vehicle..."></textarea>
+</div>
+
+<div class="divider"></div>
+
+<div class="grid" style="gap:10px">
+  <label class="checkbox-wrap" id="chk-rules" onclick="toggleCheck('chk-rules','agreeRules')">
+    <input type="checkbox" id="agreeRules" />
+    <span class="custom-check"></span>
+    <span class="cb-label">I have read and agree to the <a href="#">Club Rules & Code of Conduct</a> ✅</span>
+  </label>
+  <label class="checkbox-wrap" id="chk-privacy" onclick="toggleCheck('chk-privacy','agreePrivacy')">
+    <input type="checkbox" id="agreePrivacy" />
+    <span class="custom-check"></span>
+    <span class="cb-label">I consent to data collection and storage as per the <a href="#">Privacy Policy</a> (PDPA 2010)</span>
+  </label>
+  <label class="checkbox-wrap" id="chk-accuracy" onclick="toggleCheck('chk-accuracy','agreeAccuracy')">
+    <input type="checkbox" id="agreeAccuracy" />
+    <span class="custom-check"></span>
+    <span class="cb-label">I confirm all information provided is accurate and truthful</span>
+  </label>
+</div>
+<span class="field-error" id="err-agree" style="margin-top:6px">Please accept all agreements</span>
+
+<div class="btn-row">
+  <button class="btn btn-ghost" onclick="goToStep(3)">← Back</button>
+  <button class="btn btn-primary" id="submit-btn" onclick="submitRegistration()">
+    <span class="btn-text">🚀 Submit Registration</span>
+    <span class="btn-loading"><span class="spinner"></span> Registering...</span>
+  </button>
+</div>
+```
+
+  </div>
+
+  <!-- ── SUCCESS ── -->
+
+  <div class="success-card" id="success-card">
+    <div class="success-icon">✅</div>
+    <h2>You're In!</h2>
+    <p>Welcome to <strong>PrecisionCC</strong>. Your registration has been received and is pending committee review.</p>
+    <div class="member-id" id="member-id-display">🪪 MemberID: —</div>
+    <p style="font-size:0.85rem">A confirmation will be sent to your email within 24 hours. You may also receive a WhatsApp message from our team.</p>
+    <button class="btn btn-primary" style="margin-top:24px" onclick="resetForm()">Register Another Vehicle</button>
+  </div>
+
+</div><!-- /form-outer -->
+
+<!-- TOAST -->
+
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE SDK -->
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ── YOUR FIREBASE CONFIG ──────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_PROJECT.firebaseapp.com",
+    projectId:         "YOUR_PROJECT_ID",
+    storageBucket:     "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId:             "YOUR_APP_ID"
+  };
+  // ─────────────────────────────────────────────────────────────────────
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  window._saveToFirebase = async function(data) {
+    const docRef = await addDoc(collection(db, "carclub_members"), {
+      ...data,
+      status:    "Pending",
+      createdAt: serverTimestamp()
+    });
+    return docRef.id;
+  };
+</script>
+
+<script>
+/* ────────────────────────────────────────────────
+   STATE
+──────────────────────────────────────────────── */
+var currentStep = 1;
+var formData    = {};
+var modTags     = [];
+var radioVals   = { gender: '', trans: '', fuel: '' };
+var tierSelected = '';
+
+/* ────────────────────────────────────────────────
+   YEAR DROPDOWN
+──────────────────────────────────────────────── */
+(function() {
+  var sel  = document.getElementById('year');
+  var year = new Date().getFullYear();
+  for (var y = year; y >= 1980; y--) {
+    var opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    sel.appendChild(opt);
+  }
+})();
+
+/* ────────────────────────────────────────────────
+   RADIO CARDS
+──────────────────────────────────────────────── */
+function selectRadio(group, val, id) {
+  radioVals[group] = val;
+  var cards = document.querySelectorAll('[id^="rc-"]');
+  cards.forEach(function(c) {
+    var inp = c.querySelector('input[name="' + group + '"]');
+    if (inp) c.classList.remove('selected');
+  });
+  document.getElementById(id).classList.add('selected');
+}
+
+/* ────────────────────────────────────────────────
+   TIER SELECT
+──────────────────────────────────────────────── */
+function selectTier(name) {
+  tierSelected = name;
+  ['Standard','Premium','Founding'].forEach(function(t) {
+    var el = document.getElementById('tier-' + t.toLowerCase());
+    if (el) el.classList.toggle('selected', t === name);
+  });
+}
+
+/* ────────────────────────────────────────────────
+   CHECKBOX
+──────────────────────────────────────────────── */
+function toggleCheck(wrapId, cbId) {
+  var cb   = document.getElementById(cbId);
+  var wrap = document.getElementById(wrapId);
+  cb.checked = !cb.checked;
+  wrap.classList.toggle('checked', cb.checked);
+}
+
+/* ────────────────────────────────────────────────
+   MOD TAGS
+──────────────────────────────────────────────── */
+function handleTagInput(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    var inp = document.getElementById('tag-input');
+    var val = inp.value.trim();
+    if (val && !modTags.includes(val)) {
+      modTags.push(val);
+      renderTags();
+    }
+    inp.value = '';
+  }
+}
+
+function renderTags() {
+  var wrap = document.getElementById('tags-wrap');
+  var inp  = document.getElementById('tag-input');
+  var existing = wrap.querySelectorAll('.tag');
+  existing.forEach(function(t) { t.remove(); });
+  modTags.forEach(function(tag, i) {
+    var span = document.createElement('span');
+    span.className = 'tag';
+    span.innerHTML = tag + ' <span class="tag-remove" onclick="removeTag(' + i + ')">×</span>';
+    wrap.insertBefore(span, inp);
+  });
+}
+
+function removeTag(i) {
+  modTags.splice(i, 1);
+  renderTags();
+}
+
+/* ────────────────────────────────────────────────
+   IMAGE PREVIEW
+──────────────────────────────────────────────── */
+function previewImages(e, previewId) {
+  var container = document.getElementById(previewId);
+  container.innerHTML = '';
+  var files = Array.prototype.slice.call(e.target.files);
+  files.slice(0, 6).forEach(function(file) {
+    if (!file.type.startsWith('image/')) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = document.createElement('img');
+      img.className = 'preview-thumb';
+      img.src = ev.target.result;
+      container.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ────────────────────────────────────────────────
+   VALIDATION
+──────────────────────────────────────────────── */
+function getVal(id) {
+  var el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function showErr(id, show) {
+  var el = document.getElementById('err-' + id);
+  if (!el) return;
+  el.classList.toggle('show', show);
+  var field = document.getElementById(id);
+  if (field) field.classList.toggle('error', show);
+}
+
+function validateStep(step) {
+  var ok = true;
+
+  if (step === 1) {
+    var fields = ['ownerName','icNo','dob','phone','email','address','state','emergencyName','emergencyPhone'];
+    fields.forEach(function(f) {
+      var v = !getVal(f);
+      if (f === 'email' && getVal(f) && !/\S+@\S+\.\S+/.test(getVal(f))) v = true;
+      showErr(f, v);
+      if (v) ok = false;
+    });
+  }
+
+  if (step === 2) {
+    var fields2 = ['plate','make','model','year','colour','cc'];
+    fields2.forEach(function(f) {
+      var v = !getVal(f);
+      showErr(f, v);
+      if (v) ok = false;
+    });
+    if (!radioVals.trans) { showErr('trans', true); ok = false; } else showErr('trans', false);
+    if (!radioVals.fuel)  { showErr('fuel',  true); ok = false; } else showErr('fuel',  false);
+  }
+
+  if (step === 3) {
+    var fields3 = ['roadTaxExpiry','insuranceExpiry'];
+    fields3.forEach(function(f) {
+      var v = !getVal(f);
+      showErr(f, v);
+      if (v) ok = false;
+    });
+  }
+
+  if (step === 4) {
+    if (!tierSelected) { showErr('tier', true); ok = false; } else showErr('tier', false);
+    var allChecked = document.getElementById('agreeRules').checked
+                  && document.getElementById('agreePrivacy').checked
+                  && document.getElementById('agreeAccuracy').checked;
+    var errAgree = document.getElementById('err-agree');
+    if (errAgree) errAgree.classList.toggle('show', !allChecked);
+    if (!allChecked) ok = false;
+  }
+
+  return ok;
+}
+
+/* ────────────────────────────────────────────────
+   NAVIGATION
+──────────────────────────────────────────────── */
+function goToStep(n) {
+  for (var i = 1; i <= 4; i++) {
+    var card = document.getElementById('step-' + i);
+    var btn  = document.getElementById('step-btn-' + i);
+    if (card) card.classList.toggle('hidden', i !== n);
+    if (btn) {
+      btn.classList.remove('active', 'done');
+      if (i === n) btn.classList.add('active');
+      else if (i < n) btn.classList.add('done');
+    }
+  }
+  currentStep = n;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function nextStep(from) {
+  if (!validateStep(from)) { showToast('Please fill in all required fields.', 'error'); return; }
+  collectStep(from);
+  if (from < 4) goToStep(from + 1);
+}
+
+/* ────────────────────────────────────────────────
+   COLLECT DATA
+──────────────────────────────────────────────── */
+function collectStep(step) {
+  if (step === 1) {
+    formData.ownerName     = getVal('ownerName');
+    formData.icNo          = getVal('icNo');
+    formData.dob           = getVal('dob');
+    formData.gender        = radioVals.gender;
+    formData.phone         = getVal('phone');
+    formData.email         = getVal('email');
+    formData.address       = getVal('address');
+    formData.state         = getVal('state');
+    formData.emergencyName = getVal('emergencyName');
+    formData.emergencyPhone= getVal('emergencyPhone');
+  }
+  if (step === 2) {
+    formData.plate        = getVal('plate');
+    formData.vin          = getVal('vin');
+    formData.make         = getVal('make');
+    formData.model        = getVal('model');
+    formData.variant      = getVal('variant');
+    formData.year         = getVal('year');
+    formData.colour       = getVal('colour');
+    formData.cc           = getVal('cc');
+    formData.transmission = radioVals.trans;
+    formData.fuel         = radioVals.fuel;
+    formData.modifications= modTags.slice();
+  }
+  if (step === 3) {
+    formData.roadTaxExpiry    = getVal('roadTaxExpiry');
+    formData.insuranceExpiry  = getVal('insuranceExpiry');
+    formData.referral         = getVal('referral');
+    formData.chapter          = getVal('chapter');
+  }
+  if (step === 4) {
+    formData.tier  = tierSelected;
+    formData.notes = getVal('notes');
+  }
+}
+
+/* ────────────────────────────────────────────────
+   SUBMIT
+──────────────────────────────────────────────── */
+function submitRegistration() {
+  if (!validateStep(4)) { showToast('Please complete all required fields.', 'error'); return; }
+  collectStep(4);
+
+  var btn = document.getElementById('submit-btn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  var payload = Object.assign({}, formData);
+  payload.memberId = 'PCC-' + Date.now().toString(36).toUpperCase();
+
+  var doSave = (typeof window._saveToFirebase === 'function')
+    ? window._saveToFirebase(payload)
+    : Promise.resolve(payload.memberId);
+
+  doSave.then(function(id) {
+    var mid = id || payload.memberId;
+    document.getElementById('step-4').classList.add('hidden');
+    document.getElementById('step-btn-4').classList.remove('active');
+    document.getElementById('step-btn-4').classList.add('done');
+    var sc = document.getElementById('success-card');
+    sc.classList.add('show');
+    document.getElementById('member-id-display').textContent = '🪪 ' + mid;
+    showToast('Registration successful! Welcome to PrecisionCC 🏁', 'success');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }).catch(function(err) {
+    console.error(err);
+    showToast('Failed to save. Please check your Firebase config.', 'error');
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  });
+}
+
+/* ────────────────────────────────────────────────
+   RESET
+──────────────────────────────────────────────── */
+function resetForm() {
+  formData = {}; modTags = []; radioVals = { gender:'', trans:'', fuel:'' }; tierSelected = '';
+  document.querySelectorAll('input:not([type=radio]):not([type=checkbox]), select, textarea')
+    .forEach(function(el) { el.value = ''; });
+  document.querySelectorAll('.radio-card').forEach(function(el) { el.classList.remove('selected'); });
+  document.querySelectorAll('.tier-card').forEach(function(el) { el.classList.remove('selected'); });
+  document.querySelectorAll('.checkbox-wrap').forEach(function(el) { el.classList.remove('checked'); });
+  document.querySelectorAll('input[type=checkbox]').forEach(function(el) { el.checked = false; });
+  renderTags();
+  document.querySelectorAll('.upload-preview').forEach(function(el) { el.innerHTML = ''; });
+  document.getElementById('success-card').classList.remove('show');
+  goToStep(1);
+}
+
+/* ────────────────────────────────────────────────
+   TOAST
+──────────────────────────────────────────────── */
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || '');
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3500);
+}
+</script>
+
+</body>
+</html>
