@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -731,78 +730,75 @@
       </div>
     </div>
 
-```
-<div class="grid">
-  <div class="field">
-    <label>Vehicle Photos <span class="opt">(front, side, rear — optional)</span></label>
-    <div class="upload-zone" id="upload-vehicle">
-      <input type="file" accept="image/*" multiple onchange="previewImages(event,'vehicle-preview')" />
-      <div class="upload-icon">📸</div>
-      <p><strong>Click to upload</strong> or drag & drop<br/>PNG, JPG up to 5MB each</p>
+    <div class="grid">
+      <div class="field">
+        <label>Vehicle Photos <span class="opt">(front, side, rear — optional)</span></label>
+        <div class="upload-zone" id="upload-vehicle">
+          <input type="file" accept="image/*" multiple onchange="previewImages(event,'vehicle-preview')" />
+          <div class="upload-icon">📸</div>
+          <p><strong>Click to upload</strong> or drag & drop<br/>PNG, JPG up to 5MB each</p>
+        </div>
+        <div class="upload-preview" id="vehicle-preview"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Road Tax Expiry <span class="req">*</span></label>
+          <input type="date" id="roadTaxExpiry" />
+          <span class="field-error" id="err-roadTaxExpiry">Road tax expiry date required</span>
+        </div>
+        <div class="field">
+          <label>Insurance Expiry <span class="req">*</span></label>
+          <input type="date" id="insuranceExpiry" />
+          <span class="field-error" id="err-insuranceExpiry">Insurance expiry date required</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Vehicle Grant / Ownership Proof <span class="opt">(optional)</span></label>
+        <div class="upload-zone" id="upload-grant">
+          <input type="file" accept="image/*,.pdf" onchange="previewImages(event,'grant-preview')" />
+          <div class="upload-icon">📋</div>
+          <p><strong>Upload vehicle grant</strong> or ownership document<br/>Image or PDF accepted</p>
+        </div>
+        <div class="upload-preview" id="grant-preview"></div>
+      </div>
+
+      <div class="field">
+        <label>How did you hear about us?</label>
+        <select id="referral">
+          <option value="">Select source...</option>
+          <option>Social Media (Instagram / Facebook)</option>
+          <option>Friend / Member Referral</option>
+          <option>Car Event / Gathering</option>
+          <option>Online Search</option>
+          <option>Flyer / Poster</option>
+          <option>Other</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Preferred Club Chapter / Zone</label>
+        <select id="chapter">
+          <option value="">Select zone...</option>
+          <option>Northern (Kedah / Penang / Perlis)</option>
+          <option>Central (KL / Selangor / Putrajaya)</option>
+          <option>Southern (Johor / Melaka / N.Sembilan)</option>
+          <option>East Coast (Pahang / Terengganu / Kelantan)</option>
+          <option>East Malaysia (Sabah / Sarawak)</option>
+        </select>
+      </div>
     </div>
-    <div class="upload-preview" id="vehicle-preview"></div>
-  </div>
 
-  <div class="divider"></div>
-
-  <div class="grid grid-2">
-    <div class="field">
-      <label>Road Tax Expiry <span class="req">*</span></label>
-      <input type="date" id="roadTaxExpiry" />
-      <span class="field-error" id="err-roadTaxExpiry">Road tax expiry date required</span>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goToStep(2)">← Back</button>
+      <button class="btn btn-primary" onclick="nextStep(3)">
+        <span class="btn-text">Continue → Membership</span>
+        <span class="btn-loading"><span class="spinner"></span> Validating...</span>
+      </button>
     </div>
-    <div class="field">
-      <label>Insurance Expiry <span class="req">*</span></label>
-      <input type="date" id="insuranceExpiry" />
-      <span class="field-error" id="err-insuranceExpiry">Insurance expiry date required</span>
-    </div>
-  </div>
-
-  <div class="field">
-    <label>Vehicle Grant / Ownership Proof <span class="opt">(optional)</span></label>
-    <div class="upload-zone" id="upload-grant">
-      <input type="file" accept="image/*,.pdf" onchange="previewImages(event,'grant-preview')" />
-      <div class="upload-icon">📋</div>
-      <p><strong>Upload vehicle grant</strong> or ownership document<br/>Image or PDF accepted</p>
-    </div>
-    <div class="upload-preview" id="grant-preview"></div>
-  </div>
-
-  <div class="field">
-    <label>How did you hear about us?</label>
-    <select id="referral">
-      <option value="">Select source...</option>
-      <option>Social Media (Instagram / Facebook)</option>
-      <option>Friend / Member Referral</option>
-      <option>Car Event / Gathering</option>
-      <option>Online Search</option>
-      <option>Flyer / Poster</option>
-      <option>Other</option>
-    </select>
-  </div>
-
-  <div class="field">
-    <label>Preferred Club Chapter / Zone</label>
-    <select id="chapter">
-      <option value="">Select zone...</option>
-      <option>Northern (Kedah / Penang / Perlis)</option>
-      <option>Central (KL / Selangor / Putrajaya)</option>
-      <option>Southern (Johor / Melaka / N.Sembilan)</option>
-      <option>East Coast (Pahang / Terengganu / Kelantan)</option>
-      <option>East Malaysia (Sabah / Sarawak)</option>
-    </select>
-  </div>
-</div>
-
-<div class="btn-row">
-  <button class="btn btn-ghost" onclick="goToStep(2)">← Back</button>
-  <button class="btn btn-primary" onclick="nextStep(3)">
-    <span class="btn-text">Continue → Membership</span>
-    <span class="btn-loading"><span class="spinner"></span> Validating...</span>
-  </button>
-</div>
-```
-
   </div>
 
   <!-- ── STEP 4: MEMBERSHIP ── -->
@@ -816,95 +812,93 @@
       </div>
     </div>
 
-```
-<div class="field">
-  <label>Select Membership Tier <span class="req">*</span></label>
-  <div id="tier-grid">
-    <label class="tier-card selected" id="tier-standard" onclick="selectTier('Standard')" style="
-      max-width:100%; padding:20px 22px; display:block; cursor:pointer; position:relative;
-    ">
-      <input type="radio" name="tier" value="Standard" checked />
-      <span class="tier-check" style="position:absolute;top:14px;right:14px;display:flex;"></span>
-
-      <!-- Top row: badge + name + tagline -->
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
-        <div style="
-          width:48px;height:48px;border-radius:12px;
-          background:linear-gradient(135deg,var(--cobalt-dim),rgba(26,86,219,0.12));
-          border:1.5px solid rgba(26,86,219,0.2);
-          display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;
-        ">🚗</div>
-        <div>
-          <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;color:var(--ink);letter-spacing:-0.02em;">Standard Member</div>
-          <div style="font-size:0.75rem;color:var(--ink-subtle);margin-top:1px;">Full club access · Active membership</div>
-        </div>
-      </div>
-
-      <!-- Fee row -->
-      <div style="display:flex;gap:10px;margin-bottom:18px;">
-        <div style="
-          flex:1;background:white;border:1.5px solid var(--pearl-border);
-          border-radius:10px;padding:12px 14px;
+    <div class="field">
+      <label>Select Membership Tier <span class="req">*</span></label>
+      <div id="tier-grid">
+        <label class="tier-card selected" id="tier-standard" onclick="selectTier('Standard')" style="
+          max-width:100%; padding:20px 22px; display:block; cursor:pointer; position:relative;
         ">
-          <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--ink-subtle);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">One-Time Fee</div>
-          <div style="font-family:var(--font-display);font-weight:800;font-size:1.3rem;color:var(--cobalt);letter-spacing:-0.02em;">RM 100</div>
-        </div>
-        <div style="
-          flex:1;background:white;border:1.5px solid var(--pearl-border);
-          border-radius:10px;padding:12px 14px;
-        ">
-          <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--ink-subtle);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Monthly Fee</div>
-          <div style="font-family:var(--font-display);font-weight:800;font-size:1.3rem;color:var(--cobalt);letter-spacing:-0.02em;">RM 30 <span style="font-size:0.7rem;font-weight:500;color:var(--ink-subtle);">/ mo</span></div>
-        </div>
+          <input type="radio" name="tier" value="Standard" checked />
+          <span class="tier-check" style="position:absolute;top:14px;right:14px;display:flex;"></span>
+
+          <!-- Top row: badge + name + tagline -->
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+            <div style="
+              width:48px;height:48px;border-radius:12px;
+              background:linear-gradient(135deg,var(--cobalt-dim),rgba(26,86,219,0.12));
+              border:1.5px solid rgba(26,86,219,0.2);
+              display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;
+            ">🚗</div>
+            <div>
+              <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;color:var(--ink);letter-spacing:-0.02em;">Standard Member</div>
+              <div style="font-size:0.75rem;color:var(--ink-subtle);margin-top:1px;">Full club access · Active membership</div>
+            </div>
+          </div>
+
+          <!-- Fee row -->
+          <div style="display:flex;gap:10px;margin-bottom:18px;">
+            <div style="
+              flex:1;background:white;border:1.5px solid var(--pearl-border);
+              border-radius:10px;padding:12px 14px;
+            ">
+              <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--ink-subtle);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">One-Time Fee</div>
+              <div style="font-family:var(--font-display);font-weight:800;font-size:1.3rem;color:var(--cobalt);letter-spacing:-0.02em;">RM 100</div>
+            </div>
+            <div style="
+              flex:1;background:white;border:1.5px solid var(--pearl-border);
+              border-radius:10px;padding:12px 14px;
+            ">
+              <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--ink-subtle);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Monthly Fee</div>
+              <div style="font-family:var(--font-display);font-weight:800;font-size:1.3rem;color:var(--cobalt);letter-spacing:-0.02em;">RM 30 <span style="font-size:0.7rem;font-weight:500;color:var(--ink-subtle);">/ mo</span></div>
+            </div>
+          </div>
+
+          <!-- Perks row -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <span style="display:inline-flex;align-items:center;gap:5px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.15);color:var(--cobalt);font-size:0.78rem;font-weight:600;padding:5px 11px;border-radius:20px;">🏷️ Club Sticker</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.15);color:var(--cobalt);font-size:0.78rem;font-weight:600;padding:5px 11px;border-radius:20px;">🪪 Lanyard</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.15);color:var(--cobalt);font-size:0.78rem;font-weight:600;padding:5px 11px;border-radius:20px;">📰 Newsletter</span>
+          </div>
+        </label>
       </div>
+      <span class="field-error" id="err-tier">Please select a membership tier</span>
+    </div>
 
-      <!-- Perks row -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <span style="display:inline-flex;align-items:center;gap:5px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.15);color:var(--cobalt);font-size:0.78rem;font-weight:600;padding:5px 11px;border-radius:20px;">🏷️ Club Sticker</span>
-        <span style="display:inline-flex;align-items:center;gap:5px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.15);color:var(--cobalt);font-size:0.78rem;font-weight:600;padding:5px 11px;border-radius:20px;">🪪 Lanyard</span>
-        <span style="display:inline-flex;align-items:center;gap:5px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.15);color:var(--cobalt);font-size:0.78rem;font-weight:600;padding:5px 11px;border-radius:20px;">📰 Newsletter</span>
-      </div>
-    </label>
-  </div>
-  <span class="field-error" id="err-tier">Please select a membership tier</span>
-</div>
+    <div class="divider"></div>
 
-<div class="divider"></div>
+    <div class="field mt-4">
+      <label>Additional Notes <span class="opt">(optional)</span></label>
+      <textarea id="notes" placeholder="Any additional information about yourself or your vehicle..."></textarea>
+    </div>
 
-<div class="field mt-4">
-  <label>Additional Notes <span class="opt">(optional)</span></label>
-  <textarea id="notes" placeholder="Any additional information about yourself or your vehicle..."></textarea>
-</div>
+    <div class="divider"></div>
 
-<div class="divider"></div>
+    <div class="grid" style="gap:10px">
+      <label class="checkbox-wrap" id="chk-rules" onclick="toggleCheck('chk-rules','agreeRules')">
+        <input type="checkbox" id="agreeRules" />
+        <span class="custom-check"></span>
+        <span class="cb-label">I have read and agree to the <a href="#">Club Rules & Code of Conduct</a> ✅</span>
+      </label>
+      <label class="checkbox-wrap" id="chk-privacy" onclick="toggleCheck('chk-privacy','agreePrivacy')">
+        <input type="checkbox" id="agreePrivacy" />
+        <span class="custom-check"></span>
+        <span class="cb-label">I consent to data collection and storage as per the <a href="#">Privacy Policy</a> (PDPA 2010)</span>
+      </label>
+      <label class="checkbox-wrap" id="chk-accuracy" onclick="toggleCheck('chk-accuracy','agreeAccuracy')">
+        <input type="checkbox" id="agreeAccuracy" />
+        <span class="custom-check"></span>
+        <span class="cb-label">I confirm all information provided is accurate and truthful</span>
+      </label>
+    </div>
+    <span class="field-error" id="err-agree" style="margin-top:6px">Please accept all agreements</span>
 
-<div class="grid" style="gap:10px">
-  <label class="checkbox-wrap" id="chk-rules" onclick="toggleCheck('chk-rules','agreeRules')">
-    <input type="checkbox" id="agreeRules" />
-    <span class="custom-check"></span>
-    <span class="cb-label">I have read and agree to the <a href="#">Club Rules & Code of Conduct</a> ✅</span>
-  </label>
-  <label class="checkbox-wrap" id="chk-privacy" onclick="toggleCheck('chk-privacy','agreePrivacy')">
-    <input type="checkbox" id="agreePrivacy" />
-    <span class="custom-check"></span>
-    <span class="cb-label">I consent to data collection and storage as per the <a href="#">Privacy Policy</a> (PDPA 2010)</span>
-  </label>
-  <label class="checkbox-wrap" id="chk-accuracy" onclick="toggleCheck('chk-accuracy','agreeAccuracy')">
-    <input type="checkbox" id="agreeAccuracy" />
-    <span class="custom-check"></span>
-    <span class="cb-label">I confirm all information provided is accurate and truthful</span>
-  </label>
-</div>
-<span class="field-error" id="err-agree" style="margin-top:6px">Please accept all agreements</span>
-
-<div class="btn-row">
-  <button class="btn btn-ghost" onclick="goToStep(3)">← Back</button>
-  <button class="btn btn-primary" id="submit-btn" onclick="submitRegistration()">
-    <span class="btn-text">🚀 Submit Registration</span>
-    <span class="btn-loading"><span class="spinner"></span> Registering...</span>
-  </button>
-</div>
-```
+    <div class="btn-row">
+      <button class="btn-ghost" onclick="goToStep(3)">← Back</button>
+      <button class="btn btn-primary" id="submit-btn" onclick="submitRegistration()">
+        <span class="btn-text">🚀 Submit Registration</span>
+        <span class="btn-loading"><span class="spinner"></span> Registering...</span>
+      </button>
+    </div>
 
   </div>
 
@@ -947,23 +941,23 @@
   const db  = getFirestore(app);
 
   window._saveToFirebase = async function(data) {
-    const docRef = await addDoc(collection(db, "carclub_members"), {
-      ...data,
-      status:    "Pending",
-      createdAt: serverTimestamp()
-    });
-    return docRef.id;
+    try {
+      const docRef = await addDoc(collection(db, "carclub_members"), {
+        ...data,
+        status:    "Pending",
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (e) {
+      console.error("Firebase AddDoc Error: ", e);
+      throw e;
+    }
   };
 </script>
 
 <script>
 /* ────────────────────────────────────────────────
    WHATSAPP CONFIG  (CallMeBot — free service)
-   Steps to activate:
-   1. Add +34 644 61 69 79 to your contacts as "CallMeBot"
-   2. Send this WhatsApp message to that number:
-      I allow callmebot to send me messages
-   3. You'll receive your apikey — paste it below
 ──────────────────────────────────────────────── */
 var WA_CONFIG = {
   phone:  'YOUR_WHATSAPP_NUMBER',   // e.g. '601112345678'  (no + or spaces)
@@ -1290,6 +1284,5 @@ function showToast(msg, type) {
   setTimeout(function() { t.classList.remove('show'); }, 3500);
 }
 </script>
-
 </body>
 </html>
