@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Dashboard — GRYPHON Motorsport</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --pearl: #F7F8FA; --pearl-border: #DDE1EA;
+    --cobalt: #1A56DB; --cobalt-dim: rgba(26,86,219,0.06);
+    --ink: #0F172A; --ink-muted: #4B5675;
+    --success: #059669; --warning: #D97706; --danger: #DC2626;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+  }
+  body { font-family: var(--font-body); background: var(--pearl); color: var(--ink); margin: 0; padding: 0; }
+  
+  .header { background: white; border-bottom: 1px solid var(--pearl-border); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-family: var(--font-display); margin: 0; font-size: 1.5rem; color: var(--ink); }
+  
+  .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+  
+  .card { background: white; border-radius: 12px; border: 1px solid var(--pearl-border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; }
+  
+  table { width: 100%; border-collapse: collapse; text-align: left; }
+  th { background: var(--pearl); padding: 16px; font-size: 0.85rem; color: var(--ink-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--pearl-border); }
+  td { padding: 16px; border-bottom: 1px solid var(--pearl-border); font-size: 0.9rem; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: var(--pearl); }
+
+  .badge { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+  .badge.pending { background: #FEF3C7; color: var(--warning); border: 1px solid #FDE68A; }
+  .badge.approved { background: #D1FAE5; color: var(--success); border: 1px solid #A7F3D0; }
+  .badge.rejected { background: #FEE2E2; color: var(--danger); border: 1px solid #FECACA; }
+
+  .btn { padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
+  .btn-approve { background: var(--success); color: white; margin-right: 8px; }
+  .btn-approve:hover { background: #047857; }
+  .btn-reject { background: white; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-reject:hover { background: #FEF2F2; }
+
+  .loading { text-align: center; padding: 40px; color: var(--ink-muted); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <h1>GRYPHON Admin Panel</h1>
+  <div style="font-size: 0.9rem; color: var(--ink-muted);">Manage Registrations</div>
+</header>
+
+<div class="container">
+  <div class="card">
+    <table id="membersTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Owner Details</th>
+          <th>Vehicle</th>
+          <th>Plate No.</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="6" class="loading">Loading members from database...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- FIREBASE SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, doc, updateDoc, query, orderBy } 
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // Your Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBySrcws8oJK0kNNwd-2af7yCLAdCpI8mw",
+    authDomain: "carclub-21861.firebaseapp.com",
+    projectId: "carclub-21861",
+    storageBucket: "carclub-21861.firebasestorage.app",
+    messagingSenderId: "210202318338",
+    appId: "1:210202318338:web:14888871dc451220e5391b"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Load Data
+  async function loadMembers() {
+    const tbody = document.getElementById('tableBody');
+    try {
+      // Fetch members, newest first
+      const q = query(collection(db, "carclub_members"), orderBy("createdAt", "desc"));
+      const querySnapshot = await getDocs(q);
+      
+      tbody.innerHTML = ''; // Clear loading text
+      
+      if(querySnapshot.empty) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">No registrations found.</td></tr>';
+        return;
+      }
+
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const docId = docSnap.id;
+        
+        // Format Date
+        let dateStr = "N/A";
+        if (data.createdAt) {
+          const d = data.createdAt.toDate();
+          dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        // Determine Status Badge Class
+        let badgeClass = "pending";
+        if(data.status === "Approved") badgeClass = "approved";
+        if(data.status === "Rejected") badgeClass = "rejected";
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${dateStr}</td>
+          <td>
+            <strong>${data.ownerName}</strong><br/>
+            <span style="color:#4B5675;font-size:0.8rem;">📞 ${data.phone}</span>
+          </td>
+          <td>${data.year} ${data.make} ${data.model}</td>
+          <td style="font-family: monospace; font-size: 1rem; font-weight: bold;">${data.plate}</td>
+          <td><span class="badge ${badgeClass}" id="status-${docId}">${data.status || 'Pending'}</span></td>
+          <td>
+            ${data.status === 'Pending' ? `
+              <button class="btn btn-approve" onclick="window.updateStatus('${docId}', 'Approved')">Approve</button>
+              <button class="btn btn-reject" onclick="window.updateStatus('${docId}', 'Rejected')">Reject</button>
+            ` : `<span style="font-size:0.8rem; color:#8B95A7;">Done</span>`}
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    } catch (e) {
+      console.error(e);
+      tbody.innerHTML = '<tr><td colspan="6" class="loading" style="color:red;">Error loading data. Check console.</td></tr>';
+    }
+  }
+
+  // Make update function globally accessible so HTML buttons can click it
+  window.updateStatus = async function(docId, newStatus) {
+    if(!confirm(`Are you sure you want to mark this registration as ${newStatus}?`)) return;
+    
+    try {
+      const memberRef = doc(db, "carclub_members", docId);
+      await updateDoc(memberRef, {
+        status: newStatus
+      });
+      
+      alert(`Successfully marked as ${newStatus}`);
+      loadMembers(); // Refresh the table
+    } catch (e) {
+      console.error(e);
+      alert("Error updating status. Check your security rules.");
+    }
+  };
+
+  // Load members on startup
+  loadMembers();
+</script>
+
+</body>
+</html>
