@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Car Club — Member Registration</title>
+<title>GRYPHON Motorsport — Member Registration</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
 <style>
@@ -472,13 +472,13 @@
 
 <header class="site-header">
   <div class="logo">
-    <div class="logo-badge">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v5"/>
-        <circle cx="16" cy="17" r="3"/><circle cx="7" cy="17" r="3"/>
-      </svg>
+    <div class="logo-badge" style="width:38px;height:38px;border-radius:8px;overflow:hidden;background:#fff;border:1.5px solid var(--pearl-border);padding:2px;">
+      <img src="https://pccvehicle.github.io/admin-panel/carclub.jpg" alt="Gryphon Motorsport Logo"
+        style="width:100%;height:100%;object-fit:contain;display:block;border-radius:6px;" />
     </div>
-    PrecisionCC
+    <span style="font-family:var(--font-display);font-weight:800;font-size:1.05rem;letter-spacing:-0.01em;color:var(--ink);">
+      GRYPHON <span style="color:var(--cobalt);">Motorsport</span>
+    </span>
   </div>
   <span class="header-tag">New Member Registration</span>
 </header>
@@ -914,7 +914,7 @@
   <div class="success-card" id="success-card">
     <div class="success-icon">✅</div>
     <h2>You're In!</h2>
-    <p>Welcome to <strong>PrecisionCC</strong>. Your registration has been received and is pending committee review.</p>
+    <p>Welcome to <strong>GRYPHON Motorsport</strong>. Your registration has been received and is pending committee review.</p>
     <div class="member-id" id="member-id-display">🪪 MemberID: —</div>
     <p style="font-size:0.85rem">A confirmation will be sent to your email within 24 hours. You may also receive a WhatsApp message from our team.</p>
     <button class="btn btn-primary" style="margin-top:24px" onclick="resetForm()">Register Another Vehicle</button>
@@ -973,7 +973,7 @@ var WA_CONFIG = {
 
 function sendWhatsApp(data) {
   if (WA_CONFIG.phone === 'YOUR_WHATSAPP_NUMBER') return Promise.resolve(); // skip if not configured
-  var msg = '🏁 *New Car Club Registration*\n'
+  var msg = '🏁 *New GRYPHON Motorsport Registration*\n'
     + '👤 *Name:* ' + data.ownerName + '\n'
     + '📱 *Phone:* ' + data.phone + '\n'
     + '📧 *Email:* ' + data.email + '\n'
@@ -1237,7 +1237,7 @@ function submitRegistration() {
   btn.disabled = true;
 
   var payload = Object.assign({}, formData);
-  payload.memberId = 'PCC-' + Date.now().toString(36).toUpperCase();
+  payload.memberId = 'GMS-' + Date.now().toString(36).toUpperCase();
 
   var doSave = (typeof window._saveToFirebase === 'function')
     ? window._saveToFirebase(payload)
@@ -1253,7 +1253,7 @@ function submitRegistration() {
     var sc = document.getElementById('success-card');
     sc.classList.add('show');
     document.getElementById('member-id-display').textContent = '🪪 ' + mid;
-    showToast('Registration successful! Welcome to PrecisionCC 🏁', 'success');
+    showToast('Registration successful! Welcome to GRYPHON Motorsport 🏁', 'success');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }).catch(function(err) {
     console.error(err);
