@@ -818,33 +818,53 @@
     </div>
 
 ```
-<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-  <div style="flex:1;min-width:140px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.18);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
-    <span style="font-size:1.4rem;">🔑</span>
-    <div>
-      <div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--ink-subtle);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px;">One-Time Registration</div>
-      <div style="font-family:var(--font-display);font-size:1.3rem;font-weight:800;color:var(--cobalt);letter-spacing:-0.02em;">RM 100</div>
-    </div>
-  </div>
-  <div style="flex:1;min-width:140px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.18);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
-    <span style="font-size:1.4rem;">📅</span>
-    <div>
-      <div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--ink-subtle);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px;">Monthly Subscription</div>
-      <div style="font-family:var(--font-display);font-size:1.3rem;font-weight:800;color:var(--cobalt);letter-spacing:-0.02em;">RM 30 <span style="font-size:0.75rem;font-weight:500;color:var(--ink-muted);">/ month</span></div>
-    </div>
-  </div>
-</div>
-
 <div class="field">
   <label>Select Membership Tier <span class="req">*</span></label>
   <div id="tier-grid">
-    <label class="tier-card selected" id="tier-standard" style="max-width:320px;" onclick="selectTier('Standard')">
+    <label class="tier-card selected" id="tier-standard" onclick="selectTier('Standard')" style="
+      max-width:100%; padding:20px 22px; display:block; cursor:pointer; position:relative;
+    ">
       <input type="radio" name="tier" value="Standard" checked />
-      <span class="tier-check"></span>
-      <span class="tier-badge">🥈</span>
-      <div class="tier-name">Standard Member</div>
-      <div class="tier-price">RM 100 reg. · RM 30 / mo</div>
-      <div class="tier-perks">Club sticker · Lanyard · Newsletter</div>
+      <span class="tier-check" style="position:absolute;top:14px;right:14px;display:flex;"></span>
+
+      <!-- Top row: badge + name + tagline -->
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+        <div style="
+          width:48px;height:48px;border-radius:12px;
+          background:linear-gradient(135deg,var(--cobalt-dim),rgba(26,86,219,0.12));
+          border:1.5px solid rgba(26,86,219,0.2);
+          display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;
+        ">🚗</div>
+        <div>
+          <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;color:var(--ink);letter-spacing:-0.02em;">Standard Member</div>
+          <div style="font-size:0.75rem;color:var(--ink-subtle);margin-top:1px;">Full club access · Active membership</div>
+        </div>
+      </div>
+
+      <!-- Fee row -->
+      <div style="display:flex;gap:10px;margin-bottom:18px;">
+        <div style="
+          flex:1;background:white;border:1.5px solid var(--pearl-border);
+          border-radius:10px;padding:12px 14px;
+        ">
+          <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--ink-subtle);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">One-Time Fee</div>
+          <div style="font-family:var(--font-display);font-weight:800;font-size:1.3rem;color:var(--cobalt);letter-spacing:-0.02em;">RM 100</div>
+        </div>
+        <div style="
+          flex:1;background:white;border:1.5px solid var(--pearl-border);
+          border-radius:10px;padding:12px 14px;
+        ">
+          <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--ink-subtle);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Monthly Fee</div>
+          <div style="font-family:var(--font-display);font-weight:800;font-size:1.3rem;color:var(--cobalt);letter-spacing:-0.02em;">RM 30 <span style="font-size:0.7rem;font-weight:500;color:var(--ink-subtle);">/ mo</span></div>
+        </div>
+      </div>
+
+      <!-- Perks row -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="display:inline-flex;align-items:center;gap:5px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.15);color:var(--cobalt);font-size:0.78rem;font-weight:600;padding:5px 11px;border-radius:20px;">🏷️ Club Sticker</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.15);color:var(--cobalt);font-size:0.78rem;font-weight:600;padding:5px 11px;border-radius:20px;">🪪 Lanyard</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.15);color:var(--cobalt);font-size:0.78rem;font-weight:600;padding:5px 11px;border-radius:20px;">📰 Newsletter</span>
+      </div>
     </label>
   </div>
   <span class="field-error" id="err-tier">Please select a membership tier</span>
@@ -915,12 +935,12 @@
 
   // ── YOUR FIREBASE CONFIG ──────────────────────────────────────────────
   const firebaseConfig = {
-    apiKey:            "YOUR_API_KEY",
-    authDomain:        "YOUR_PROJECT.firebaseapp.com",
-    projectId:         "YOUR_PROJECT_ID",
-    storageBucket:     "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId:             "YOUR_APP_ID"
+    apiKey:            "AIzaSyBySrcws8oJK0kNNwd-2af7yCLAdCpI8mw",
+    authDomain:        "carclub-21861.firebaseapp.com",
+    projectId:         "carclub-21861",
+    storageBucket:     "carclub-21861.firebasestorage.app",
+    messagingSenderId: "210202318338",
+    appId:             "1:210202318338:web:14888871dc451220e5391b"
   };
   // ─────────────────────────────────────────────────────────────────────
 
