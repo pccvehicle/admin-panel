@@ -818,32 +818,33 @@
     </div>
 
 ```
+<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+  <div style="flex:1;min-width:140px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.18);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
+    <span style="font-size:1.4rem;">🔑</span>
+    <div>
+      <div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--ink-subtle);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px;">One-Time Registration</div>
+      <div style="font-family:var(--font-display);font-size:1.3rem;font-weight:800;color:var(--cobalt);letter-spacing:-0.02em;">RM 100</div>
+    </div>
+  </div>
+  <div style="flex:1;min-width:140px;background:var(--cobalt-dim);border:1px solid rgba(26,86,219,0.18);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
+    <span style="font-size:1.4rem;">📅</span>
+    <div>
+      <div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--ink-subtle);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px;">Monthly Subscription</div>
+      <div style="font-family:var(--font-display);font-size:1.3rem;font-weight:800;color:var(--cobalt);letter-spacing:-0.02em;">RM 30 <span style="font-size:0.75rem;font-weight:500;color:var(--ink-muted);">/ month</span></div>
+    </div>
+  </div>
+</div>
+
 <div class="field">
   <label>Select Membership Tier <span class="req">*</span></label>
-  <div class="tier-grid" id="tier-grid">
-    <label class="tier-card" id="tier-standard" onclick="selectTier('Standard')">
-      <input type="radio" name="tier" value="Standard" />
+  <div id="tier-grid">
+    <label class="tier-card selected" id="tier-standard" style="max-width:320px;" onclick="selectTier('Standard')">
+      <input type="radio" name="tier" value="Standard" checked />
       <span class="tier-check"></span>
       <span class="tier-badge">🥈</span>
-      <div class="tier-name">Standard</div>
-      <div class="tier-price">RM 60 / year</div>
+      <div class="tier-name">Standard Member</div>
+      <div class="tier-price">RM 100 reg. · RM 30 / mo</div>
       <div class="tier-perks">Club sticker · Events access · Newsletter</div>
-    </label>
-    <label class="tier-card" id="tier-premium" onclick="selectTier('Premium')">
-      <input type="radio" name="tier" value="Premium" />
-      <span class="tier-check"></span>
-      <span class="tier-badge">🥇</span>
-      <div class="tier-name">Premium</div>
-      <div class="tier-price">RM 120 / year</div>
-      <div class="tier-perks">All Standard + Track days · Member kit · Priority slots</div>
-    </label>
-    <label class="tier-card" id="tier-founding" onclick="selectTier('Founding')">
-      <input type="radio" name="tier" value="Founding" />
-      <span class="tier-check"></span>
-      <span class="tier-badge">💎</span>
-      <div class="tier-name">Founding</div>
-      <div class="tier-price">RM 200 / year</div>
-      <div class="tier-perks">All Premium + VIP badge · Lifetime discount · Name on plaque</div>
     </label>
   </div>
   <span class="field-error" id="err-tier">Please select a membership tier</span>
@@ -938,13 +939,43 @@
 
 <script>
 /* ────────────────────────────────────────────────
+   WHATSAPP CONFIG  (CallMeBot — free service)
+   Steps to activate:
+   1. Add +34 644 61 69 79 to your contacts as "CallMeBot"
+   2. Send this WhatsApp message to that number:
+      I allow callmebot to send me messages
+   3. You'll receive your apikey — paste it below
+──────────────────────────────────────────────── */
+var WA_CONFIG = {
+  phone:  'YOUR_WHATSAPP_NUMBER',   // e.g. '601112345678'  (no + or spaces)
+  apikey: 'YOUR_CALLMEBOT_APIKEY'   // received after activation
+};
+
+function sendWhatsApp(data) {
+  if (WA_CONFIG.phone === 'YOUR_WHATSAPP_NUMBER') return Promise.resolve(); // skip if not configured
+  var msg = '🏁 *New Car Club Registration*\n'
+    + '👤 *Name:* ' + data.ownerName + '\n'
+    + '📱 *Phone:* ' + data.phone + '\n'
+    + '📧 *Email:* ' + data.email + '\n'
+    + '🚗 *Vehicle:* ' + data.year + ' ' + data.make + ' ' + data.model + '\n'
+    + '🔢 *Plate:* ' + data.plate + '\n'
+    + '🏅 *Tier:* ' + data.tier + '\n'
+    + '📍 *State:* ' + data.state + '\n'
+    + '🆔 *Member ID:* ' + data.memberId;
+  var url = 'https://api.callmebot.com/whatsapp.php?phone=' + WA_CONFIG.phone
+          + '&apikey=' + WA_CONFIG.apikey
+          + '&text=' + encodeURIComponent(msg);
+  return fetch(url).catch(function() {}); // silent fail — don't block registration
+}
+
+/* ────────────────────────────────────────────────
    STATE
 ──────────────────────────────────────────────── */
 var currentStep = 1;
 var formData    = {};
 var modTags     = [];
 var radioVals   = { gender: '', trans: '', fuel: '' };
-var tierSelected = '';
+var tierSelected = 'Standard'; // only one tier now
 
 /* ────────────────────────────────────────────────
    YEAR DROPDOWN
@@ -1194,6 +1225,8 @@ function submitRegistration() {
 
   doSave.then(function(id) {
     var mid = id || payload.memberId;
+    payload.memberId = mid;
+    sendWhatsApp(payload); // 🔔 WhatsApp notification
     document.getElementById('step-4').classList.add('hidden');
     document.getElementById('step-btn-4').classList.remove('active');
     document.getElementById('step-btn-4').classList.add('done');
@@ -1214,7 +1247,7 @@ function submitRegistration() {
    RESET
 ──────────────────────────────────────────────── */
 function resetForm() {
-  formData = {}; modTags = []; radioVals = { gender:'', trans:'', fuel:'' }; tierSelected = '';
+  formData = {}; modTags = []; radioVals = { gender:'', trans:'', fuel:'' }; tierSelected = 'Standard';
   document.querySelectorAll('input:not([type=radio]):not([type=checkbox]), select, textarea')
     .forEach(function(el) { el.value = ''; });
   document.querySelectorAll('.radio-card').forEach(function(el) { el.classList.remove('selected'); });
