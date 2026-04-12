@@ -33,10 +33,10 @@
   tr:last-child td { border-bottom: none; }
   tr:hover { background: var(--pearl); }
 
-  .badge { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
-  .badge.pending { background: #FEF3C7; color: var(--warning); border: 1px solid #FDE68A; }
-  .badge.approved { background: #D1FAE5; color: var(--success); border: 1px solid #A7F3D0; }
-  .badge.rejected { background: #FEE2E2; color: var(--danger); border: 1px solid #FECACA; }
+  .badge { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; display: inline-block; letter-spacing: 0.02em; }
+  .badge.pending { background: #FFFBEB; color: var(--warning); border: 1px solid #FDE68A; }
+  .badge.approved { background: #ECFDF5; color: var(--success); border: 1px solid #A7F3D0; }
+  .badge.rejected { background: #FEF2F2; color: var(--danger); border: 1px solid #FECACA; }
 
   /* ── BUTTONS ── */
   .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -51,29 +51,33 @@
   .loading { text-align: center; padding: 40px; color: var(--ink-muted); font-weight: 500; }
 
   /* ── MODAL (DETAILS VIEW) ── */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 100; opacity: 0; pointer-events: none; transition: 0.2s; padding: 20px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.7); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: center; z-index: 100; opacity: 0; pointer-events: none; transition: 0.2s; padding: 16px; }
   .modal-overlay.active { opacity: 1; pointer-events: all; }
-  .modal-content { background: white; width: 100%; max-width: 800px; max-height: 90vh; border-radius: 16px; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.2); transform: translateY(20px); transition: 0.3s cubic-bezier(.16,1,.3,1); }
+  .modal-content { background: var(--pearl); width: 100%; max-width: 800px; max-height: 90vh; border-radius: 16px; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.3); transform: translateY(20px); transition: 0.3s cubic-bezier(.16,1,.3,1); overflow: hidden; }
   .modal-overlay.active .modal-content { transform: translateY(0); }
   
-  .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--pearl-border); display: flex; justify-content: space-between; align-items: center; background: var(--pearl); border-radius: 16px 16px 0 0; }
-  .modal-header h2 { margin: 0; font-family: var(--font-display); font-size: 1.25rem; color: var(--ink); }
-  .close-btn { background: none; border: none; font-size: 1.5rem; color: var(--ink-muted); cursor: pointer; line-height: 1; }
+  .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--pearl-border); display: flex; justify-content: space-between; align-items: center; background: white; }
+  .modal-header h2 { margin: 0; font-family: var(--font-display); font-size: 1.3rem; color: var(--ink); }
+  .close-btn { background: none; border: none; font-size: 1.8rem; color: var(--ink-muted); cursor: pointer; line-height: 1; padding: 0; }
   .close-btn:hover { color: var(--danger); }
   
-  .modal-body { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+  .modal-body { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
   
-  .detail-section { border: 1px solid var(--pearl-border); border-radius: 12px; overflow: hidden; }
-  .section-title { background: var(--pearl); padding: 12px 16px; font-weight: 700; font-size: 0.9rem; color: var(--ink); border-bottom: 1px solid var(--pearl-border); display: flex; align-items: center; gap: 8px; }
-  .section-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 16px; }
+  .detail-section { background: white; border: 1px solid var(--pearl-border); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+  .section-title { background: #F8FAFC; padding: 14px 18px; font-weight: 700; font-size: 0.95rem; color: var(--ink); border-bottom: 1px solid var(--pearl-border); display: flex; align-items: center; gap: 8px; }
+  .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 18px; }
+  @media(max-width: 600px) { .section-grid { grid-template-columns: 1fr; } }
   
   .data-item { display: flex; flex-direction: column; gap: 4px; }
-  .data-label { font-size: 0.75rem; color: var(--ink-subtle); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
-  .data-value { font-size: 0.95rem; color: var(--ink); font-weight: 500; word-break: break-word; }
+  .data-item.full { grid-column: 1 / -1; }
+  .data-label { font-size: 0.75rem; color: var(--ink-subtle); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+  .data-value { font-size: 0.95rem; color: var(--ink); font-weight: 500; word-break: break-word; line-height: 1.4; }
   .data-value.mono { font-family: var(--font-mono); color: var(--cobalt); font-weight: 600; letter-spacing: 0.05em; }
-  .data-value.full-width { grid-column: 1 / -1; }
+  .empty-val { color: #A0AEC0; font-style: italic; font-size: 0.85rem; }
   
-  .tag { display: inline-block; background: var(--pearl-border); color: var(--ink-muted); font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; margin: 2px; }
+  .tag { display: inline-block; background: var(--cobalt-dim); border: 1px solid rgba(26,86,219,0.15); color: var(--cobalt); font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 20px; margin: 4px 4px 0 0; }
+
+  .modal-footer { background: white; padding: 16px 24px; border-top: 1px solid var(--pearl-border); display: flex; justify-content: flex-end; gap: 12px; }
 </style>
 </head>
 <body>
@@ -111,6 +115,9 @@
     </div>
     <div class="modal-body" id="modalBodyContent">
       <!-- Data injected here via JS -->
+    </div>
+    <div class="modal-footer" id="modalFooterContent">
+      <!-- Buttons injected here via JS -->
     </div>
   </div>
 </div>
@@ -153,8 +160,7 @@
         const data = docSnap.data();
         const docId = docSnap.id;
         
-        // Save to global variable for the modal to use later
-        window.membersData[docId] = data;
+        window.membersData[docId] = data; // Save to global variable
         
         let dateStr = "N/A";
         if (data.createdAt) {
@@ -168,7 +174,7 @@
         row.innerHTML = `
           <td>${dateStr}</td>
           <td>
-            <div style="font-family: monospace; font-weight:600; color:var(--cobalt); margin-bottom:6px;">${data.memberId || 'N/A'}</div>
+            <div style="font-family: monospace; font-weight:700; color:var(--cobalt); margin-bottom:6px;">${data.memberId || 'N/A'}</div>
             <span class="badge ${badgeClass}" id="status-${docId}">${data.status || 'Pending'}</span>
           </td>
           <td>
@@ -176,16 +182,12 @@
             <span style="color:#4B5675;font-size:0.8rem;">📞 ${data.phone || 'N/A'}</span>
           </td>
           <td>
-            ${data.year} ${data.make} ${data.model}<br>
-            <span style="font-family: monospace; font-size: 0.9rem; font-weight: bold; color:var(--ink);">${data.plate}</span>
+            ${data.year || ''} ${data.make || ''} ${data.model || ''}<br>
+            <span style="font-family: monospace; font-size: 0.95rem; font-weight: bold; color:var(--ink);">${data.plate || 'N/A'}</span>
           </td>
           <td>
             <div class="btn-group">
-              <button class="btn btn-view" onclick="openModal('${docId}')">👁️ View</button>
-              ${data.status === 'Pending' ? `
-                <button class="btn btn-approve" onclick="updateStatus('${docId}', 'Approved')">Approve</button>
-                <button class="btn btn-reject" onclick="updateStatus('${docId}', 'Rejected')">Reject</button>
-              ` : ``}
+              <button class="btn btn-view" onclick="openModal('${docId}')">👁️ View Details</button>
             </div>
           </td>
         `;
@@ -215,7 +217,7 @@
         sendApprovalEmail(data);
       }
       
-      loadMembers(); // Refresh table to hide action buttons
+      loadMembers(); // Refresh table
       closeModal();
     } catch (e) {
       console.error(e);
@@ -223,28 +225,12 @@
     }
   };
 
-  // Prepares the mailto link and opens default mail client
   function sendApprovalEmail(data) {
     const subject = encodeURIComponent("Welcome to GRYPHON Motorsport! Your Registration is Approved 🏁");
+    const bodyText = `Hi ${data.ownerName || 'Member'},\n\nGreat news! Your vehicle registration has been approved by the GRYPHON Motorsport committee.\n\nHere are your official membership details:\n• Member ID: ${data.memberId || 'N/A'}\n• Registered Vehicle: ${data.plate || 'N/A'} (${data.year || ''} ${data.make || ''} ${data.model || ''})\n• Membership Tier: ${data.tier || 'Standard'}\n\nWelcome to Malaysia's premier car enthusiast community! We will be in touch shortly regarding your club sticker and lanyard collection.\n\nBest regards,\nGRYPHON Motorsport Committee`;
     
-    const bodyText = `Hi ${data.ownerName},
-
-Great news! Your vehicle registration has been approved by the GRYPHON Motorsport committee.
-
-Here are your official membership details:
-• Member ID: ${data.memberId}
-• Registered Vehicle: ${data.plate} (${data.year} ${data.make} ${data.model})
-• Membership Tier: ${data.tier}
-
-Welcome to Malaysia's premier car enthusiast community! We will be in touch shortly regarding your club sticker and lanyard collection.
-
-Best regards,
-GRYPHON Motorsport Committee`;
-
-    const body = encodeURIComponent(bodyText);
-    
-    // Opens the user's email client (Outlook, Mail app, Gmail, etc)
-    window.location.href = `mailto:${data.email}?subject=${subject}&body=${body}`;
+    // Opens the user's default email client (Mail, Gmail, Outlook, etc.)
+    window.location.href = `mailto:${data.email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
   }
 
   // --- MODAL LOGIC ---
@@ -252,28 +238,41 @@ GRYPHON Motorsport Committee`;
     const data = window.membersData[docId];
     if(!data) return;
 
-    const modalBody = document.getElementById('modalBodyContent');
-    
-    // Format Mods Array into tags
-    let modsHtml = '<span class="data-value">Stock / None</span>';
-    if(data.modifications && data.modifications.length > 0) {
+    // Helper function to safely render fields or show "Not provided"
+    const val = (v) => (v !== undefined && v !== null && v !== '') ? v : '<span class="empty-val">Not provided</span>';
+
+    // Format Modifications Array
+    let modsHtml = '<span class="empty-val">None / Stock</span>';
+    if(data.modifications && Array.isArray(data.modifications) && data.modifications.length > 0) {
       modsHtml = data.modifications.map(m => `<span class="tag">${m}</span>`).join('');
     }
 
+    const modalBody = document.getElementById('modalBodyContent');
     modalBody.innerHTML = `
+      
+      <!-- REGISTRATION INFO -->
+      <div class="detail-section">
+        <div class="section-title">🎫 Registration Overview</div>
+        <div class="section-grid">
+          <div class="data-item"><span class="data-label">Member ID</span><span class="data-value mono">${val(data.memberId)}</span></div>
+          <div class="data-item"><span class="data-label">Current Status</span><span class="data-value" style="font-weight:700; color:${data.status==='Approved'?'var(--success)':(data.status==='Rejected'?'var(--danger)':'var(--warning)')}">${val(data.status)}</span></div>
+        </div>
+      </div>
+
       <!-- OWNER INFO -->
       <div class="detail-section">
         <div class="section-title">👤 Owner Information</div>
         <div class="section-grid">
-          <div class="data-item"><span class="data-label">Full Name</span><span class="data-value">${data.ownerName}</span></div>
-          <div class="data-item"><span class="data-label">IC / Passport</span><span class="data-value">${data.icNo}</span></div>
-          <div class="data-item"><span class="data-label">DOB / Gender</span><span class="data-value">${data.dob || 'N/A'} (${data.gender || 'N/A'})</span></div>
-          <div class="data-item"><span class="data-label">Phone</span><span class="data-value">${data.phone}</span></div>
-          <div class="data-item"><span class="data-label">Email</span><span class="data-value">${data.email}</span></div>
-          <div class="data-item"><span class="data-label">State</span><span class="data-value">${data.state || 'N/A'}</span></div>
-          <div class="data-item" style="grid-column: 1/-1;"><span class="data-label">Address</span><span class="data-value">${data.address || 'N/A'}</span></div>
-          <div class="data-item"><span class="data-label">Emergency Contact</span><span class="data-value">${data.emergencyName || 'N/A'}</span></div>
-          <div class="data-item"><span class="data-label">Emergency Phone</span><span class="data-value">${data.emergencyPhone || 'N/A'}</span></div>
+          <div class="data-item"><span class="data-label">Full Name</span><span class="data-value">${val(data.ownerName)}</span></div>
+          <div class="data-item"><span class="data-label">IC / Passport</span><span class="data-value">${val(data.icNo)}</span></div>
+          <div class="data-item"><span class="data-label">Date of Birth</span><span class="data-value">${val(data.dob)}</span></div>
+          <div class="data-item"><span class="data-label">Gender</span><span class="data-value">${val(data.gender)}</span></div>
+          <div class="data-item"><span class="data-label">Mobile Number</span><span class="data-value">${val(data.phone)}</span></div>
+          <div class="data-item"><span class="data-label">Email Address</span><span class="data-value">${val(data.email)}</span></div>
+          <div class="data-item full"><span class="data-label">Home Address</span><span class="data-value">${val(data.address)}</span></div>
+          <div class="data-item"><span class="data-label">State</span><span class="data-value">${val(data.state)}</span></div>
+          <div class="data-item"><span class="data-label">Emergency Name</span><span class="data-value">${val(data.emergencyName)}</span></div>
+          <div class="data-item"><span class="data-label">Emergency Phone</span><span class="data-value">${val(data.emergencyPhone)}</span></div>
         </div>
       </div>
 
@@ -281,16 +280,16 @@ GRYPHON Motorsport Committee`;
       <div class="detail-section">
         <div class="section-title">🚗 Vehicle Details</div>
         <div class="section-grid">
-          <div class="data-item"><span class="data-label">Plate Number</span><span class="data-value mono">${data.plate}</span></div>
-          <div class="data-item"><span class="data-label">Make & Model</span><span class="data-value">${data.make} ${data.model}</span></div>
-          <div class="data-item"><span class="data-label">Year</span><span class="data-value">${data.year}</span></div>
-          <div class="data-item"><span class="data-label">Variant</span><span class="data-value">${data.variant || 'N/A'}</span></div>
-          <div class="data-item"><span class="data-label">Colour</span><span class="data-value">${data.colour}</span></div>
-          <div class="data-item"><span class="data-label">Engine (CC)</span><span class="data-value">${data.cc || 'N/A'}</span></div>
-          <div class="data-item"><span class="data-label">Transmission</span><span class="data-value">${data.transmission || 'N/A'}</span></div>
-          <div class="data-item"><span class="data-label">Fuel</span><span class="data-value">${data.fuel || 'N/A'}</span></div>
-          <div class="data-item"><span class="data-label">VIN / Chassis</span><span class="data-value mono">${data.vin || 'N/A'}</span></div>
-          <div class="data-item" style="grid-column: 1/-1;"><span class="data-label">Modifications</span><div>${modsHtml}</div></div>
+          <div class="data-item"><span class="data-label">Registration Plate</span><span class="data-value mono">${val(data.plate)}</span></div>
+          <div class="data-item"><span class="data-label">Make & Model</span><span class="data-value">${val(data.make)} ${val(data.model)}</span></div>
+          <div class="data-item"><span class="data-label">Year of Manufacture</span><span class="data-value">${val(data.year)}</span></div>
+          <div class="data-item"><span class="data-label">Variant / Trim</span><span class="data-value">${val(data.variant)}</span></div>
+          <div class="data-item"><span class="data-label">Colour</span><span class="data-value">${val(data.colour)}</span></div>
+          <div class="data-item"><span class="data-label">Engine Capacity (CC)</span><span class="data-value">${val(data.cc)}</span></div>
+          <div class="data-item"><span class="data-label">Transmission</span><span class="data-value">${val(data.transmission)}</span></div>
+          <div class="data-item"><span class="data-label">Fuel Type</span><span class="data-value">${val(data.fuel)}</span></div>
+          <div class="data-item full"><span class="data-label">VIN / Chassis No.</span><span class="data-value mono">${val(data.vin)}</span></div>
+          <div class="data-item full"><span class="data-label">Declared Modifications</span><div>${modsHtml}</div></div>
         </div>
       </div>
 
@@ -298,26 +297,26 @@ GRYPHON Motorsport Committee`;
       <div class="detail-section">
         <div class="section-title">📄 Documents & Membership</div>
         <div class="section-grid">
-          <div class="data-item"><span class="data-label">Road Tax Expiry</span><span class="data-value">${data.roadTaxExpiry || 'N/A'}</span></div>
-          <div class="data-item"><span class="data-label">Insurance Expiry</span><span class="data-value">${data.insuranceExpiry || 'N/A'}</span></div>
-          <div class="data-item"><span class="data-label">Zone / Chapter</span><span class="data-value">${data.chapter || 'N/A'}</span></div>
-          <div class="data-item"><span class="data-label">Source</span><span class="data-value">${data.referral || 'N/A'}</span></div>
-          <div class="data-item" style="grid-column: 1/-1; background: var(--pearl); padding: 12px; border-radius: 8px;">
-            <span class="data-label">Selected Tier</span>
-            <span class="data-value" style="font-size: 1.1rem; font-weight:700; color:var(--cobalt);">${data.tier}</span>
-            ${data.notes ? `<div style="margin-top:10px;"><span class="data-label">Member Notes:</span><span class="data-value" style="font-style:italic;">"${data.notes}"</span></div>` : ''}
-          </div>
+          <div class="data-item"><span class="data-label">Road Tax Expiry</span><span class="data-value">${val(data.roadTaxExpiry)}</span></div>
+          <div class="data-item"><span class="data-label">Insurance Expiry</span><span class="data-value">${val(data.insuranceExpiry)}</span></div>
+          <div class="data-item"><span class="data-label">Referred By</span><span class="data-value">${val(data.referral)}</span></div>
+          <div class="data-item"><span class="data-label">Preferred Chapter</span><span class="data-value">${val(data.chapter)}</span></div>
+          <div class="data-item"><span class="data-label">Selected Tier</span><span class="data-value" style="font-weight:700; color:var(--cobalt);">${val(data.tier)}</span></div>
+          <div class="data-item full"><span class="data-label">Additional Notes</span><span class="data-value" style="font-style:italic;">${val(data.notes)}</span></div>
         </div>
       </div>
-      
-      <!-- APPROVAL ACTIONS inside Modal -->
-      ${data.status === 'Pending' ? `
-        <div style="display:flex; gap:10px; justify-content: flex-end; border-top: 1px solid var(--pearl-border); padding-top: 20px;">
-          <button class="btn btn-reject" onclick="updateStatus('${docId}', 'Rejected')" style="padding: 10px 20px;">Reject</button>
-          <button class="btn btn-approve" onclick="updateStatus('${docId}', 'Approved')" style="padding: 10px 20px;">✅ Approve & Email User</button>
-        </div>
-      ` : ``}
     `;
+
+    const modalFooter = document.getElementById('modalFooterContent');
+    if(data.status === 'Pending') {
+      modalFooter.innerHTML = `
+        <button class="btn btn-reject" onclick="updateStatus('${docId}', 'Rejected')" style="padding: 12px 24px;">Reject</button>
+        <button class="btn btn-approve" onclick="updateStatus('${docId}', 'Approved')" style="padding: 12px 24px;">✅ Approve & Email User</button>
+      `;
+      modalFooter.style.display = 'flex';
+    } else {
+      modalFooter.style.display = 'none'; // Hide buttons if already resolved
+    }
 
     document.getElementById('detailsModal').classList.add('active');
   };
@@ -326,7 +325,6 @@ GRYPHON Motorsport Committee`;
     document.getElementById('detailsModal').classList.remove('active');
   };
 
-  // Close modal when clicking outside
   document.getElementById('detailsModal').addEventListener('click', function(e) {
     if(e.target === this) closeModal();
   });
