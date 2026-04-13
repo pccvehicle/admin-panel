@@ -61,7 +61,6 @@
   .close-btn { background: none; border: none; font-size: 1.8rem; color: var(--ink-muted); cursor: pointer; line-height: 1; padding: 0; }
   .close-btn:hover { color: var(--danger); }
   
-  /* CRITICAL SCROLLING FIX ADDED HERE (flex: 1 1 auto, min-height: 0) */
   .modal-body { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; flex: 1 1 auto; min-height: 0; -webkit-overflow-scrolling: touch; }
   
   .detail-section { background: white; border: 1px solid var(--pearl-border); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.02); flex-shrink: 0; }
@@ -141,7 +140,7 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  // Global object to store all downloaded member data for the modal
+  // Global object to store all downloaded member data
   window.membersData = {};
 
   async function loadMembers() {
@@ -161,7 +160,7 @@
         const data = docSnap.data();
         const docId = docSnap.id;
         
-        window.membersData[docId] = data; // Save to global variable
+        window.membersData[docId] = data; 
         
         let dateStr = "N/A";
         if (data.createdAt) {
@@ -209,16 +208,15 @@
       await updateDoc(memberRef, { status: newStatus });
       
       const data = window.membersData[docId];
-      data.status = newStatus; // Update local data
+      data.status = newStatus; 
       
       alert(`Registration ${newStatus} successfully.`);
       
-      // TRIGGER EMAIL IF APPROVED
       if (newStatus === 'Approved' && data.email) {
         sendApprovalEmail(data);
       }
       
-      loadMembers(); // Refresh table
+      loadMembers(); 
       closeModal();
     } catch (e) {
       console.error(e);
@@ -230,27 +228,67 @@
     const subject = encodeURIComponent("Welcome to GRYPHON Motorsport! Your Registration is Approved 🏁");
     const bodyText = `Hi ${data.ownerName || 'Member'},\n\nGreat news! Your vehicle registration has been approved by the GRYPHON Motorsport committee.\n\nHere are your official membership details:\n• Member ID: ${data.memberId || 'N/A'}\n• Registered Vehicle: ${data.plate || 'N/A'} (${data.year || ''} ${data.make || ''} ${data.model || ''})\n• Membership Tier: ${data.tier || 'Standard'}\n\nWelcome to Malaysia's premier car enthusiast community! We will be in touch shortly regarding your club sticker and lanyard collection.\n\nBest regards,\nGRYPHON Motorsport Committee`;
     
-    // Opens the user's default email client (Mail, Gmail, Outlook, etc.)
     window.location.href = `mailto:${data.email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
   }
+
+  // --- ADD TO GOOGLE CALENDAR (BIRTHDAY) ---
+  window.addToCalendar = function(docId) {
+    const data = window.membersData[docId];
+    if(!data || !data.dob) {
+        alert("Date of birth is not provided!");
+        return;
+    }
+
+    try {
+        // Format dates for Google Calendar (YYYYMMDD)
+        // Ensure it's treated as an all-day event
+        const dobDate = new Date(data.dob);
+        const startStr = dobDate.toISOString().split('T')[0].replace(/-/g, "");
+        
+        // Google all-day events require the end date to be the day AFTER
+        dobDate.setDate(dobDate.getDate() + 1);
+        const endStr = dobDate.toISOString().split('T')[0].replace(/-/g, "");
+
+        const text = encodeURIComponent(`🎉 [GRYPHON] Birthday: ${data.ownerName}`);
+        const details = encodeURIComponent(`Remember to send birthday wishes to our club member!\n\nName: ${data.ownerName}\nPhone: ${data.phone}\nVehicle: ${data.plate}`);
+        
+        // Set rule to repeat yearly
+        const recur = encodeURIComponent(`RRULE:FREQ=YEARLY`);
+
+        // Generate final URL
+        const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startStr}/${endStr}&details=${details}&recur=${recur}`;
+        
+        // Open Google Calendar in a new tab
+        window.open(url, '_blank');
+    } catch(e) {
+        console.error(e);
+        alert("Error generating calendar link. Please ensure the DOB is valid.");
+    }
+  };
 
   // --- MODAL LOGIC ---
   window.openModal = function(docId) {
     const data = window.membersData[docId];
     if(!data) return;
 
-    // Helper function to safely render fields or show "Not provided"
     const val = (v) => (v !== undefined && v !== null && v !== '') ? v : '<span class="empty-val">Not provided</span>';
 
-    // Format Modifications Array
     let modsHtml = '<span class="empty-val">None / Stock</span>';
     if(data.modifications && Array.isArray(data.modifications) && data.modifications.length > 0) {
       modsHtml = data.modifications.map(m => `<span class="tag">${m}</span>`).join('');
     }
 
+    // Add To Calendar Button (Only shows if DOB exists)
+    let dobHtml = val(data.dob);
+    if(data.dob) {
+        dobHtml = `<div style="display:flex; align-items:center; gap:10px;">
+                    ${data.dob}
+                    <button class="btn" style="padding: 4px 8px; font-size: 0.7rem; background: var(--cobalt-dim); color: var(--cobalt);" onclick="addToCalendar('${docId}')">📅 Add to Calendar</button>
+                   </div>`;
+    }
+
     const modalBody = document.getElementById('modalBodyContent');
     modalBody.innerHTML = `
-      
       <!-- REGISTRATION INFO -->
       <div class="detail-section">
         <div class="section-title">🎫 Registration Overview</div>
@@ -266,7 +304,7 @@
         <div class="section-grid">
           <div class="data-item"><span class="data-label">Full Name</span><span class="data-value">${val(data.ownerName)}</span></div>
           <div class="data-item"><span class="data-label">IC / Passport</span><span class="data-value">${val(data.icNo)}</span></div>
-          <div class="data-item"><span class="data-label">Date of Birth</span><span class="data-value">${val(data.dob)}</span></div>
+          <div class="data-item"><span class="data-label">Date of Birth</span><span class="data-value">${dobHtml}</span></div>
           <div class="data-item"><span class="data-label">Gender</span><span class="data-value">${val(data.gender)}</span></div>
           <div class="data-item"><span class="data-label">Mobile Number</span><span class="data-value">${val(data.phone)}</span></div>
           <div class="data-item"><span class="data-label">Email Address</span><span class="data-value">${val(data.email)}</span></div>
@@ -316,7 +354,7 @@
       `;
       modalFooter.style.display = 'flex';
     } else {
-      modalFooter.style.display = 'none'; // Hide buttons if already resolved
+      modalFooter.style.display = 'none';
     }
 
     document.getElementById('detailsModal').classList.add('active');
@@ -335,3 +373,4 @@
 
 </body>
 </html>
+
