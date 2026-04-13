@@ -206,7 +206,7 @@
     }
   });
 
-  // --- LOGIN (USING REDIRECT INSTEAD OF POPUP FOR MOBILE) ---
+  // --- LOGIN ---
   window.signIn = function() {
     signInWithRedirect(auth, provider);
   };
@@ -273,7 +273,7 @@
     } catch (e) {
       console.error(e);
       if(e.code === 'permission-denied') {
-        tbody.innerHTML = '<tr><td colspan="5" class="loading" style="color:var(--danger);"><strong>Access Denied!</strong><br><br>You are logged in, but your Google Email is not authorized in the Firestore Security Rules.<br>Make sure you added your real email inside the [ ] brackets in Firebase Rules.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="loading" style="color:var(--danger);"><strong>Access Denied!</strong><br><br>You are logged in, but your Google Email is not authorized in the Firestore Security Rules.</td></tr>';
       } else {
         tbody.innerHTML = '<tr><td colspan="5" class="loading" style="color:var(--danger);">Error loading data. Check console.</td></tr>';
       }
@@ -312,7 +312,7 @@
     window.location.href = `mailto:${data.email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
   }
 
-  // --- ADD TO GOOGLE CALENDAR (BIRTHDAY) ---
+  // --- ADD TO GOOGLE CALENDAR (STRICT NEW TAB FIX) ---
   window.addToCalendar = function(docId) {
     const data = window.membersData[docId];
     if(!data || !data.dob) {
@@ -331,7 +331,17 @@
         const recur = encodeURIComponent(`RRULE:FREQ=YEARLY`);
 
         const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startStr}/${endStr}&details=${details}&recur=${recur}`;
-        window.open(url, '_blank');
+        
+        // This method forces Safari/Mobile Chrome to reliably open a New Tab,
+        // leaving the Admin Panel open in the background.
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank'; // Force new tab
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
     } catch(e) {
         console.error(e);
         alert("Error generating calendar link. Please ensure the DOB is valid.");
