@@ -57,7 +57,7 @@
 
   /* ── BUTTONS ── */
   .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-  .btn { padding: 8px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+  .btn { padding: 8px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
   .btn-view { background: var(--cobalt-dim); color: var(--cobalt); border: 1px solid rgba(26,86,219,0.2); }
   .btn-view:hover { background: var(--cobalt); color: white; }
   .btn-approve { background: var(--success); color: white; }
@@ -312,42 +312,6 @@
     window.location.href = `mailto:${data.email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
   }
 
-  // --- ADD TO GOOGLE CALENDAR (STRICT NEW TAB FIX) ---
-  window.addToCalendar = function(docId) {
-    const data = window.membersData[docId];
-    if(!data || !data.dob) {
-        alert("Date of birth is not provided!");
-        return;
-    }
-
-    try {
-        const dobDate = new Date(data.dob);
-        const startStr = dobDate.toISOString().split('T')[0].replace(/-/g, "");
-        dobDate.setDate(dobDate.getDate() + 1);
-        const endStr = dobDate.toISOString().split('T')[0].replace(/-/g, "");
-
-        const text = encodeURIComponent(`🎉 [GRYPHON] Birthday: ${data.ownerName}`);
-        const details = encodeURIComponent(`Remember to send birthday wishes to our club member!\n\nName: ${data.ownerName}\nPhone: ${data.phone}\nVehicle: ${data.plate}`);
-        const recur = encodeURIComponent(`RRULE:FREQ=YEARLY`);
-
-        const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startStr}/${endStr}&details=${details}&recur=${recur}`;
-        
-        // This method forces Safari/Mobile Chrome to reliably open a New Tab,
-        // leaving the Admin Panel open in the background.
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank'; // Force new tab
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-    } catch(e) {
-        console.error(e);
-        alert("Error generating calendar link. Please ensure the DOB is valid.");
-    }
-  };
-
   // --- MODAL LOGIC ---
   window.openModal = function(docId) {
     const data = window.membersData[docId];
@@ -361,11 +325,28 @@
     }
 
     let dobHtml = val(data.dob);
+    
+    // THE FIX: We generate the calendar URL directly inside the HTML using a standard <a> tag.
     if(data.dob) {
-        dobHtml = `<div style="display:flex; align-items:center; gap:10px;">
-                    ${data.dob}
-                    <button class="btn" style="padding: 4px 8px; font-size: 0.7rem; background: var(--cobalt-dim); color: var(--cobalt);" onclick="addToCalendar('${docId}')">📅 Add to Calendar</button>
-                   </div>`;
+        try {
+            const dobDate = new Date(data.dob);
+            const startStr = dobDate.toISOString().split('T')[0].replace(/-/g, "");
+            dobDate.setDate(dobDate.getDate() + 1);
+            const endStr = dobDate.toISOString().split('T')[0].replace(/-/g, "");
+            const text = encodeURIComponent(`🎉 [GRYPHON] Birthday: ${data.ownerName}`);
+            const details = encodeURIComponent(`Remember to send birthday wishes to our club member!\n\nName: ${data.ownerName}\nPhone: ${data.phone}\nVehicle: ${data.plate}`);
+            const recur = encodeURIComponent(`RRULE:FREQ=YEARLY`);
+            
+            const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startStr}/${endStr}&details=${details}&recur=${recur}`;
+            
+            // This is a native <a> link. Tapping it will open a new browser tab.
+            dobHtml = `<div style="display:flex; align-items:center; gap:10px;">
+                        ${data.dob}
+                        <a href="${calUrl}" target="_blank" rel="noopener noreferrer" class="btn" style="padding: 4px 8px; font-size: 0.7rem; background: var(--cobalt-dim); color: var(--cobalt); text-decoration: none;">📅 Add to Calendar</a>
+                       </div>`;
+        } catch(e) {
+            console.error("Could not parse DOB for calendar", e);
+        }
     }
 
     const modalBody = document.getElementById('modalBodyContent');
