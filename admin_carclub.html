@@ -168,7 +168,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, collection, getDocs, doc, updateDoc, query, orderBy } 
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } 
+  import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } 
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -187,32 +187,34 @@
 
   window.membersData = {};
 
+  // --- ERROR HANDLING FOR MOBILE REDIRECT ---
+  getRedirectResult(auth).catch((error) => {
+    console.error("Login redirect error:", error);
+    alert("Error logging in: " + error.message);
+  });
+
   // --- AUTHENTICATION STATE LISTENER ---
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      // User is logged in
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('mainDashboard').style.display = 'block';
       document.getElementById('userEmailDisplay').textContent = user.email;
-      loadMembers(); // Only load data if logged in
+      loadMembers(); 
     } else {
-      // User is logged out
       document.getElementById('loginScreen').style.display = 'flex';
       document.getElementById('mainDashboard').style.display = 'none';
     }
   });
 
-  // --- LOGIN / LOGOUT FUNCTIONS ---
+  // --- LOGIN (USING REDIRECT INSTEAD OF POPUP FOR MOBILE) ---
   window.signIn = function() {
-    signInWithPopup(auth, provider).catch((error) => {
-      console.error(error);
-      alert("Error signing in: " + error.message);
-    });
+    signInWithRedirect(auth, provider);
   };
 
+  // --- LOGOUT ---
   window.signOutUser = function() {
     signOut(auth).then(() => {
-      window.membersData = {}; // Clear memory for security
+      window.membersData = {}; 
       document.getElementById('tableBody').innerHTML = '<tr><td colspan="5" class="loading">Loading members from database...</td></tr>';
     });
   };
@@ -270,9 +272,8 @@
       });
     } catch (e) {
       console.error(e);
-      // Catch permission errors explicitly
       if(e.code === 'permission-denied') {
-        tbody.innerHTML = '<tr><td colspan="5" class="loading" style="color:var(--danger);"><strong>Access Denied!</strong><br><br>You are logged in, but your Google Email is not authorized in the Firestore Security Rules.<br>Make sure you replaced "YOUR_GOOGLE_EMAIL@gmail.com" with your real email in Firebase.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="loading" style="color:var(--danger);"><strong>Access Denied!</strong><br><br>You are logged in, but your Google Email is not authorized in the Firestore Security Rules.<br>Make sure you added your real email inside the [ ] brackets in Firebase Rules.</td></tr>';
       } else {
         tbody.innerHTML = '<tr><td colspan="5" class="loading" style="color:var(--danger);">Error loading data. Check console.</td></tr>';
       }
