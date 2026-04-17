@@ -168,7 +168,8 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, collection, getDocs, doc, updateDoc, query, orderBy } 
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } 
+  // CHANGED: Using signInWithPopup instead of signInWithRedirect
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } 
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -187,12 +188,6 @@
 
   window.membersData = {};
 
-  // --- ERROR HANDLING FOR MOBILE REDIRECT ---
-  getRedirectResult(auth).catch((error) => {
-    console.error("Login redirect error:", error);
-    alert("Error logging in: " + error.message);
-  });
-
   // --- AUTHENTICATION STATE LISTENER ---
   onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -206,9 +201,12 @@
     }
   });
 
-  // --- LOGIN ---
+  // --- LOGIN (POPUP METHOD) ---
   window.signIn = function() {
-    signInWithRedirect(auth, provider);
+    signInWithPopup(auth, provider).catch((error) => {
+      console.error("Login popup error:", error);
+      alert("Login canceled or blocked. If you are on Safari, ensure pop-ups are allowed for this site.");
+    });
   };
 
   // --- LOGOUT ---
@@ -326,7 +324,7 @@
 
     let dobHtml = val(data.dob);
     
-    // THE FIX: We generate the calendar URL directly inside the HTML using a standard <a> tag.
+    // Calendar URL Generation
     if(data.dob) {
         try {
             const dobDate = new Date(data.dob);
@@ -339,7 +337,6 @@
             
             const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startStr}/${endStr}&details=${details}&recur=${recur}`;
             
-            // This is a native <a> link. Tapping it will open a new browser tab.
             dobHtml = `<div style="display:flex; align-items:center; gap:10px;">
                         ${data.dob}
                         <a href="${calUrl}" target="_blank" rel="noopener noreferrer" class="btn" style="padding: 4px 8px; font-size: 0.7rem; background: var(--cobalt-dim); color: var(--cobalt); text-decoration: none;">📅 Add to Calendar</a>
