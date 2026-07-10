@@ -807,6 +807,8 @@
         // --- Snapshots: point-in-time history kept inside the backup DB ---
         const takeSnapshot = async (label = 'manual') => {
             if (!_useBDB) return null;
+            // Don't clutter history with empty safety snapshots (nothing to protect)
+            if (label !== 'manual' && _vehicles.length === 0) return null;
             const snap = {
                 id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
                 ts: Date.now(),
@@ -820,6 +822,18 @@
             const all = (await _bAll('snapshots')).sort((a,b) => a.ts - b.ts);
             while (all.length > MAX_SNAPSHOTS) { const old = all.shift(); await _bDel('snapshots', old.id); }
             return snap;
+        };
+        const deleteSnapshot = async (id) => {
+            if (!_useBDB) return false;
+            await _bDel('snapshots', id);
+            return true;
+        };
+        const deleteAllSnapshots = async () => {
+            if (!_useBDB) return 0;
+            const all = await _bAll('snapshots');
+            for (const s of all) await _bDel('snapshots', s.id);
+            LS.set(SNAP_META_KEY, 0);
+            return all.length;
         };
         const listSnapshots = async () => {
             if (!_useBDB) return [];
@@ -2422,13 +2436,17 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                     listEl.innerHTML = '<p class="text-sm text-slate-500">No snapshots yet. One is created automatically as data changes, or tap "Create snapshot now".</p>';
                 } else {
                     listEl.innerHTML = st.snapshots.map(x => `
-                        <div class="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
-                            <div class="text-sm text-slate-300">
-                                <span class="font-mono">${new Date(x.ts).toLocaleString()}</span>
-                                <span class="text-slate-500"> · ${x.count} rec · ${x.label}</span>
+                        <div class="flex items-center justify-between gap-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+                            <div class="text-sm text-slate-300 min-w-0">
+                                <div class="font-mono text-xs truncate">${new Date(x.ts).toLocaleString()}</div>
+                                <div class="text-slate-500 text-xs">${x.count} rec · ${x.label}</div>
                             </div>
-                            <button data-snap-id="${x.id}" class="restore-snapshot-btn px-3 py-1.5 rounded-lg bg-slate-700 text-slate-100 text-sm font-medium hover:bg-blue-600">Restore</button>
-                        </div>`).join('');
+                            <div class="flex items-center gap-2 flex-none">
+                                <button data-snap-id="${x.id}" class="restore-snapshot-btn px-3 py-1.5 rounded-lg bg-slate-700 text-slate-100 text-sm font-medium hover:bg-blue-600">Restore</button>
+                                <button data-snap-id="${x.id}" data-snap-ts="${x.ts}" title="Delete snapshot" class="delete-snapshot-btn px-3 py-1.5 rounded-lg bg-slate-700 text-red-400 text-sm font-bold hover:bg-red-700 hover:text-white">&times;</button>
+                            </div>
+                        </div>`).join('') +
+                        `<button id="clear-snapshots-btn" class="w-full mt-2 px-4 py-2 rounded-lg bg-slate-700 text-slate-400 text-sm font-medium hover:bg-red-700 hover:text-white">Delete all snapshots</button>`;
                 }
             } catch (e) {
                 statusEl.textContent = 'Backup status unavailable: ' + e.message;
@@ -2490,6 +2508,37 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             } catch (e) { showNotification('Snapshot failed: ' + e.message, 'error'); }
             btn.disabled = false; btn.textContent = 'Create snapshot now';
             renderDataProtectionPanel();
+        };
+
+        const handleDeleteSnapshot = (id, ts) => {
+            const when = ts ? new Date(Number(ts)).toLocaleString() : 'this snapshot';
+            showModal(
+                'Delete snapshot?',
+                `<p>Permanently delete the snapshot from <b>${when}</b>?</p>
+                 <p class="mt-2 text-slate-400 text-sm">Your live data is not affected. Other snapshots and file backups remain.</p>`,
+                async () => {
+                    try {
+                        await deleteSnapshot(id);
+                        showNotification('Snapshot deleted.', 'success');
+                    } catch (e) { showNotification('Delete failed: ' + e.message, 'error'); }
+                    renderDataProtectionPanel();
+                }
+            );
+        };
+
+        const handleClearSnapshots = () => {
+            showModal(
+                'Delete all snapshots?',
+                `<p>This removes the entire snapshot history.</p>
+                 <p class="mt-2 text-slate-400 text-sm">Your live data is <strong>not</strong> affected, and the backup mirror plus any .json folder backups remain intact. New snapshots start again from the next change.</p>`,
+                async () => {
+                    try {
+                        const n = await deleteAllSnapshots();
+                        showNotification(`Deleted ${n} snapshot(s).`, 'success');
+                    } catch (e) { showNotification('Delete failed: ' + e.message, 'error'); }
+                    renderDataProtectionPanel();
+                }
+            );
         };
 
         const handleRestoreSnapshot = (id) => {
@@ -3238,6 +3287,9 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             const restoreSnapBtn = e.target.closest('.restore-snapshot-btn');
             if (snapBtn) { handleSnapshotNow(snapBtn); return; }
             if (restoreSnapBtn) { handleRestoreSnapshot(restoreSnapBtn.dataset.snapId); return; }
+            const delSnapBtn = e.target.closest('.delete-snapshot-btn');
+            if (delSnapBtn) { handleDeleteSnapshot(delSnapBtn.dataset.snapId, delSnapBtn.dataset.snapTs); return; }
+            if (e.target.closest('#clear-snapshots-btn')) { handleClearSnapshots(); return; }
             if (e.target.closest('#recover-file-btn')) { document.getElementById('recover-file-input').click(); return; }
             const _shiftLogDate = (days) => {
                 const d = parseLocalDate(logDate) || new Date();
