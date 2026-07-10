@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport" />
     <title>Vehicle Clearance Panel</title>
 <style id="offline-utilities">
 /* Generated utility subset (offline, no CDN) */
@@ -596,6 +596,11 @@
         ------------------------------------------------------------------ */
         html { background-color: #F5F3EE; }
 
+        /* Respect iPhone notch / Dynamic Island and home indicator */
+        #app-root {
+            padding-top: calc(1rem + env(safe-area-inset-top));
+            padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+        }
         #app-root header h1 { color: #0f172a; }
         #app-root header p  { color: #475569; }
 
@@ -1259,6 +1264,7 @@
         let app, auth, db, authUser;
         let currentView = 'add'; // 'add', 'search', 'settings', 'log'
         let addEntryMode = 'single'; // 'single' | 'batch'
+        let logDate = null;         // YYYY-MM-DD for the Daily Log view (null = today)
         let _pendingBatch = null;    // parsed batch awaiting confirmation
         let isGridView = false; 
         let allRows = []; 
@@ -2020,12 +2026,18 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             const contentEl = document.getElementById("view-content");
             if (!contentEl) return;
             
-            const today = new Date();
+            // Selected day (defaults to today). Log can be viewed for any date.
+            const _todayStr = (() => { const d = new Date(); d.setHours(0,0,0,0);
+                return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+            if (!logDate) logDate = _todayStr;
+            const isToday = logDate === _todayStr;
+
+            const today = parseLocalDate(logDate) || new Date();
             today.setHours(0, 0, 0, 0);
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
 
-            // Filter vehicles that are valid for TODAY
+            // Filter vehicles whose clearance covers the selected date
             let todaysVehicles = allRows.filter(v => {
                 if (!v.entryDate || !v.expiryDate) return false;
                 const entry = v.entryDate.toDate();
@@ -2056,14 +2068,25 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             contentEl.innerHTML = `
                 <div id="daily-log-container" class="bg-white text-black rounded-2xl shadow-lg overflow-hidden sm:p-8 p-4">
                     <!-- Web View Header -->
-                    <div class="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">Daily Vehicle Log</h2>
-                            <p class="text-gray-600">${todayString}</p>
+                    <div class="mb-6 border-b border-gray-200 pb-4 space-y-4">
+                        <div class="flex justify-between items-start gap-3">
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-900">Daily Vehicle Log</h2>
+                                <p class="text-gray-600">${todayString}${isToday ? '' : ' <span class="text-amber-600 font-semibold">(past/future date)</span>'}</p>
+                            </div>
+                            <button onclick="document.title='${fileName}'; window.print(); setTimeout(() => { document.title = 'Vehicle Clearance Panel'; }, 500);" class="flex-none flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden">
+                                ${icons.print} Print Log
+                            </button>
                         </div>
-                        <button onclick="document.title='${fileName}'; window.print(); setTimeout(() => { document.title = 'Vehicle Clearance Panel'; }, 500);" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden">
-                            ${icons.print} Print Log
-                        </button>
+                        <!-- Date selector -->
+                        <div class="flex items-center gap-2 flex-wrap print:hidden">
+                            <button id="log-prev-day" title="Previous day" class="px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 font-semibold hover:bg-gray-200">‹</button>
+                            <input type="date" id="log-date-input" value="${logDate}"
+                                   class="flex-1 min-w-[10rem] px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-900" style="color-scheme: light;" />
+                            <button id="log-next-day" title="Next day" class="px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 font-semibold hover:bg-gray-200">›</button>
+                            <button id="log-today" class="px-4 py-2 rounded-lg font-semibold ${isToday ? 'bg-gray-100 border border-gray-300 text-gray-400' : 'bg-blue-600 text-white hover:bg-blue-700'}" ${isToday ? 'disabled' : ''}>Today</button>
+                        </div>
+                        <p class="text-sm text-gray-500 print:hidden">${todaysVehicles.length} vehicle(s) cleared for this date.</p>
                     </div>
 
                     <!-- Print Header (Hidden in Web, Visible in Print) -->
@@ -2086,7 +2109,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                             </thead>
                             <tbody>
                                 ${todaysVehicles.length === 0 ? 
-                                    `<tr><td colspan="6" class="p-8 text-center text-gray-500 border border-gray-300">No vehicles scheduled for today.</td></tr>` : 
+                                    `<tr><td colspan="6" class="p-8 text-center text-gray-500 border border-gray-300">No vehicles scheduled for this date.</td></tr>` : 
                                     todaysVehicles.map(v => `
                                     <tr class="border-b border-gray-200">
                                         <td class="p-3 border border-gray-300 font-mono font-bold text-lg whitespace-nowrap">${formatVehicleNumber(v.vehicleNumber)}</td>
@@ -2536,6 +2559,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             const view = e.target.closest('button')?.dataset.view;
             if (view && view !== currentView) {
                 currentView = view;
+                if (view === 'log') logDate = null; // always open the log on today
                 // Reset Grid View when leaving Search Tab
                 if (view !== 'search') {
                     isGridView = false;
@@ -3215,6 +3239,15 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             if (snapBtn) { handleSnapshotNow(snapBtn); return; }
             if (restoreSnapBtn) { handleRestoreSnapshot(restoreSnapBtn.dataset.snapId); return; }
             if (e.target.closest('#recover-file-btn')) { document.getElementById('recover-file-input').click(); return; }
+            const _shiftLogDate = (days) => {
+                const d = parseLocalDate(logDate) || new Date();
+                d.setDate(d.getDate() + days);
+                logDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                renderDailyLogView();
+            };
+            if (e.target.closest('#log-prev-day')) { _shiftLogDate(-1); return; }
+            if (e.target.closest('#log-next-day')) { _shiftLogDate(1); return; }
+            if (e.target.closest('#log-today'))    { logDate = null; renderDailyLogView(); return; }
             if (e.target.closest('#add-mode-single')) { addEntryMode = 'single'; renderViewContent(); return; }
             if (e.target.closest('#add-mode-batch'))  { addEntryMode = 'batch';  renderViewContent(); return; }
             if (e.target.closest('#choose-folder-btn')) {
@@ -3307,6 +3340,10 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             if (e.target.id === 'import-file-input') {
                 handleImportFile(e.target.files[0]);
                 e.target.value = '';
+                return;
+            }
+            if (e.target.id === 'log-date-input') {
+                if (e.target.value) { logDate = e.target.value; renderDailyLogView(); }
                 return;
             }
             if (e.target.id === 'recover-file-input') {
