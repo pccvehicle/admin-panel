@@ -1526,12 +1526,16 @@
             return 'active';
         };
 
-        const showModal = (title, body, onConfirm) => {
+        // autoClose=false when the callback needs the dialog to stay open
+        // (e.g. the Edit form, which validates and closes itself on success).
+        let modalAutoClose = true;
+        const showModal = (title, body, onConfirm, autoClose = true) => {
+            modalAutoClose = autoClose;
             modalTitle.textContent = title;
             // Reset body
             modalBody.innerHTML = ''; 
             if (typeof body === 'string') {
-                modalBody.textContent = body;
+                modalBody.innerHTML = body;
             } else {
                 modalBody.appendChild(body);
             }
@@ -1543,6 +1547,7 @@
         const hideModal = () => {
             modalBackdrop.classList.add("hidden");
             confirmCallback = null;
+            modalAutoClose = true;
         };
 
         const sanitizeInput = (str) => {
@@ -3087,7 +3092,8 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                         console.error(e);
                         showNotification("Error updating vehicle: " + e.message, "error");
                     }
-                }
+                },
+                false // keep open on validation errors
             );
         };
 
@@ -3419,9 +3425,13 @@ WXY 789 A, Ali Bin Abu" required></textarea>
         
         modalCancelBtn.addEventListener("click", hideModal);
         modalConfirmBtn.addEventListener("click", () => {
-            if (typeof confirmCallback === 'function') {
-                confirmCallback();
+            const cb = confirmCallback;
+            // Close first so the dialog never sticks, even if the callback is
+            // async or throws. Callbacks read any inputs synchronously up front.
+            if (typeof cb === 'function') {
+                try { cb(); } catch (err) { console.error('modal action failed', err); }
             }
+            if (modalAutoClose) hideModal();
         });
 
     </script>
