@@ -693,6 +693,307 @@
 
         const _persistFallback = () => { if(!_useIDB) LS.set(VEH_KEY, _vehicles.map(_serialize)); };
 
+        // ===================================================================
+        //  NETWORK KILL SWITCH — everything runs 100% offline.
+        //  The functions still exist in code; flip NETWORK_ENABLED to true
+        //  to re-allow network calls in future. Default: OFF.
+        // ===================================================================
+        const NETWORK_ENABLED = false;
+        if (!NETWORK_ENABLED) {
+            const _blocked = (what) => {
+                console.warn(`[offline-mode] ${what} blocked - network is disabled`);
+                return Promise.reject(new Error('Network disabled (offline mode)'));
+            };
+            try { window.fetch = (url) => _blocked('fetch ' + url); } catch(e){}
+            try {
+                window.XMLHttpRequest = class {
+                    open(){ throw new Error('Network disabled (offline mode)'); }
+                    send(){} setRequestHeader(){} abort(){}
+                };
+            } catch(e){}
+            try { if (navigator.sendBeacon) navigator.sendBeacon = () => false; } catch(e){}
+            try { window.WebSocket = class { constructor(){ throw new Error('Network disabled (offline mode)'); } }; } catch(e){}
+            try { window.EventSource = class { constructor(){ throw new Error('Network disabled (offline mode)'); } }; } catch(e){}
+        }
+
+        // ===================================================================
+        //  LOCAL BACKUP / REDUNDANCY LAYER (no network, 3 layers of safety)
+        //  Layer 1 (primary) : IndexedDB 'vcp_db'            — live data
+        //  Layer 2 (mirror)  : IndexedDB 'vcp_backup_db'     — live 1:1 copy
+        //                      + snapshots store (point-in-time history)
+        //  Layer 3 (tertiary): localStorage 'vcp_mirror_ls'  — last-resort copy
+        //  If the primary is ever lost/corrupted, boot recovery restores
+        //  automatically from the newest healthy layer.
+        // ===================================================================
+        const MIRROR_LS_KEY   = 'vcp_mirror_ls';
+        const SNAP_META_KEY   = 'vcp_last_snapshot_ts';
+        const MAX_SNAPSHOTS   = 12;              // keep last 12 snapshots
+        const SNAP_MIN_GAP_MS = 10 * 60 * 1000;  // auto-snapshot at most every 10 min
+
+        let _bdb = null, _useBDB = false;
+
+        const _openBackupDB = () => new Promise((resolve) => {
+            try {
+                if (!window.indexedDB) return resolve(false);
+                const req = indexedDB.open('vcp_backup_db', 2);
+                req.onupgradeneeded = (e) => {
+                    const d = e.target.result;
+                    if (!d.objectStoreNames.contains('mirror'))    d.createObjectStore('mirror',    { keyPath: 'id' });
+                    if (!d.objectStoreNames.contains('snapshots')) d.createObjectStore('snapshots', { keyPath: 'id' });
+                    if (!d.objectStoreNames.contains('meta'))      d.createObjectStore('meta',      { keyPath: 'id' });
+                };
+                req.onsuccess = (e) => { _bdb = e.target.result; resolve(true); };
+                req.onerror = () => resolve(false);
+            } catch(e){ resolve(false); }
+        });
+        const _bAll = (store) => new Promise((resolve) => {
+            try { const t = _bdb.transaction(store,'readonly').objectStore(store).getAll();
+                  t.onsuccess = () => resolve(t.result || []); t.onerror = () => resolve([]);
+            } catch(e){ resolve([]); }
+        });
+        const _bClearPutAll = (store, recs) => new Promise((res) => {
+            try {
+                const os = _bdb.transaction(store,'readwrite').objectStore(store);
+                const cl = os.clear();
+                cl.onsuccess = () => { for (const r of recs) os.put(r); res(); };
+                cl.onerror = () => res();
+            } catch(e){ res(); }
+        });
+        const _bPut = (store, rec) => new Promise((res) => {
+            try { const t = _bdb.transaction(store,'readwrite').objectStore(store).put(rec);
+                  t.onsuccess = () => res(); t.onerror = () => res();
+            } catch(e){ res(); }
+        });
+        const _bDel = (store, id) => new Promise((res) => {
+            try { const t = _bdb.transaction(store,'readwrite').objectStore(store).delete(id);
+                  t.onsuccess = () => res(); t.onerror = () => res();
+            } catch(e){ res(); }
+        });
+
+        // --- current full payload (vehicles + settings) ---
+        const _fullPayload = () => ({
+            vehicles: _vehicles.map(_serialize),
+            settings: _getSettings() || null
+        });
+
+        // --- Layer 2 + 3 mirror write (debounced; runs after every data change) ---
+        let _mirrorTimer = null;
+        const _syncMirrors = async () => {
+            const payload = _fullPayload();
+            // Layer 3: localStorage tertiary copy
+            LS.set(MIRROR_LS_KEY, { savedAt: Date.now(), ...payload });
+            // Layer 2: backup IndexedDB live mirror
+            if (_useBDB) {
+                const recs = payload.vehicles.map(v => ({ ...v }));
+                recs.push({ id: '__settings__', settings: payload.settings, savedAt: Date.now() });
+                await _bClearPutAll('mirror', recs);
+            }
+            // Auto-snapshot (rate-limited)
+            const last = LS.get(SNAP_META_KEY, 0);
+            if (Date.now() - last > SNAP_MIN_GAP_MS) await takeSnapshot('auto');
+            // Auto-write .json backup files to the chosen disk folder (if set)
+            await _writeFolderBackup();
+        };
+        const _scheduleMirror = () => {
+            clearTimeout(_mirrorTimer);
+            _mirrorTimer = setTimeout(() => { _syncMirrors().catch(e => console.error('mirror sync failed', e)); }, 1200);
+        };
+
+        // --- Snapshots: point-in-time history kept inside the backup DB ---
+        const takeSnapshot = async (label = 'manual') => {
+            if (!_useBDB) return null;
+            const snap = {
+                id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+                ts: Date.now(),
+                label,
+                count: _vehicles.length,
+                ..._fullPayload()
+            };
+            await _bPut('snapshots', snap);
+            LS.set(SNAP_META_KEY, snap.ts);
+            // prune to MAX_SNAPSHOTS (oldest first)
+            const all = (await _bAll('snapshots')).sort((a,b) => a.ts - b.ts);
+            while (all.length > MAX_SNAPSHOTS) { const old = all.shift(); await _bDel('snapshots', old.id); }
+            return snap;
+        };
+        const listSnapshots = async () => {
+            if (!_useBDB) return [];
+            return (await _bAll('snapshots')).sort((a,b) => b.ts - a.ts)
+                .map(x => ({ id: x.id, ts: x.ts, label: x.label, count: x.count }));
+        };
+
+        // --- Restore: write a payload back into the PRIMARY store ---
+        const _restorePayload = async (payload, source) => {
+            if (!payload || !Array.isArray(payload.vehicles)) throw new Error('Backup data is invalid.');
+            _vehicles = payload.vehicles.map(_hydrate);
+            if (_useIDB) {
+                const os = _idb.transaction('vehicles','readwrite').objectStore('vehicles');
+                await new Promise((res) => { const c = os.clear(); c.onsuccess = () => res(); c.onerror = () => res(); });
+                for (const v of payload.vehicles) await _idbPut(v);
+            } else {
+                _persistFallback();
+            }
+            if (payload.settings) _setSettings(payload.settings);
+            _notify('vehicleClearances'); _notify('publicConfig');
+            console.log(`[recovery] restored ${payload.vehicles.length} records from ${source}`);
+            return payload.vehicles.length;
+        };
+        const restoreSnapshot = async (id) => {
+            const all = await _bAll('snapshots');
+            const snap = all.find(x => x.id === id);
+            if (!snap) throw new Error('Snapshot not found.');
+            return _restorePayload(snap, 'snapshot ' + new Date(snap.ts).toLocaleString());
+        };
+
+        // --- Health / status for the Settings panel ---
+        const backupStatus = async () => {
+            const mirror = _useBDB ? await _bAll('mirror') : [];
+            const mirrorVeh = mirror.filter(r => r.id !== '__settings__').length;
+            const ls = LS.get(MIRROR_LS_KEY, null);
+            const snaps = await listSnapshots();
+            return {
+                primary: _vehicles.length,
+                engine: _useIDB ? 'IndexedDB' : 'localStorage (fallback)',
+                mirror: _useBDB ? mirrorVeh : null,
+                lsMirror: ls ? { count: (ls.vehicles || []).length, savedAt: ls.savedAt } : null,
+                snapshots: snaps
+            };
+        };
+
+        // ===================================================================
+        //  BACKUP FOLDER ON DISK (Windows desktop: Edge/Chrome)
+        //  Uses the File System Access API to auto-write .json backup files
+        //  to a real folder the user picks (e.g. Documents\GuardhouseBackups).
+        //  These files live OUTSIDE the browser profile, so they survive
+        //  "Clear browsing data". Unsupported browsers (iOS Safari) simply
+        //  hide this feature. Local disk only - no network involved.
+        // ===================================================================
+        const FOLDER_BACKUP_SUPPORTED = 'showDirectoryPicker' in window;
+        const KEEP_DATED_FILES = 14; // keep last 14 daily files
+
+        const _metaGet = (id) => new Promise((res) => {
+            try { const t = _bdb.transaction('meta','readonly').objectStore('meta').get(id);
+                  t.onsuccess = () => res(t.result || null); t.onerror = () => res(null);
+            } catch(e){ res(null); }
+        });
+        const _metaPut = (rec) => new Promise((res) => {
+            try { const t = _bdb.transaction('meta','readwrite').objectStore('meta').put(rec);
+                  t.onsuccess = () => res(); t.onerror = () => res();
+            } catch(e){ res(); }
+        });
+        const _metaDel = (id) => new Promise((res) => {
+            try { const t = _bdb.transaction('meta','readwrite').objectStore('meta').delete(id);
+                  t.onsuccess = () => res(); t.onerror = () => res();
+            } catch(e){ res(); }
+        });
+
+        const _getDirHandle = async () => {
+            if (!_useBDB) return null;
+            const rec = await _metaGet('backupDir');
+            return rec ? rec.handle : null;
+        };
+
+        // 'unsupported' | 'off' | 'active' | 'needs-permission'
+        const folderBackupStatus = async () => {
+            if (!FOLDER_BACKUP_SUPPORTED) return { state: 'unsupported' };
+            const h = await _getDirHandle();
+            if (!h) return { state: 'off' };
+            try {
+                const perm = await h.queryPermission({ mode: 'readwrite' });
+                return { state: perm === 'granted' ? 'active' : 'needs-permission', name: h.name };
+            } catch(e){ return { state: 'off' }; }
+        };
+
+        const chooseBackupFolder = async () => {
+            const h = await window.showDirectoryPicker({ mode: 'readwrite' });
+            await _metaPut({ id: 'backupDir', handle: h });
+            await _writeFolderBackup(true);
+            return h.name;
+        };
+
+        const enableFolderBackup = async () => { // re-grant permission (needs user tap)
+            const h = await _getDirHandle();
+            if (!h) return false;
+            const perm = await h.requestPermission({ mode: 'readwrite' });
+            if (perm === 'granted') { await _writeFolderBackup(true); return true; }
+            return false;
+        };
+
+        const disableFolderBackup = async () => { await _metaDel('backupDir'); };
+
+        const _writeJsonFile = async (dir, name, obj) => {
+            const fh = await dir.getFileHandle(name, { create: true });
+            const w = await fh.createWritable();
+            await w.write(JSON.stringify(obj, null, 2));
+            await w.close();
+        };
+
+        let _folderWriteBusy = false;
+        const _writeFolderBackup = async (force = false) => {
+            if (!FOLDER_BACKUP_SUPPORTED || _folderWriteBusy) return;
+            const h = await _getDirHandle();
+            if (!h) return;
+            try {
+                const perm = await h.queryPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') return; // will show "needs-permission" in the panel
+                _folderWriteBusy = true;
+                const data = {
+                    app: 'vehicle-clearance-panel', version: 1,
+                    exportedAt: new Date().toISOString(),
+                    ..._fullPayload()
+                };
+                await _writeJsonFile(h, 'guardhouse-backup-latest.json', data);
+                const today = new Date().toISOString().slice(0, 10);
+                await _writeJsonFile(h, `guardhouse-backup-${today}.json`, data);
+                // prune old dated files
+                const dated = [];
+                for await (const [name, entry] of h.entries()) {
+                    const m = name.match(/^guardhouse-backup-(\d{4}-\d{2}-\d{2})\.json$/);
+                    if (m && entry.kind === 'file') dated.push(name);
+                }
+                dated.sort();
+                while (dated.length > KEEP_DATED_FILES) {
+                    const oldName = dated.shift();
+                    try { await h.removeEntry(oldName); } catch(e){}
+                }
+                console.log('[folder-backup] written to', h.name);
+            } catch (e) {
+                console.warn('[folder-backup] write failed:', e.message);
+            } finally { _folderWriteBusy = false; }
+        };
+
+        // --- Boot recovery: if the primary store is empty but a backup layer
+        //     has data, restore automatically from the newest healthy layer. ---
+        let _recoveryNotice = null;
+        const _bootRecovery = async () => {
+            _useBDB = await _openBackupDB();
+            await _ready;
+            if (_vehicles.length > 0) { _scheduleMirror(); return; }
+
+            // candidates: (a) backup-DB mirror  (b) newest snapshot  (c) localStorage mirror
+            let best = null;
+            if (_useBDB) {
+                const mirror = await _bAll('mirror');
+                const veh = mirror.filter(r => r.id !== '__settings__');
+                const st  = mirror.find(r => r.id === '__settings__');
+                if (veh.length) best = { vehicles: veh.map(({savedAt, ...v}) => v), settings: st ? st.settings : null, src: 'backup mirror' };
+                if (!best) {
+                    const snaps = (await _bAll('snapshots')).sort((a,b) => b.ts - a.ts);
+                    if (snaps.length && (snaps[0].vehicles || []).length) best = { ...snaps[0], src: 'latest snapshot' };
+                }
+            }
+            if (!best) {
+                const ls = LS.get(MIRROR_LS_KEY, null);
+                if (ls && (ls.vehicles || []).length) best = { ...ls, src: 'localStorage mirror' };
+            }
+            if (best) {
+                const n = await _restorePayload(best, best.src);
+                _recoveryNotice = `Recovered ${n} record(s) from ${best.src}.`;
+            }
+            _scheduleMirror();
+        };
+        _bootRecovery().catch(e => console.error('boot recovery failed', e));
+
         const _ready = (async () => {
             _useIDB = await _openIDB();
             if (_useIDB){
@@ -710,7 +1011,11 @@
 
         // --- listener registry (emulates onSnapshot) ---
         const _listeners = { vehicleClearances: new Set(), publicConfig: new Set() };
-        const _notify = (coll) => { (_listeners[coll] || []).forEach(fn => { try{ fn(); }catch(e){ console.error(e); } }); };
+        const _notify = (coll) => {
+            (_listeners[coll] || []).forEach(fn => { try{ fn(); }catch(e){ console.error(e); } });
+            // keep local backup layers in sync on every change (defined below)
+            try { if (typeof _scheduleMirror === 'function') _scheduleMirror(); } catch(e){}
+        };
 
         // --- settings (publicConfig/panelSettings) in localStorage ---
         const SET_KEY = 'vcp_settings';
@@ -1259,6 +1564,9 @@
             `;
             
             renderViewContent();
+
+            // One-time notice if data was auto-recovered from a backup layer at boot
+            if (_recoveryNotice) { showNotification(_recoveryNotice, 'info'); _recoveryNotice = null; }
         };
         
         const renderViewContent = () => {
@@ -1900,7 +2208,7 @@
                     ${renderCategory('approvedBy', 'Approved By', 'e.g. Jane Doe')}
 
                     <section class="p-4 bg-slate-900/50 rounded-lg border border-slate-700 space-y-3">
-                        <h3 class="text-lg font-medium text-slate-200">Backup &amp; Restore</h3>
+                        <h3 class="text-lg font-medium text-slate-200">Backup &amp; Restore (file)</h3>
                         <p class="text-sm text-slate-400">Save all vehicles and dropdown lists to a file you can keep in Files/iCloud or load onto another device. Importing <strong>merges</strong> records and skips duplicates.</p>
                         <div class="flex gap-3">
                             <button id="export-backup-btn" class="flex-1 px-4 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all">Export backup (.json)</button>
@@ -1908,8 +2216,145 @@
                         </div>
                         <input type="file" id="import-file-input" accept="application/json,.json" class="hidden" />
                     </section>
+
+                    <section class="p-4 bg-slate-900/50 rounded-lg border border-slate-700 space-y-3">
+                        <h3 class="text-lg font-medium text-slate-200">Data Protection (automatic local backups)</h3>
+                        <p class="text-sm text-slate-400">Every change is automatically copied to a separate on-device backup database and a point-in-time snapshot history. If the main database is ever lost, the panel restores itself on next launch. No internet is used or required.</p>
+                        <div id="dp-status" class="text-sm text-slate-300 font-mono bg-slate-800 rounded-lg p-3 border border-slate-700">Checking backup health…</div>
+                        <div class="flex gap-3">
+                            <button id="snapshot-now-btn" class="flex-1 px-4 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all">Create snapshot now</button>
+                        </div>
+
+                        <div class="p-3 bg-slate-800 rounded-lg border border-green-900/50 space-y-2">
+                            <h4 class="text-sm font-semibold text-green-400">One-click recovery</h4>
+                            <p class="text-sm text-slate-400">Pick any backup .json file and the panel restores everything from it. Current data is replaced (a safety snapshot is taken first so you can undo).</p>
+                            <button id="recover-file-btn" class="w-full px-4 py-2.5 rounded-lg bg-green-700 text-white font-semibold hover:bg-green-600 transition-all">Recover from backup file…</button>
+                            <input type="file" id="recover-file-input" accept="application/json,.json" class="hidden" />
+                        </div>
+
+                        <div id="dp-folder-section" class="p-3 bg-slate-800 rounded-lg border border-slate-700 space-y-2 hidden">
+                            <h4 class="text-sm font-semibold text-slate-300">Backup folder on this PC</h4>
+                            <p class="text-sm text-slate-400">Auto-saves <span class="font-mono text-slate-300">guardhouse-backup-latest.json</span> plus daily dated files to a folder you choose (e.g. Documents). These files survive even if browser data is cleared. Keeps last ${'${KEEP_DATED_FILES}'} daily files.</p>
+                            <div id="dp-folder-status" class="text-sm text-slate-300"></div>
+                            <div class="flex gap-3">
+                                <button id="choose-folder-btn" class="flex-1 px-4 py-2 rounded-lg bg-slate-700 text-slate-100 font-medium hover:bg-slate-600">Choose folder…</button>
+                                <button id="enable-folder-btn" class="flex-1 px-4 py-2 rounded-lg bg-amber-700 text-white font-medium hover:bg-amber-600 hidden">Re-enable access</button>
+                                <button id="stop-folder-btn" class="flex-none px-4 py-2 rounded-lg bg-slate-700 text-slate-400 font-medium hover:bg-red-700 hover:text-white hidden">Stop</button>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-semibold text-slate-300 mb-2">Snapshot history (newest first)</h4>
+                            <div id="dp-snapshot-list" class="space-y-2">
+                                <p class="text-sm text-slate-500">Loading…</p>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             `;
+            renderDataProtectionPanel();
+        };
+
+        // --- Data Protection panel (Settings) ---
+        const renderDataProtectionPanel = async () => {
+            const statusEl = document.getElementById('dp-status');
+            const listEl = document.getElementById('dp-snapshot-list');
+            if (!statusEl || !listEl) return;
+            try {
+                const st = await backupStatus();
+                const fmt = (ts) => ts ? new Date(ts).toLocaleString() : '—';
+                statusEl.innerHTML = [
+                    `Primary DB (${st.engine}): <b>${st.primary}</b> record(s)`,
+                    `Backup mirror DB: <b>${st.mirror === null ? 'unavailable' : st.mirror + ' record(s)'}</b>`,
+                    `localStorage mirror: <b>${st.lsMirror ? st.lsMirror.count + ' record(s), saved ' + fmt(st.lsMirror.savedAt) : 'none yet'}</b>`,
+                    `Snapshots kept: <b>${st.snapshots.length} / ${MAX_SNAPSHOTS}</b>`
+                ].join('<br>');
+                if (!st.snapshots.length) {
+                    listEl.innerHTML = '<p class="text-sm text-slate-500">No snapshots yet. One is created automatically as data changes, or tap "Create snapshot now".</p>';
+                } else {
+                    listEl.innerHTML = st.snapshots.map(x => `
+                        <div class="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+                            <div class="text-sm text-slate-300">
+                                <span class="font-mono">${new Date(x.ts).toLocaleString()}</span>
+                                <span class="text-slate-500"> · ${x.count} rec · ${x.label}</span>
+                            </div>
+                            <button data-snap-id="${x.id}" class="restore-snapshot-btn px-3 py-1.5 rounded-lg bg-slate-700 text-slate-100 text-sm font-medium hover:bg-blue-600">Restore</button>
+                        </div>`).join('');
+                }
+            } catch (e) {
+                statusEl.textContent = 'Backup status unavailable: ' + e.message;
+            }
+            // Folder backup controls (desktop Edge/Chrome only)
+            const sec = document.getElementById('dp-folder-section');
+            if (sec && FOLDER_BACKUP_SUPPORTED) {
+                sec.classList.remove('hidden');
+                const fst = await folderBackupStatus();
+                const stEl = document.getElementById('dp-folder-status');
+                const enableBtn = document.getElementById('enable-folder-btn');
+                const stopBtn = document.getElementById('stop-folder-btn');
+                enableBtn.classList.add('hidden'); stopBtn.classList.add('hidden');
+                if (fst.state === 'active') {
+                    stEl.innerHTML = `✅ Active — saving to folder <b>${fst.name}</b> automatically.`;
+                    stopBtn.classList.remove('hidden');
+                } else if (fst.state === 'needs-permission') {
+                    stEl.innerHTML = `⚠️ Folder <b>${fst.name}</b> is set but the browser needs you to re-allow access.`;
+                    enableBtn.classList.remove('hidden'); stopBtn.classList.remove('hidden');
+                } else {
+                    stEl.textContent = 'Not set up yet. Choose a folder to turn on automatic file backups.';
+                }
+            }
+        };
+
+        // --- One-click recovery from a .json file (REPLACE all data) ---
+        const handleRecoverFile = (file) => {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async () => {
+                let obj;
+                try { obj = JSON.parse(reader.result); }
+                catch(e){ showNotification('That file is not a valid backup (.json).', 'error'); return; }
+                if (!obj || !Array.isArray(obj.vehicles)) { showNotification('That file is not a valid backup file.', 'error'); return; }
+                const when = obj.exportedAt ? new Date(obj.exportedAt).toLocaleString() : 'unknown date';
+                showModal(
+                    'Recover from backup file?',
+                    `<p>Backup contains <strong>${obj.vehicles.length} record(s)</strong> (exported ${when}).</p>
+                     <p class="mt-2">All current data will be <strong>replaced</strong> with this backup. A safety snapshot of the current data is taken first, so this can be undone.</p>`,
+                    async () => {
+                        try {
+                            await takeSnapshot('pre-recovery');
+                            const res = await importData(obj, 'replace');
+                            showNotification(`Recovery complete: ${res.total} record(s) restored.`, 'success');
+                        } catch (e) { showNotification('Recovery failed: ' + e.message, 'error'); }
+                        renderDataProtectionPanel();
+                    }
+                );
+            };
+            reader.readAsText(file);
+        };
+
+        const handleSnapshotNow = async (btn) => {
+            btn.disabled = true; btn.textContent = 'Creating…';
+            try {
+                const snap = await takeSnapshot('manual');
+                if (snap) showNotification(`Snapshot saved (${snap.count} records).`, 'success');
+                else showNotification('Backup database unavailable on this device.', 'error');
+            } catch (e) { showNotification('Snapshot failed: ' + e.message, 'error'); }
+            btn.disabled = false; btn.textContent = 'Create snapshot now';
+            renderDataProtectionPanel();
+        };
+
+        const handleRestoreSnapshot = (id) => {
+            showModal(
+                'Restore snapshot?',
+                '<p>This will <strong>replace all current data</strong> with the selected snapshot. A safety snapshot of the current data is taken first, so you can undo by restoring it.</p>',
+                async () => {
+                    try {
+                        await takeSnapshot('pre-restore');
+                        const n = await restoreSnapshot(id);
+                        showNotification(`Restored ${n} record(s) from snapshot.`, 'success');
+                    } catch (e) { showNotification('Restore failed: ' + e.message, 'error'); }
+                    renderDataProtectionPanel();
+                }
+            );
         };
 
         // *** UPDATED: applyFilter with contains search ***
@@ -2446,6 +2891,27 @@
             const batchDeleteBtn = e.target.closest('#batch-delete-expired-btn');
             const exportBtn = e.target.closest('#export-backup-btn');
             const importBtn = e.target.closest('#import-backup-btn');
+            const snapBtn = e.target.closest('#snapshot-now-btn');
+            const restoreSnapBtn = e.target.closest('.restore-snapshot-btn');
+            if (snapBtn) { handleSnapshotNow(snapBtn); return; }
+            if (restoreSnapBtn) { handleRestoreSnapshot(restoreSnapBtn.dataset.snapId); return; }
+            if (e.target.closest('#recover-file-btn')) { document.getElementById('recover-file-input').click(); return; }
+            if (e.target.closest('#choose-folder-btn')) {
+                chooseBackupFolder()
+                    .then(name => { showNotification(`Backup folder set: ${name}. First backup written.`, 'success'); renderDataProtectionPanel(); })
+                    .catch(err => { if (err.name !== 'AbortError') showNotification('Could not set folder: ' + err.message, 'error'); });
+                return;
+            }
+            if (e.target.closest('#enable-folder-btn')) {
+                enableFolderBackup()
+                    .then(ok => { showNotification(ok ? 'Folder backups re-enabled.' : 'Access was not granted.', ok ? 'success' : 'error'); renderDataProtectionPanel(); })
+                    .catch(err => showNotification('Failed: ' + err.message, 'error'));
+                return;
+            }
+            if (e.target.closest('#stop-folder-btn')) {
+                disableFolderBackup().then(() => { showNotification('Folder backups turned off. Existing files are kept.', 'info'); renderDataProtectionPanel(); });
+                return;
+            }
 
             if (exportBtn) {
                 handleExportBackup();
@@ -2519,6 +2985,11 @@
         appRoot.addEventListener("change", (e) => {
             if (e.target.id === 'import-file-input') {
                 handleImportFile(e.target.files[0]);
+                e.target.value = '';
+                return;
+            }
+            if (e.target.id === 'recover-file-input') {
+                handleRecoverFile(e.target.files[0]);
                 e.target.value = '';
                 return;
             }
