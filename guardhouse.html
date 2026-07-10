@@ -1258,6 +1258,8 @@
         // --- App State ---
         let app, auth, db, authUser;
         let currentView = 'add'; // 'add', 'search', 'settings', 'log'
+        let addEntryMode = 'single'; // 'single' | 'batch'
+        let _pendingBatch = null;    // parsed batch awaiting confirmation
         let isGridView = false; 
         let allRows = []; 
         let filtered = [];
@@ -1612,8 +1614,118 @@
                 return arr.sort().map(item => `<option value="${item}">${item}</option>`).join('');
             };
 
+            const sharedFields = `
+                        <!-- Requester -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Requester</label>
+                            <select name="requester" class="mobile-input" required>
+                                <option value="">Select requester...</option>
+                                ${createOptions(appSettings.requesters)}
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Vehicle Type</label>
+                                <select name="vehicleType" class="mobile-input" required>
+                                    <option value="">Select type...</option>
+                                    ${createOptions(appSettings.vehicleTypes)}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Location</label>
+                                <select name="location" class="mobile-input" required>
+                                    <option value="">Select location...</option>
+                                    ${createOptions(appSettings.locations)}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Visiting Hours</label>
+                            <select name="timeSlot" class="mobile-input" required>
+                                <option value="">Select a time slot...</option>
+                                <option value="08:00-13:00">08:00 to 13:00</option>
+                                <option value="08:00-18:00">08:00 to 18:00</option>
+                                <option value="13:00-18:00">13:00 to 18:00</option>
+                                <option value="18:00-onwards">18:00 onwards</option>
+                                <option value="24 Hours">24 Hours</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Entry Date</label>
+                                <input type="date" name="entryDate" class="mobile-input" required />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Expiry Date</label>
+                                <input type="date" name="expiryDate" class="mobile-input" required />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Notes / Purpose (Optional)</label>
+                            <textarea name="notes" rows="2" class="mobile-input" placeholder="e.g. Contractor works batch approval..."></textarea>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="batchEscortRequired" name="escortRequired" class="mobile-checkbox"/>
+                                <label for="batchEscortRequired" class="text-sm font-medium text-slate-300 cursor-pointer">Escort Required (all vehicles)</label>
+                            </div>
+                            <div id="batch-escort-details-container" class="hidden pl-8">
+                                <label class="block text-sm font-medium text-slate-400 mb-1">Escort By</label>
+                                <select name="escortBy" class="mobile-input">
+                                    <option value="">Select escort team...</option>
+                                    ${createOptions(appSettings.escortBy)}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Approved By</label>
+                            <select name="approvedBy" class="mobile-input" required>
+                                <option value="">Select approver...</option>
+                                ${createOptions(appSettings.approvedBy)}
+                            </select>
+                        </div>`;
+
+            if (addEntryMode === 'batch') {
+                contentEl.innerHTML = `
+                    <div class="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-lg p-6 sm:p-8">
+                        <div class="flex gap-2 mb-6">
+                            <button id="add-mode-single" class="nav-button" data-active="false">Single</button>
+                            <button id="add-mode-batch" class="nav-button" data-active="true">Batch</button>
+                        </div>
+                        <h2 class="text-2xl font-semibold text-white mb-2">Batch Vehicle Clearance</h2>
+                        <p class="text-slate-400 text-sm mb-6">Paste vehicle numbers below — one per line, or separated by commas. Optional driver name after the plate: <span class="font-mono text-slate-300">SGA1234X, John Doe</span>. Details below apply to every vehicle in the batch.</p>
+                        <form id="batch-add-form" class="space-y-5">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Vehicle Numbers</label>
+                                <textarea id="batchPlates" name="batchPlates" rows="6" class="mobile-input font-mono uppercase" placeholder="SGA 1234 X
+JKB 5566
+WXY 789 A, Ali Bin Abu" required></textarea>
+                                <p id="batch-count" class="text-xs text-slate-500 mt-1">0 vehicles detected</p>
+                            </div>
+                            ${sharedFields}
+                            <div class="pt-4 text-right">
+                                <button type="submit" class="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
+                                    Preview &amp; Add Batch
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+                const ta = document.getElementById('batchPlates');
+                if (ta) ta.addEventListener('input', () => {
+                    const parsed = parseBatchPlates(ta.value);
+                    const el = document.getElementById('batch-count');
+                    if (el) el.textContent = `${parsed.entries.length} vehicle(s) detected` + (parsed.invalid.length ? ` · ${parsed.invalid.length} line(s) not recognised` : '');
+                });
+                return;
+            }
+
             contentEl.innerHTML = `
                 <div class="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-lg p-6 sm:p-8">
+                    <div class="flex gap-2 mb-6">
+                        <button id="add-mode-single" class="nav-button" data-active="true">Single</button>
+                        <button id="add-mode-batch" class="nav-button" data-active="false">Batch</button>
+                    </div>
                     <h2 class="text-2xl font-semibold text-white mb-6">Add New Vehicle Reference</h2>
                     <form id="add-vehicle-form" class="space-y-5">
                         <!-- Requester (New Field) -->
@@ -2452,6 +2564,150 @@
             }
         };
 
+        // ===================================================================
+        //  BATCH VEHICLE CLEARANCE
+        //  Paste many plates at once; shared details apply to all.
+        //  Smart handling: parses lines/commas, cleans + dedupes plates,
+        //  detects plates that already have an active clearance and lets
+        //  the user skip or update them.
+        // ===================================================================
+        const _looksLikePlate = (str) => {
+            const c = str.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            return c.length >= 2 && c.length <= 12 && /\d/.test(c) && /[A-Z]/.test(c);
+        };
+
+        const parseBatchPlates = (text) => {
+            const entries = [];   // { plate, owner }
+            const invalid = [];
+            const seen = new Set();
+            const pushPlate = (raw, owner = '') => {
+                const plate = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (!plate) return;
+                if (!_looksLikePlate(plate)) { invalid.push(raw.trim()); return; }
+                if (seen.has(plate)) return; // dedupe within batch
+                seen.add(plate);
+                entries.push({ plate, owner: owner.trim() });
+            };
+            (text || '').split(/\n/).forEach(line => {
+                const t = line.trim().replace(/[.;]+$/, '');
+                if (!t) return;
+                const parts = t.split(/[,;]/).map(x => x.trim()).filter(Boolean);
+                if (parts.length <= 1) { pushPlate(t); return; }
+                // If EVERY comma-separated part looks like a plate -> a list of plates on one line
+                if (parts.every(_looksLikePlate)) { parts.forEach(pt => pushPlate(pt)); return; }
+                // Otherwise: first part is the plate, the rest is the driver/owner name
+                pushPlate(parts[0], parts.slice(1).join(' '));
+            });
+            return { entries, invalid };
+        };
+
+        const handleBatchSubmit = (e) => {
+            e.preventDefault();
+            try {
+                const form = e.target;
+                const data = Object.fromEntries(new FormData(form).entries());
+                const { entries, invalid } = parseBatchPlates(data.batchPlates);
+                if (!entries.length) throw new Error('No valid vehicle numbers found.');
+
+                const entryDate = parseLocalDate(data.entryDate);
+                const expiryDate = parseLocalDate(data.expiryDate);
+                const isEscortRequired = data.escortRequired === 'on';
+                if (!data.requester) throw new Error('Requester is required.');
+                if (!data.vehicleType) throw new Error('Vehicle Type is required.');
+                if (!data.location) throw new Error('Location is required.');
+                if (!data.timeSlot) throw new Error('Visiting Hours are required.');
+                if (!entryDate || !expiryDate) throw new Error('Invalid entry or expiry date.');
+                if (expiryDate < entryDate) throw new Error('Expiry date cannot be before the entry date.');
+                if (isEscortRequired && !data.escortBy) throw new Error('Please select an escort team.');
+                if (!data.approvedBy) throw new Error('Please select an approver.');
+
+                // Classify each plate against the current database
+                const now = new Date();
+                const items = entries.map(en => {
+                    const existing = allRows.find(v => v.vehicleNumber === en.plate && v.expiryDate && v.expiryDate.toDate() >= now);
+                    return { ...en, existingId: existing ? existing.id : null };
+                });
+                const newCount = items.filter(i => !i.existingId).length;
+                const dupCount = items.length - newCount;
+
+                _pendingBatch = { items, shared: {
+                    requester: data.requester, vehicleType: data.vehicleType, location: data.location,
+                    timeSlot: data.timeSlot, entryDate, expiryDate,
+                    notes: data.notes || '', escortRequired: isEscortRequired,
+                    escortBy: isEscortRequired ? data.escortBy : '', approvedBy: data.approvedBy
+                }};
+
+                const rows = items.map(i => `
+                    <div class="flex items-center justify-between border-b border-slate-700 py-1.5">
+                        <span class="font-mono text-slate-100">${formatVehicleNumber(i.plate)}${i.owner ? ` <span class="text-slate-500 text-xs">· ${i.owner}</span>` : ''}</span>
+                        <span class="list-item-badge ${i.existingId ? 'badge-warning' : 'badge-success'}">${i.existingId ? 'ACTIVE EXISTS' : 'NEW'}</span>
+                    </div>`).join('');
+
+                showModal(
+                    `Add batch: ${items.length} vehicle(s)`,
+                    `<div class="text-sm space-y-3">
+                        <p><b>${newCount}</b> new record(s)${dupCount ? ` · <b>${dupCount}</b> already have an active clearance` : ''}${invalid.length ? ` · <span class="text-red-400">${invalid.length} line(s) ignored (not recognised)</span>` : ''}</p>
+                        <div class="max-h-52 overflow-y-auto pr-1">${rows}</div>
+                        ${dupCount ? `
+                        <label class="flex items-center gap-2 cursor-pointer pt-1">
+                            <input type="checkbox" id="batch-update-existing" class="mobile-checkbox" checked />
+                            <span class="text-slate-300">Update existing active clearances with these new details</span>
+                        </label>
+                        <p class="text-xs text-slate-500">Unticked = existing active clearances are skipped and left unchanged.</p>` : ''}
+                    </div>`,
+                    () => commitBatch()
+                );
+            } catch (err) {
+                showNotification(err.message, 'error');
+            }
+        };
+
+        const commitBatch = async () => {
+            if (!_pendingBatch) return;
+            const { items, shared } = _pendingBatch;
+            const updateExisting = document.getElementById('batch-update-existing')?.checked ?? false;
+            _pendingBatch = null;
+            let added = 0, updated = 0, skipped = 0;
+            try {
+                for (const it of items) {
+                    const payload = {
+                        requester: shared.requester,
+                        vehicleNumber: it.plate,
+                        ownerName: it.owner || '',
+                        vehicleType: shared.vehicleType,
+                        location: shared.location,
+                        timeSlot: shared.timeSlot,
+                        entryDate: Timestamp.fromDate(shared.entryDate),
+                        expiryDate: Timestamp.fromDate(shared.expiryDate),
+                        notes: shared.notes,
+                        escortRequired: shared.escortRequired,
+                        escortBy: shared.escortBy,
+                        approvedBy: shared.approvedBy
+                    };
+                    if (it.existingId) {
+                        if (updateExisting) {
+                            const upd = { ...payload };
+                            if (!it.owner) delete upd.ownerName; // keep existing driver name if none given
+                            await updateDoc(doc(db, DB_COLLECTION, it.existingId), upd);
+                            updated++;
+                        } else { skipped++; }
+                    } else {
+                        await addDoc(collection(db, DB_COLLECTION), {
+                            ...payload,
+                            createdAt: Timestamp.now(),
+                            createdBy: authUser ? authUser.uid : 'local-admin'
+                        });
+                        added++;
+                    }
+                }
+                showNotification(`Batch complete: ${added} added${updated ? `, ${updated} updated` : ''}${skipped ? `, ${skipped} skipped` : ''}.`, 'success');
+                const form = document.getElementById('batch-add-form');
+                if (form) { form.reset(); const c = document.getElementById('batch-count'); if (c) c.textContent = '0 vehicles detected'; }
+            } catch (err) {
+                showNotification(`Batch stopped after ${added + updated} record(s): ${err.message}`, 'error');
+            }
+        };
+
         const handleAddVehicle = async (e) => {
             e.preventDefault();
             const form = e.target;
@@ -2736,6 +2992,11 @@
         };
         
         const handleFormChange = (e) => {
+            if (e.target.id === 'batchEscortRequired') {
+                const c = document.getElementById('batch-escort-details-container');
+                if (c) c.classList.toggle('hidden', !e.target.checked);
+                return;
+            }
             if (e.target.id === 'escortRequired') {
                 const escortContainer = document.getElementById('escort-details-container');
                 const escortSelect = document.getElementById('escortBy');
@@ -2908,6 +3169,8 @@
             if (snapBtn) { handleSnapshotNow(snapBtn); return; }
             if (restoreSnapBtn) { handleRestoreSnapshot(restoreSnapBtn.dataset.snapId); return; }
             if (e.target.closest('#recover-file-btn')) { document.getElementById('recover-file-input').click(); return; }
+            if (e.target.closest('#add-mode-single')) { addEntryMode = 'single'; renderViewContent(); return; }
+            if (e.target.closest('#add-mode-batch'))  { addEntryMode = 'batch';  renderViewContent(); return; }
             if (e.target.closest('#choose-folder-btn')) {
                 chooseBackupFolder()
                     .then(name => { showNotification(`Backup folder set: ${name}. First backup written.`, 'success'); renderDataProtectionPanel(); })
@@ -3012,6 +3275,8 @@
             e.preventDefault(); 
             if (e.target.id === 'add-vehicle-form') {
                 handleAddVehicle(e);
+            } else if (e.target.id === 'batch-add-form') {
+                handleBatchSubmit(e);
             } else if (e.target.classList.contains('setting-add-form')) {
                 handleSettingAdd(e); 
             }
