@@ -458,6 +458,13 @@
             color: #94a3b8;
             margin-top: 2px;
         }
+        .list-item-time {
+            font-size: 0.8rem;
+            color: #60a5fa;
+            font-family: monospace;
+            margin-top: 3px;
+            letter-spacing: 0.02em;
+        }
         .list-item-right {
             display: flex;
             align-items: center;
@@ -2134,7 +2141,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
 
                 if (isFoyerA && !isFoyerB) return -1;
                 if (!isFoyerA && isFoyerB) return 1;
-                return a.vehicleNumber.localeCompare(b.vehicleNumber);
+                return byTimeSequence(a, b); // then chronological by visiting hours
             });
 
             const todayString = today.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -2356,7 +2363,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                  messageEl.classList.remove('hidden');
             }
             
-            resultsEl.innerHTML = filtered.map(v => {
+            resultsEl.innerHTML = [...filtered].sort(byTimeSequence).map(v => {
                 const status = getVehicleStatus(v);
                 let badgeHTML = '';
                 
@@ -2373,6 +2380,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                     <div class="list-item-content">
                         <div class="list-item-plate">${formatVehicleNumber(v.vehicleNumber)}</div>
                         <div class="list-item-location">${v.location || 'N/A'}</div>
+                        <div class="list-item-time">${v.timeSlot || 'No time set'}</div>
                     </div>
                     <div class="list-item-right">
                         ${badgeHTML}
@@ -2616,6 +2624,25 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                     renderDataProtectionPanel();
                 }
             );
+        };
+
+        // Sort key from a visiting-hours label, e.g. "08:00-13:00" -> 480 (minutes).
+        // "24 Hours" (or anything without a time) sorts first.
+        const timeSlotRank = (slot) => {
+            const m = String(slot || '').match(/(\d{1,2}):(\d{2})/);
+            if (!m) return -1;
+            return (+m[1]) * 60 + (+m[2]);
+        };
+        // Chronological by start time, then end time, then plate.
+        const byTimeSequence = (a, b) => {
+            const ra = timeSlotRank(a.timeSlot), rb = timeSlotRank(b.timeSlot);
+            if (ra !== rb) return ra - rb;
+            const ea = String(a.timeSlot || '').match(/-(\d{1,2}):(\d{2})/);
+            const eb = String(b.timeSlot || '').match(/-(\d{1,2}):(\d{2})/);
+            const va = ea ? (+ea[1]) * 60 + (+ea[2]) : 9999;
+            const vb = eb ? (+eb[1]) * 60 + (+eb[2]) : 9999;
+            if (va !== vb) return va - vb;
+            return String(a.vehicleNumber).localeCompare(String(b.vehicleNumber));
         };
 
         // *** UPDATED: applyFilter with contains search ***
@@ -3536,4 +3563,5 @@ WXY 789 A, Ali Bin Abu" required></textarea>
     </script>
 </body>
 </html>
+
 
