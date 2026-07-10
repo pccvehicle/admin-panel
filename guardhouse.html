@@ -246,6 +246,24 @@
             box-shadow: 0 0 0 2px #1e293b, 0 0 0 4px #3b82f6;
         }
         /* Custom checkbox */
+        /* dd/mm/yyyy date field with calendar picker */
+        .date-field { position: relative; }
+        .date-field .date-text { padding-right: 2.75rem; }
+        .date-field .date-pick-btn {
+            position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+            width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;
+            border-radius: 0.375rem; background: transparent; color: #94a3b8; cursor: pointer; font-size: 1.1rem;
+        }
+        .date-field .date-pick-btn:hover { background: #334155; color: #e2e8f0; }
+        .date-field .date-native {
+            position: absolute; right: 0.75rem; bottom: 0.25rem;
+            width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0;
+        }
+        .date-field .date-text:invalid { border-color: #ef4444; }
+        /* Light card (Daily Log) variant */
+        .date-field.light .date-pick-btn { color: #475569; }
+        .date-field.light .date-pick-btn:hover { background: #e2e8f0; color: #0f172a; }
+
         .mobile-checkbox {
             height: 1.25rem;
             width: 1.25rem;
@@ -1459,8 +1477,40 @@
             setTimeout(() => notification.remove(), 4000);
         };
 
+        // 'yyyy-mm-dd' -> 'dd/mm/yyyy'
+        const toDMY = (iso) => {
+            if (!iso) return '';
+            const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+        };
+        // 'dd/mm/yyyy' -> 'yyyy-mm-dd' (returns '' if not a real date)
+        const fromDMY = (dmy) => {
+            const m = String(dmy || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (!m) return '';
+            const d = +m[1], mo = +m[2], y = +m[3];
+            if (mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+            const dt = new Date(y, mo - 1, d);
+            if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return '';
+            return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        };
+        // Reusable dd/mm/yyyy input + calendar button (browser locale independent)
+        const dateField = (name, valueISO = '', opts = {}) => {
+            const { required = true, id = name, light = false } = opts;
+            return `
+                <div class="date-field ${light ? 'light' : ''}">
+                    <input type="text" id="${id}" name="${name}" value="${toDMY(valueISO)}"
+                           class="mobile-input date-text ${light ? 'bg-white border border-gray-300 text-gray-900' : ''}"
+                           placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off"
+                           pattern="\\d{2}/\\d{2}/\\d{4}" title="Enter the date as dd/mm/yyyy" ${required ? 'required' : ''} />
+                    <button type="button" class="date-pick-btn" tabindex="-1" aria-label="Open calendar">&#128197;</button>
+                    <input type="date" class="date-native" tabindex="-1" aria-hidden="true" value="${valueISO || ''}" />
+                </div>`;
+        };
+
         const parseLocalDate = (dateString) => {
             if (!dateString) return null;
+            const iso = fromDMY(dateString);          // accept dd/mm/yyyy
+            if (iso) dateString = iso;
             const date = new Date(dateString);
             if (isNaN(date.getTime())) return null;
             const userTimezoneOffset = date.getTimezoneOffset() * 60000;
@@ -1684,11 +1734,11 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
                                 <label class="block text-sm font-medium text-slate-300 mb-1">Entry Date</label>
-                                <input type="date" name="entryDate" class="mobile-input" required />
+                                ${dateField('entryDate', '', { id: 'batchEntryDate' })}
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-300 mb-1">Expiry Date</label>
-                                <input type="date" name="expiryDate" class="mobile-input" required />
+                                ${dateField('expiryDate', '', { id: 'batchExpiryDate' })}
                             </div>
                         </div>
                         <div>
@@ -1702,7 +1752,7 @@
                             </div>
                             <div id="batch-escort-details-container" class="hidden pl-8">
                                 <label class="block text-sm font-medium text-slate-400 mb-1">Escort By</label>
-                                <select name="escortBy" class="mobile-input">
+                                <select name="escortBy" class="mobile-input" disabled>
                                     <option value="">Select escort team...</option>
                                     ${createOptions(appSettings.escortBy)}
                                 </select>
@@ -1814,12 +1864,12 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                             <!-- Entry Date -->
                             <div>
                                 <label for="entryDate" class="block text-sm font-medium text-slate-300 mb-1">Entry Date</label>
-                                <input type="date" id="entryDate" name="entryDate" class="mobile-input" required />
+                                ${dateField('entryDate')}
                             </div>
                             <!-- Expiry Date -->
                             <div>
                                 <label for="expiryDate" class="block text-sm font-medium text-slate-300 mb-1">Expiry Date</label>
-                                <input type="date" id="expiryDate" name="expiryDate" class="mobile-input" required />
+                                ${dateField('expiryDate')}
                             </div>
                         </div>
                         
@@ -1838,7 +1888,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                             
                             <div id="escort-details-container" class="hidden pl-8">
                                 <label for="escortBy" class="block text-sm font-medium text-slate-400 mb-1">Escort By</label>
-                                <select id="escortBy" name="escortBy" class="mobile-input">
+                                <select id="escortBy" name="escortBy" class="mobile-input" disabled>
                                     <option value="">Select escort team...</option>
                                     ${createOptions(appSettings.escortBy)}
                                 </select>
@@ -2100,8 +2150,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                         <!-- Date selector -->
                         <div class="flex items-center gap-2 flex-wrap print:hidden">
                             <button id="log-prev-day" title="Previous day" class="px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 font-semibold hover:bg-gray-200">‹</button>
-                            <input type="date" id="log-date-input" value="${logDate}"
-                                   class="flex-1 min-w-[10rem] px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-900" style="color-scheme: light;" />
+                            <div class="flex-1 min-w-[10rem]">${dateField('logDate', logDate, { id: 'log-date-input', light: true })}</div>
                             <button id="log-next-day" title="Next day" class="px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 font-semibold hover:bg-gray-200">›</button>
                             <button id="log-today" class="px-4 py-2 rounded-lg font-semibold ${isToday ? 'bg-gray-100 border border-gray-300 text-gray-400' : 'bg-blue-600 text-white hover:bg-blue-700'}" ${isToday ? 'disabled' : ''}>Today</button>
                         </div>
@@ -2893,6 +2942,8 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                 maybePromptFolderSetup();
                 const escortContainer = document.getElementById('escort-details-container');
                 if (escortContainer) escortContainer.classList.add('hidden');
+                const escortSel = document.getElementById('escortBy');
+                if (escortSel) { escortSel.disabled = true; escortSel.required = false; }
 
             } catch (error) {
                 console.error("Error adding vehicle:", error);
@@ -3009,11 +3060,11 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-300 mb-1">Entry Date</label>
-                            <input type="date" name="entryDate" class="mobile-input" value="${formatDate(vehicle.entryDate)}" required>
+                            ${dateField('entryDate', formatDate(vehicle.entryDate), { id: 'editEntryDate' })}
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-300 mb-1">Expiry Date</label>
-                            <input type="date" name="expiryDate" class="mobile-input" value="${formatDate(vehicle.expiryDate)}" required>
+                            ${dateField('expiryDate', formatDate(vehicle.expiryDate), { id: 'editExpiryDate' })}
                         </div>
                     </div>
                     <div>
@@ -3026,7 +3077,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                             <label for="editEscortRequired" class="text-sm font-medium text-slate-300">Escort Required</label>
                         </div>
                         <div id="edit-escort-details" class="${vehicle.escortRequired ? '' : 'hidden'} pl-8">
-                            <select name="escortBy" class="mobile-input">
+                            <select name="escortBy" class="mobile-input" ${vehicle.escortRequired ? '' : 'disabled'}>
                                 <option value="">Select escort...</option>
                                 ${createOptions(appSettings.escortBy, vehicle.escortBy)}
                             </select>
@@ -3043,12 +3094,13 @@ WXY 789 A, Ali Bin Abu" required></textarea>
 
             // Attach checkbox logic for the edit form
             setTimeout(() => {
-                const cb = editFormHTML.querySelector('#editEscortRequired');
-                const det = editFormHTML.querySelector('#edit-escort-details');
-                if(cb && det) {
+                const cb = document.getElementById('editEscortRequired');
+                const det = document.getElementById('edit-escort-details');
+                if (cb && det) {
                     cb.addEventListener('change', (e) => {
-                        if(e.target.checked) det.classList.remove('hidden');
-                        else det.classList.add('hidden');
+                        det.classList.toggle('hidden', !e.target.checked);
+                        const sel = det.querySelector('select[name="escortBy"]');
+                        if (sel) { sel.disabled = !e.target.checked; if (!e.target.checked) sel.value = ''; }
                     });
                 }
             }, 0);
@@ -3119,7 +3171,11 @@ WXY 789 A, Ali Bin Abu" required></textarea>
         const handleFormChange = (e) => {
             if (e.target.id === 'batchEscortRequired') {
                 const c = document.getElementById('batch-escort-details-container');
-                if (c) c.classList.toggle('hidden', !e.target.checked);
+                if (c) {
+                    c.classList.toggle('hidden', !e.target.checked);
+                    const sel = c.querySelector('select[name="escortBy"]');
+                    if (sel) { sel.disabled = !e.target.checked; if (!e.target.checked) sel.value = ''; }
+                }
                 return;
             }
             if (e.target.id === 'escortRequired') {
@@ -3127,8 +3183,10 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                 const escortSelect = document.getElementById('escortBy');
                 if (e.target.checked) {
                     escortContainer.classList.remove('hidden');
+                    escortSelect.disabled = false;
                     escortSelect.required = true;
                 } else {
+                    escortSelect.disabled = true;   // hidden field must never block submit
                     escortContainer.classList.add('hidden');
                     escortSelect.required = false;
                     escortSelect.value = '';
@@ -3401,7 +3459,8 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                 return;
             }
             if (e.target.id === 'log-date-input') {
-                if (e.target.value) { logDate = e.target.value; renderDailyLogView(); }
+                const iso = fromDMY(e.target.value);
+                if (iso) { logDate = iso; renderDailyLogView(); }
                 return;
             }
             if (e.target.id === 'recover-file-input') {
@@ -3423,6 +3482,39 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             }
         });
         
+        // --- dd/mm/yyyy date fields: calendar button + auto-formatting ---
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.date-pick-btn');
+            if (!btn) return;
+            const field = btn.closest('.date-field');
+            const text = field.querySelector('.date-text');
+            const native = field.querySelector('.date-native');
+            native.value = fromDMY(text.value) || '';
+            try {
+                if (typeof native.showPicker === 'function') native.showPicker();
+                else native.click();
+            } catch (err) { native.click(); }
+        });
+
+        document.addEventListener('change', (e) => {
+            if (!e.target.classList || !e.target.classList.contains('date-native')) return;
+            const field = e.target.closest('.date-field');
+            const text = field.querySelector('.date-text');
+            text.value = toDMY(e.target.value);
+            text.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        document.addEventListener('input', (e) => {
+            if (!e.target.classList || !e.target.classList.contains('date-text')) return;
+            const el = e.target;
+            const digits = el.value.replace(/\D/g, '').slice(0, 8);
+            let out = digits;
+            if (digits.length > 4) out = `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4)}`;
+            else if (digits.length > 2) out = `${digits.slice(0,2)}/${digits.slice(2)}`;
+            el.value = out;
+            if (out.length === 10) el.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
         modalCancelBtn.addEventListener("click", hideModal);
         modalConfirmBtn.addEventListener("click", () => {
             const cb = confirmCallback;
