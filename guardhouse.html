@@ -1277,14 +1277,16 @@
             escortBy: [],
             vehicleTypes: [],
             locations: [],
-            approvedBy: []
+            approvedBy: [],
+            timeSlots: []
         };
         const defaultSettings = {
             requesters: ["A DIV", "CID", "CAD"],
             escortBy: ["SMM", "HTX", "Alpha"],
             vehicleTypes: ["Car", "Motorcycle"],
             locations: ["PCC"],
-            approvedBy: ["User A", "User B"]
+            approvedBy: ["User A", "User B"],
+            timeSlots: ["08:00-13:00", "08:00-18:00", "13:00-18:00", "18:00-onwards", "24 Hours"]
         };
 
 
@@ -1368,6 +1370,14 @@
                         appSettings.vehicleTypes = data.vehicleTypes || [];
                         appSettings.locations = data.locations || [];
                         appSettings.approvedBy = data.approvedBy || [];
+                        if (data.timeSlots && data.timeSlots.length) {
+                            appSettings.timeSlots = data.timeSlots;
+                        } else {
+                            // Older settings doc without timeSlots: seed the standard
+                            // slots into storage once so add/remove work correctly.
+                            appSettings.timeSlots = [...defaultSettings.timeSlots];
+                            updateDoc(settingsDocRef, { timeSlots: [...defaultSettings.timeSlots] });
+                        }
                         console.log("Settings updated:", appSettings);
                     } else {
                         console.log("No settings doc found. Creating with defaults.");
@@ -1643,11 +1653,7 @@
                             <label class="block text-sm font-medium text-slate-300 mb-1">Visiting Hours</label>
                             <select name="timeSlot" class="mobile-input" required>
                                 <option value="">Select a time slot...</option>
-                                <option value="08:00-13:00">08:00 to 13:00</option>
-                                <option value="08:00-18:00">08:00 to 18:00</option>
-                                <option value="13:00-18:00">13:00 to 18:00</option>
-                                <option value="18:00-onwards">18:00 onwards</option>
-                                <option value="24 Hours">24 Hours</option>
+                                ${createOptions(appSettings.timeSlots)}
                             </select>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -1775,11 +1781,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                             <label for="timeSlot" class="block text-sm font-medium text-slate-300 mb-1">Visiting Hours</label>
                             <select id="timeSlot" name="timeSlot" class="mobile-input" required>
                                 <option value="">Select a time slot...</option>
-                                <option value="08:00-13:00">08:00 to 13:00</option>
-                                <option value="08:00-18:00">08:00 to 18:00</option>
-                                <option value="13:00-18:00">13:00 to 18:00</option>
-                                <option value="18:00-onwards">18:00 onwards</option>
-                                <option value="24 Hours">24 Hours</option>
+                                ${createOptions(appSettings.timeSlots)}
                             </select>
                         </div>
 
@@ -2330,6 +2332,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                     ${renderCategory('vehicleTypes', 'Vehicle Types', 'e.g. Lorry')}
                     ${renderCategory('locations', 'Locations', 'e.g. HQ')}
                     ${renderCategory('approvedBy', 'Approved By', 'e.g. Jane Doe')}
+                    ${renderCategory('timeSlots', 'Visiting Hours', 'e.g. 08:00-13:00')}
 
                     <section class="p-4 bg-slate-900/50 rounded-lg border border-slate-700 space-y-3">
                         <h3 class="text-lg font-medium text-slate-200">Backup &amp; Restore (file)</h3>
@@ -2601,6 +2604,47 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             return { entries, invalid };
         };
 
+        // ===================================================================
+        //  FIRST-SAVE BACKUP SETUP
+        //  The first time a clearance is saved on this device (desktop
+        //  Edge/Chrome), offer to pick/create the backup folder so file
+        //  backups are protected from day one. Asked once per session,
+        //  with a permanent "don't ask again" option.
+        // ===================================================================
+        const FOLDER_PROMPT_KEY = 'vcp_folder_prompt'; // 'never' = user opted out
+        let _folderPromptShownThisSession = false;
+
+        const maybePromptFolderSetup = async () => {
+            try {
+                if (!FOLDER_BACKUP_SUPPORTED) return;                    // e.g. iPhone Safari
+                if (_folderPromptShownThisSession) return;               // once per session
+                if (LS.get(FOLDER_PROMPT_KEY, '') === 'never') return;   // opted out
+                if (await _getDirHandle()) return;                       // already set up
+                _folderPromptShownThisSession = true;
+
+                showModal(
+                    'Protect your data with a backup folder?',
+                    `<div class="text-sm space-y-2">
+                        <p>Your first clearance is saved. This panel can also auto-save backup files (<span class="font-mono">.json</span>) to a folder on this PC after every change.</p>
+                        <p>In the next window, pick a location and use <b>New folder</b> to create one — e.g. <span class="font-mono">GuardhouseBackups</span> inside Documents.</p>
+                        <p class="text-slate-500 text-xs">These files survive even if browser data is cleared. You can also set this up anytime in Settings → Data Protection.</p>
+                        <label class="flex items-center gap-2 cursor-pointer pt-1">
+                            <input type="checkbox" id="folder-prompt-never" class="mobile-checkbox" />
+                            <span class="text-slate-400">Don't ask me again</span>
+                        </label>
+                    </div>`,
+                    () => {
+                        chooseBackupFolder()
+                            .then(name => showNotification(`Backup folder set: ${name}. First backup written.`, 'success'))
+                            .catch(err => { if (err.name !== 'AbortError') showNotification('Could not set folder: ' + err.message, 'error'); });
+                    }
+                );
+                // Persist opt-out the moment it's ticked (works even if user then cancels)
+                const cb = document.getElementById('folder-prompt-never');
+                if (cb) cb.addEventListener('change', () => LS.set(FOLDER_PROMPT_KEY, cb.checked ? 'never' : ''));
+            } catch(e){ console.warn('folder setup prompt failed', e); }
+        };
+
         const handleBatchSubmit = (e) => {
             e.preventDefault();
             try {
@@ -2701,6 +2745,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                     }
                 }
                 showNotification(`Batch complete: ${added} added${updated ? `, ${updated} updated` : ''}${skipped ? `, ${skipped} skipped` : ''}.`, 'success');
+                setTimeout(() => maybePromptFolderSetup(), 400);
                 const form = document.getElementById('batch-add-form');
                 if (form) { form.reset(); const c = document.getElementById('batch-count'); if (c) c.textContent = '0 vehicles detected'; }
             } catch (err) {
@@ -2767,6 +2812,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                 
                 showNotification("Vehicle added to database successfully!", "success");
                 form.reset();
+                maybePromptFolderSetup();
                 const escortContainer = document.getElementById('escort-details-container');
                 if (escortContainer) escortContainer.classList.add('hidden');
 
@@ -2879,7 +2925,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                         <label class="block text-sm font-medium text-slate-300 mb-1">Visiting Hours</label>
                         <select name="timeSlot" class="mobile-input" required>
                             <option value="">Select...</option>
-                            ${['08:00-13:00', '08:00-18:00', '13:00-18:00', '18:00-onwards', '24 Hours'].map(t => `<option value="${t}" ${t === vehicle.timeSlot ? 'selected' : ''}>${t}</option>`).join('')}
+                            ${Array.from(new Set([...(appSettings.timeSlots || []), ...(vehicle.timeSlot ? [vehicle.timeSlot] : [])])).map(t => `<option value="${t}" ${t === vehicle.timeSlot ? 'selected' : ''}>${t}</option>`).join('')}
                         </select>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
@@ -3292,4 +3338,5 @@ WXY 789 A, Ali Bin Abu" required></textarea>
     </script>
 </body>
 </html>
+
 
