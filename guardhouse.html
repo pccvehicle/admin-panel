@@ -4,17 +4,206 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
     <title>Vehicle Clearance Panel</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com" rel="preconnect" />
-    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style id="offline-utilities">
+/* Generated utility subset (offline, no CDN) */
+.backdrop-blur-sm{backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.bg-amber-900\/20{background-color:rgba(120,53,15,0.2)}
+.bg-blue-600{background-color:#2563eb}
+.bg-gray-100{background-color:#f3f4f6}
+.bg-red-600{background-color:#dc2626}
+.bg-red-800\/50{background-color:rgba(153,27,27,0.5)}
+.bg-red-900\/20{background-color:rgba(127,29,29,0.2)}
+.bg-red-900\/50{background-color:rgba(127,29,29,0.5)}
+.bg-slate-600{background-color:#475569}
+.bg-slate-700{background-color:#334155}
+.bg-slate-800{background-color:#1e293b}
+.bg-slate-800\/80{background-color:rgba(30,41,59,0.8)}
+.bg-slate-900\/50{background-color:rgba(15,23,42,0.5)}
+.bg-slate-900\/80{background-color:rgba(15,23,42,0.8)}
+.bg-white{background-color:#ffffff}
+.block{display:block}
+.border{border-width:1px;border-style:solid}
+.border-amber-900\/50{border-color:rgba(120,53,15,0.5)}
+.border-b{border-bottom-width:1px;border-bottom-style:solid}
+.border-b-2{border-bottom-width:2px;border-bottom-style:solid}
+.border-collapse{border-collapse:collapse}
+.border-gray-200{border-color:#e5e7eb}
+.border-gray-300{border-color:#d1d5db}
+.border-red-700{border-color:#b91c1c}
+.border-red-800{border-color:#991b1b}
+.border-red-900\/50{border-color:rgba(127,29,29,0.5)}
+.border-slate-700{border-color:#334155}
+.border-slate-700\/50{border-color:rgba(51,65,85,0.5)}
+.border-t{border-top-width:1px;border-top-style:solid}
+.col-span-2{grid-column:span 2/span 2}
+.cursor-pointer{cursor:pointer}
+.fixed{position:fixed}
+.flex{display:flex}
+.flex-1{flex:1 1 0%}
+.flex-col{flex-direction:column}
+.flex-grow{flex-grow:1}
+.flex-none{flex:none}
+.flex-shrink-0{flex-shrink:0}
+.flex-wrap{flex-wrap:wrap}
+.font-bold{font-weight:700}
+.font-medium{font-weight:500}
+.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.font-semibold{font-weight:600}
+.gap-1\.5{gap:0.375rem}
+.gap-2{gap:0.5rem}
+.gap-3{gap:0.75rem}
+.gap-4{gap:1rem}
+.gap-5{gap:1.25rem}
+.grid{display:grid}
+.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}
+.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.h-10{height:2.5rem}
+.h-12{height:3rem}
+.h-5{height:1.25rem}
+.h-auto{height:auto}
+.hidden{display:none}
+.inline-block{display:inline-block}
+.inset-0{top:0;right:0;bottom:0;left:0}
+.italic{font-style:italic}
+.items-center{align-items:center}
+.justify-between{justify-content:space-between}
+.justify-center{justify-content:center}
+.justify-end{justify-content:flex-end}
+.leading-none{line-height:1}
+.max-h-\[65vh\]{max-height:65vh}
+.max-h-\[90vh\]{max-height:90vh}
+.max-w-4xl{max-width:56rem}
+.max-w-md{max-width:28rem}
+.mb-1{margin-bottom:0.25rem}
+.mb-4{margin-bottom:1rem}
+.mb-6{margin-bottom:1.5rem}
+.min-h-\[2\.5rem\]{min-height:2.5rem}
+.min-h-\[50vh\]{min-height:50vh}
+.ml-2{margin-left:0.5rem}
+.mr-2{margin-right:0.5rem}
+.mr-3{margin-right:0.75rem}
+.mt-1{margin-top:0.25rem}
+.mt-2{margin-top:0.5rem}
+.mt-3{margin-top:0.75rem}
+.mt-4{margin-top:1rem}
+.mt-6{margin-top:1.5rem}
+.mx-auto{margin-left:auto;margin-right:auto}
+.overflow-hidden{overflow:hidden}
+.overflow-visible{overflow:visible}
+.overflow-x-auto{overflow-x:auto}
+.overflow-y-auto{overflow-y:auto}
+.p-3{padding:0.75rem}
+.p-4{padding:1rem}
+.p-6{padding:1.5rem}
+.p-8{padding:2rem}
+.pb-2{padding-bottom:0.5rem}
+.pb-4{padding-bottom:1rem}
+.pl-8{padding-left:2rem}
+.pr-2{padding-right:0.5rem}
+.pt-2{padding-top:0.5rem}
+.pt-4{padding-top:1rem}
+.px-2{padding-left:0.5rem;padding-right:0.5rem}
+.px-3{padding-left:0.75rem;padding-right:0.75rem}
+.px-4{padding-left:1rem;padding-right:1rem}
+.px-5{padding-left:1.25rem;padding-right:1.25rem}
+.px-6{padding-left:1.5rem;padding-right:1.5rem}
+.py-1{padding-top:0.25rem;padding-bottom:0.25rem}
+.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}
+.py-2{padding-top:0.5rem;padding-bottom:0.5rem}
+.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}
+.py-3{padding-top:0.75rem;padding-bottom:0.75rem}
+.py-4{padding-top:1rem;padding-bottom:1rem}
+.py-8{padding-top:2rem;padding-bottom:2rem}
+.relative{position:relative}
+.rounded-2xl{border-radius:1rem}
+.rounded-full{border-radius:9999px}
+.rounded-lg{border-radius:0.5rem}
+.rounded-xl{border-radius:0.75rem}
+.shadow-2xl{box-shadow:0 25px 50px -12px rgba(0,0,0,.45)}
+.shadow-blue-600\/20{box-shadow:0 10px 15px -3px rgba(37,99,235,.25)}
+.shadow-lg{box-shadow:0 10px 15px -3px rgba(0,0,0,.3),0 4px 6px -4px rgba(0,0,0,.3)}
+.sticky{position:sticky}
+.text-2xl{font-size:1.5rem;line-height:2rem}
+.text-3xl{font-size:1.875rem;line-height:2.25rem}
+.text-4xl{font-size:2.25rem;line-height:2.5rem}
+.text-amber-300\/80{color:rgba(252,211,77,0.8)}
+.text-amber-400{color:#fbbf24}
+.text-black{color:#000000}
+.text-center{text-align:center}
+.text-gray-400{color:#9ca3af}
+.text-gray-500{color:#6b7280}
+.text-gray-600{color:#4b5563}
+.text-gray-900{color:#111827}
+.text-green-400{color:#4ade80}
+.text-left{text-align:left}
+.text-lg{font-size:1.125rem;line-height:1.75rem}
+.text-red-200{color:#fecaca}
+.text-red-300{color:#fca5a5}
+.text-red-300\/80{color:rgba(252,165,165,0.8)}
+.text-red-400{color:#f87171}
+.text-right{text-align:right}
+.text-slate-100{color:#f1f5f9}
+.text-slate-200{color:#e2e8f0}
+.text-slate-300{color:#cbd5e1}
+.text-slate-400{color:#94a3b8}
+.text-slate-500{color:#64748b}
+.text-sm{font-size:0.875rem;line-height:1.25rem}
+.text-white{color:#ffffff}
+.text-xl{font-size:1.25rem;line-height:1.75rem}
+.text-xs{font-size:0.75rem;line-height:1rem}
+.top-0{top:0}
+.tracking-tight{letter-spacing:-0.025em}
+.tracking-wider{letter-spacing:0.05em}
+.tracking-widest{letter-spacing:0.1em}
+.transition-all{transition:all .15s cubic-bezier(.4,0,.2,1)}
+.transition-colors{transition:color,background-color,border-color .15s cubic-bezier(.4,0,.2,1)}
+.uppercase{text-transform:uppercase}
+.w-10{width:2.5rem}
+.w-5{width:1.25rem}
+.w-full{width:100%}
+.whitespace-nowrap{white-space:nowrap}
+.z-10{z-index:10}
+.z-50{z-index:50}
+.space-y-1\.5>*+*{margin-top:0.375rem}
+.space-y-2>*+*{margin-top:0.5rem}
+.space-y-3>*+*{margin-top:0.75rem}
+.space-y-4>*+*{margin-top:1rem}
+.space-y-5>*+*{margin-top:1.25rem}
+.space-y-6>*+*{margin-top:1.5rem}
+.divide-y>*+*{border-top-width:1px;border-top-style:solid}
+.divide-slate-800>*+*{border-color:#1e293b}
+.hover\:bg-blue-500:hover{background-color:#3b82f6}
+.hover\:bg-blue-700:hover{background-color:#1d4ed8}
+.hover\:bg-red-500:hover{background-color:#ef4444}
+.hover\:bg-red-700:hover{background-color:#b91c1c}
+.hover\:bg-red-900:hover{background-color:#7f1d1d}
+.hover\:bg-slate-500:hover{background-color:#64748b}
+.hover\:bg-slate-600:hover{background-color:#475569}
+.hover\:text-red-300:hover{color:#fca5a5}
+.hover\:text-white:hover{color:#ffffff}
+@media (min-width:640px){.sm\:block{display:block}.sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.sm\:p-6{padding:1.5rem}.sm\:p-8{padding:2rem}.sm\:table-cell{display:table-cell}}
+@media print{.print\:block{display:block!important}.print\:hidden{display:none!important}}
+@keyframes pulse{50%{opacity:.5}}
+.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}
+</style>
+    <style id="offline-extra">
+        /* --- additions for offline build --- */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .car-plate-display-not-found {
+            background: linear-gradient(135deg, #991b1b 0%, #b91c1c 50%, #7f1d1d 100%);
+            border: 4px solid #f87171;
+        }
+        .list-item-content { display: flex; flex-direction: column; }
+    </style>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, system-ui, sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            background-color: #0f172a; /* Darker slate background */
-            color: #e2e8f0;
+            background-color: #F5F3EE; /* Pearl white page background */
+            color: #1f2937;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -356,7 +545,7 @@
             .print-table {
                 width: 100%;
                 border-collapse: collapse;
-                font-family: 'Inter', sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, system-ui, sans-serif;
                 font-size: 12px;
             }
             .print-table th {
@@ -399,6 +588,29 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         .nav-dropdown.show { display: block; }
+
+        /* ------------------------------------------------------------------
+           PEARL WHITE PAGE BACKGROUND - readability overrides
+           Cards/panels stay dark, so only text sitting directly on the
+           pearl background is darkened for contrast.
+        ------------------------------------------------------------------ */
+        html { background-color: #F5F3EE; }
+
+        #app-root header h1 { color: #0f172a; }
+        #app-root header p  { color: #475569; }
+
+        /* Search status line sits outside the dark card */
+        #search-message { color: #475569; }
+
+        /* Lift dark cards off the pearl background */
+        #app-root .rounded-2xl.shadow-lg,
+        .list-item,
+        .car-plate-display {
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+        }
+
+        /* Menu button reads clearly against pearl */
+        .nav-button[data-active="false"] { color: #e2e8f0; }
         
     </style>
 </head>
@@ -423,19 +635,298 @@
     </div>
     
     <script type="module">
-        // --- Firebase Imports ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            onAuthStateChanged,
-            signInWithEmailAndPassword,
-            signOut
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, collection, addDoc, Timestamp, query, where, getDocs, 
-            doc, deleteDoc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, setLogLevel,
-            onSnapshot, writeBatch
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // ===================================================================
+        //  OFFLINE DATA LAYER  (replaces Firebase — no network required)
+        //  IndexedDB-backed store + Firestore-compatible API surface.
+        // ===================================================================
+        const LS = {
+            get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+            set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+        };
+
+        // --- Timestamp (Firestore-compatible) ---
+        class Timestamp {
+            constructor(ms){ this.ms = ms; }
+            toDate(){ return new Date(this.ms); }
+            toMillis(){ return this.ms; }
+            static fromDate(d){ return new Timestamp(d.getTime()); }
+            static now(){ return new Timestamp(Date.now()); }
+        }
+        const _serialize = (o) => {
+            const out = {};
+            for (const k in o){ const v = o[k]; out[k] = (v instanceof Timestamp) ? {__ts: v.ms} : v; }
+            return out;
+        };
+        const _hydrate = (o) => {
+            const out = {};
+            for (const k in o){ const v = o[k]; out[k] = (v && typeof v === 'object' && '__ts' in v) ? new Timestamp(v.__ts) : v; }
+            return out;
+        };
+        const _genId = () => 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+        // --- IndexedDB (vehicles store) with localStorage fallback ---
+        const VEH_KEY = 'vcp_vehicles';
+        let _idb = null, _useIDB = false;
+        let _vehicles = [];   // hydrated cache (source of truth for reads)
+
+        const _openIDB = () => new Promise((resolve) => {
+            try {
+                if (!window.indexedDB) return resolve(false);
+                const req = indexedDB.open('vcp_db', 1);
+                req.onupgradeneeded = (e) => {
+                    const d = e.target.result;
+                    if (!d.objectStoreNames.contains('vehicles')) d.createObjectStore('vehicles', { keyPath: 'id' });
+                };
+                req.onsuccess = (e) => { _idb = e.target.result; resolve(true); };
+                req.onerror = () => resolve(false);
+            } catch(e){ resolve(false); }
+        });
+        const _idbAll = () => new Promise((resolve) => {
+            try {
+                const tx = _idb.transaction('vehicles', 'readonly').objectStore('vehicles').getAll();
+                tx.onsuccess = () => resolve(tx.result || []);
+                tx.onerror = () => resolve([]);
+            } catch(e){ resolve([]); }
+        });
+        const _idbPut = (rec) => new Promise((res) => { try{ const t=_idb.transaction('vehicles','readwrite').objectStore('vehicles').put(rec); t.onsuccess=()=>res(); t.onerror=()=>res(); }catch(e){res();} });
+        const _idbDel = (id)  => new Promise((res) => { try{ const t=_idb.transaction('vehicles','readwrite').objectStore('vehicles').delete(id); t.onsuccess=()=>res(); t.onerror=()=>res(); }catch(e){res();} });
+
+        const _persistFallback = () => { if(!_useIDB) LS.set(VEH_KEY, _vehicles.map(_serialize)); };
+
+        const _ready = (async () => {
+            _useIDB = await _openIDB();
+            if (_useIDB){
+                let raw = await _idbAll();
+                // one-time migration from any prior localStorage data
+                if (raw.length === 0){
+                    const legacy = LS.get(VEH_KEY, []);
+                    if (legacy.length){ for (const r of legacy) await _idbPut(r); raw = legacy; }
+                }
+                _vehicles = raw.map(_hydrate);
+            } else {
+                _vehicles = LS.get(VEH_KEY, []).map(_hydrate);
+            }
+        })();
+
+        // --- listener registry (emulates onSnapshot) ---
+        const _listeners = { vehicleClearances: new Set(), publicConfig: new Set() };
+        const _notify = (coll) => { (_listeners[coll] || []).forEach(fn => { try{ fn(); }catch(e){ console.error(e); } }); };
+
+        // --- settings (publicConfig/panelSettings) in localStorage ---
+        const SET_KEY = 'vcp_settings';
+        const _getSettings = () => LS.get(SET_KEY, null);
+        const _setSettings = (obj) => { LS.set(SET_KEY, obj); };
+
+        // --- admins (local auth) in localStorage ---
+        const ADM_KEY = 'vcp_admins';
+        const _seedAdmins = () => {
+            let a = LS.get(ADM_KEY, null);
+            if (!a){ a = [{ uid:'local-admin', username:'admin', email:'admin@local', password:'admin123' }]; LS.set(ADM_KEY, a); }
+            return a;
+        };
+        _seedAdmins();
+
+        // --- Firestore-compatible API ---
+        const initializeApp = () => ({});
+        const getFirestore  = () => ({});
+        const setLogLevel   = () => {};
+        const collection = (_db, name) => ({ __coll: name });
+        const doc = (_db, name, id) => ({ __coll: name, __id: id });
+        const where = (f, op, v) => ({ f, op, v });
+        const query = (collRef, ...cons) => ({ __coll: collRef.__coll, __where: cons });
+        const arrayUnion  = (...items) => ({ __op:'union',  items });
+        const arrayRemove = (...items) => ({ __op:'remove', items });
+
+        const _applyWhere = (rows, cons=[]) => rows.filter(r => cons.every(c => {
+            if (!c || !c.f || c.f === '__name__') return true;        // ignore name filters
+            if (c.op === '==') return r[c.f] === c.v;
+            if (c.op === '!=') return r[c.f] !== c.v;
+            return true;
+        }));
+
+        const addDoc = async (collRef, payload) => {
+            await _ready;
+            const id = _genId();
+            const hydrated = { id, ..._hydrate(_serialize(payload)) };
+            _vehicles.push(hydrated);
+            if (_useIDB) await _idbPut({ id, ..._serialize(payload) }); else _persistFallback();
+            _notify('vehicleClearances');
+            return { id };
+        };
+
+        const updateDoc = async (ref, partial) => {
+            await _ready;
+            if (ref.__coll === 'publicConfig'){
+                const s = _getSettings() || {};
+                for (const k in partial){
+                    const v = partial[k];
+                    if (v && v.__op === 'union'){ const cur = Array.isArray(s[k]) ? s[k].slice() : []; v.items.forEach(it => { if(!cur.includes(it)) cur.push(it); }); s[k] = cur; }
+                    else if (v && v.__op === 'remove'){ s[k] = (Array.isArray(s[k]) ? s[k] : []).filter(x => !v.items.includes(x)); }
+                    else s[k] = v;
+                }
+                _setSettings(s); _notify('publicConfig'); return;
+            }
+            const i = _vehicles.findIndex(v => v.id === ref.__id);
+            if (i === -1) return;
+            const merged = { ..._vehicles[i], ..._hydrate(_serialize(partial)) };
+            _vehicles[i] = merged;
+            if (_useIDB) await _idbPut({ ..._serialize(merged) }); else _persistFallback();
+            _notify('vehicleClearances');
+        };
+
+        const setDoc = async (ref, data) => {
+            await _ready;
+            if (ref.__coll === 'publicConfig'){ _setSettings({ ...data }); _notify('publicConfig'); return; }
+        };
+
+        const deleteDoc = async (ref) => {
+            await _ready;
+            _vehicles = _vehicles.filter(v => v.id !== ref.__id);
+            if (_useIDB) await _idbDel(ref.__id); else _persistFallback();
+            _notify('vehicleClearances');
+        };
+
+        const getDoc = async (ref) => {
+            await _ready;
+            if (ref.__coll === 'admins'){
+                const a = _seedAdmins().find(x => x.uid === ref.__id);
+                return { exists: () => !!a, data: () => a };
+            }
+            if (ref.__coll === 'publicConfig'){
+                const s = _getSettings();
+                return { exists: () => !!s, data: () => s };
+            }
+            const v = _vehicles.find(x => x.id === ref.__id);
+            return { exists: () => !!v, data: () => v };
+        };
+
+        const getDocs = async (qRef) => {
+            await _ready;
+            let rows = [];
+            if (qRef.__coll === 'admins') rows = _seedAdmins();
+            else if (qRef.__coll === 'vehicleClearances') rows = _vehicles;
+            rows = _applyWhere(rows, qRef.__where);
+            return { empty: rows.length === 0, docs: rows.map(r => ({ id: r.id, data: () => r })) };
+        };
+
+        const onSnapshot = (refOrQuery, cb, errCb) => {
+            const coll = refOrQuery.__coll;
+            const isDoc = ('__id' in refOrQuery) && !('__where' in refOrQuery);
+            const emit = () => {
+                try {
+                    if (isDoc){
+                        if (coll === 'publicConfig'){ const s = _getSettings(); cb({ exists: () => !!s, data: () => s }); }
+                        else { const v = _vehicles.find(x => x.id === refOrQuery.__id); cb({ exists: () => !!v, data: () => v }); }
+                    } else {
+                        const rows = _applyWhere(_vehicles, refOrQuery.__where);
+                        cb({ docs: rows.map(r => ({ id: r.id, data: () => r })) });
+                    }
+                } catch(e){ if (errCb) errCb(e); else console.error(e); }
+            };
+            (_listeners[coll] || (_listeners[coll] = new Set())).add(emit);
+            _ready.then(emit);
+            return () => { _listeners[coll].delete(emit); };
+        };
+
+        const writeBatch = (_db) => {
+            const ops = [];
+            return {
+                delete(ref){ ops.push(['del', ref]); },
+                set(ref, data){ ops.push(['set', ref, data]); },
+                async commit(){
+                    await _ready; const touched = new Set();
+                    for (const op of ops){
+                        if (op[0] === 'del'){ _vehicles = _vehicles.filter(v => v.id !== op[1].__id); if(_useIDB) await _idbDel(op[1].__id); touched.add('vehicleClearances'); }
+                    }
+                    if (!_useIDB) _persistFallback();
+                    touched.forEach(_notify);
+                }
+            };
+        };
+
+        // --- Local Auth (replaces Firebase Auth) ---
+        const SESSION_KEY = 'vcp_session';
+        let _currentUser = null;
+        const _authListeners = new Set();
+        const _fireAuth = () => _authListeners.forEach(fn => { try{ fn(_currentUser); }catch(e){ console.error(e); } });
+
+        const getAuth = () => ({});
+        const onAuthStateChanged = (_auth, cb) => {
+            _authListeners.add(cb);
+            _ready.then(() => {
+                // Login screen removed - panel opens directly with the local admin session.
+                const a = _seedAdmins()[0];
+                _currentUser = { uid: a.uid, email: a.email };
+                LS.set(SESSION_KEY, a.uid);
+                cb(_currentUser);
+            });
+            return () => _authListeners.delete(cb);
+        };
+        const signInWithEmailAndPassword = async (_auth, email, password) => {
+            await _ready;
+            const a = _seedAdmins().find(x => x.email === email && x.password === password);
+            if (!a){ const err = new Error('Invalid username or password.'); err.code = 'auth/invalid-credential'; throw err; }
+            _currentUser = { uid: a.uid, email: a.email };
+            LS.set(SESSION_KEY, a.uid);
+            _fireAuth();
+            return { user: _currentUser };
+        };
+        const signOut = async () => { _currentUser = null; LS.set(SESSION_KEY, null); _fireAuth(); };
+
+        // --- Backup / Restore (export & import the whole local database) ---
+        const exportData = async () => {
+            await _ready;
+            return {
+                app: 'vehicle-clearance-panel',
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                vehicles: _vehicles.map(_serialize),
+                settings: _getSettings() || null
+            };
+        };
+        const importData = async (obj, mode = 'merge') => {
+            await _ready;
+            if (!obj || !Array.isArray(obj.vehicles)) throw new Error('Not a valid backup file.');
+
+            // settings
+            if (obj.settings && typeof obj.settings === 'object'){
+                if (mode === 'replace'){ _setSettings(obj.settings); }
+                else {
+                    const cur = _getSettings() || {};
+                    const keys = new Set([...Object.keys(cur), ...Object.keys(obj.settings)]);
+                    const merged = {};
+                    keys.forEach(k => {
+                        const a = Array.isArray(cur[k]) ? cur[k] : [];
+                        const b = Array.isArray(obj.settings[k]) ? obj.settings[k] : [];
+                        merged[k] = Array.from(new Set([...a, ...b]));
+                    });
+                    _setSettings(merged);
+                }
+                _notify('publicConfig');
+            }
+
+            // vehicles
+            if (mode === 'replace'){
+                if (_useIDB){ for (const v of _vehicles) await _idbDel(v.id); }
+                _vehicles = [];
+            }
+            const sig = (v) => (v.vehicleNumber || '') + '|' + (v.expiryDate && v.expiryDate.toMillis ? v.expiryDate.toMillis() : '');
+            const seen = new Set(_vehicles.map(sig));
+            const ids  = new Set(_vehicles.map(v => v.id));
+            let added = 0, skipped = 0;
+            for (let raw of obj.vehicles){
+                const rec = _hydrate(raw);
+                if (!rec.id || ids.has(rec.id)) rec.id = _genId();
+                if (seen.has(sig(rec))){ skipped++; continue; }
+                _vehicles.push(rec); seen.add(sig(rec)); ids.add(rec.id);
+                if (_useIDB) await _idbPut(_serialize(rec));
+                added++;
+            }
+            if (!_useIDB) _persistFallback();
+            _notify('vehicleClearances');
+            return { added, skipped, total: _vehicles.length };
+        };
+
 
         // --- Configuration ---
         const firebaseConfig = {
@@ -711,29 +1202,13 @@
         
         // --- Render Functions ---
 
+        // Login screen removed. Kept as a fallback status card for unexpected errors.
         const renderLoginScreen = (error = null) => {
             appRoot.innerHTML = `
                 <div class="flex flex-col items-center justify-center min-h-[50vh] animate-fade-in">
-                    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl p-8 space-y-6 border border-slate-700">
-                        <h1 class="text-3xl font-bold text-white text-center">Admin Panel Login</h1>
-                        
-                        ${error ? `<div id="login-error" class="p-3 rounded-lg bg-red-800/50 border border-red-700 text-red-300 text-sm">${error}</div>` : ''}
-
-                        <form id="login-form" class="space-y-4">
-                            <div>
-                                <label for="login-username" class="block text-sm font-medium text-slate-300 mb-1">Username</label>
-                                <input type="text" id="login-username" name="username" class="mobile-input" required />
-                            </div>
-                            <div>
-                                <label for="login-password" class="block text-sm font-medium text-slate-300 mb-1">Password</label>
-                                <input type="password" id="login-password" name="password" class="mobile-input" required />
-                            </div>
-                            <div class="pt-2">
-                                <button type="submit" id="login-button" class="w-full px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all">
-                                    Login
-                                </button>
-                            </div>
-                        </form>
+                    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl p-8 space-y-4 border border-slate-700 text-center">
+                        <h1 class="text-2xl font-bold text-white">Vehicle Clearance Panel</h1>
+                        <p class="text-slate-300 text-sm">${error || 'Loading...'}</p>
                     </div>
                 </div>
             `;
@@ -746,10 +1221,6 @@
                 <header class="mb-6 space-y-3">
                     <div class="flex justify-between items-center">
                         <h1 class="text-4xl font-bold text-white tracking-tight">Vehicle Clearance Panel</h1>
-                        <button id="sign-out-btn" title="Sign Out" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-red-700 hover:text-white transition-colors">
-                            <span class="w-5 h-5">${icons.signOut}</span>
-                            <span class="hidden sm:block text-sm font-medium">Sign Out</span>
-                        </button>
                     </div>
                     <p class="text-slate-400">Manage vehicle clearance database.</p>
                 </header>
@@ -1419,7 +1890,7 @@
                 <div class="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-lg p-6 sm:p-8 space-y-6">
                     <div>
                         <h2 class="text-2xl font-semibold text-white">Manage Dropdown Lists</h2>
-                        <p class="text-slate-400 mt-1">Changes are saved instantly and shared with all staff.</p>
+                        <p class="text-slate-400 mt-1">Changes are saved instantly on this device.</p>
                     </div>
                     
                     ${renderCategory('requesters', 'Requesters', 'e.g. A DIV')}
@@ -1427,6 +1898,16 @@
                     ${renderCategory('vehicleTypes', 'Vehicle Types', 'e.g. Lorry')}
                     ${renderCategory('locations', 'Locations', 'e.g. HQ')}
                     ${renderCategory('approvedBy', 'Approved By', 'e.g. Jane Doe')}
+
+                    <section class="p-4 bg-slate-900/50 rounded-lg border border-slate-700 space-y-3">
+                        <h3 class="text-lg font-medium text-slate-200">Backup &amp; Restore</h3>
+                        <p class="text-sm text-slate-400">Save all vehicles and dropdown lists to a file you can keep in Files/iCloud or load onto another device. Importing <strong>merges</strong> records and skips duplicates.</p>
+                        <div class="flex gap-3">
+                            <button id="export-backup-btn" class="flex-1 px-4 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all">Export backup (.json)</button>
+                            <button id="import-backup-btn" class="flex-1 px-4 py-2.5 rounded-lg bg-slate-700 text-slate-100 font-semibold hover:bg-slate-600 transition-all">Import backup</button>
+                        </div>
+                        <input type="file" id="import-file-input" accept="application/json,.json" class="hidden" />
+                    </section>
                 </div>
             `;
         };
@@ -1479,59 +1960,6 @@
 
         // --- Event Handlers ---
         
-        const handleLogin = async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const button = form.querySelector('button[type="submit"]');
-            button.disabled = true;
-            button.textContent = 'Verifying...';
-            
-            const username = form.username.value;
-            const password = form.password.value;
-            let emailToLogin;
-
-            try {
-                const q = query(collection(db, "admins"), where("username", "==", username));
-                const querySnap = await getDocs(q);
-
-                if (querySnap.empty) {
-                    console.warn(`No admin found with username: ${username}`);
-                    throw new Error("Invalid username or password.");
-                }
-
-                const adminData = querySnap.docs[0].data();
-                emailToLogin = adminData.email;
-
-                if (!emailToLogin) {
-                    console.error(`Admin doc for ${username} is missing 'email' field.`);
-                    throw new Error("Admin account is not configured correctly.");
-                }
-
-                button.textContent = 'Logging in...';
-                await signInWithEmailAndPassword(auth, emailToLogin, password);
-                console.log("Login successful, waiting for auth state change...");
-
-            } catch (error) {
-                console.error("Login failed:", error.code, error.message);
-                let friendlyError = error.message;
-                if (error.code === 'auth/invalid-credential' || error.message === "Invalid username or password.") {
-                    friendlyError = "Invalid username or password.";
-                } else if (error.code === 'auth/invalid-email') {
-                    friendlyError = "Please enter a valid username.";
-                }
-                renderLoginScreen(friendlyError);
-            }
-        };
-
-        const handleSignOut = async () => {
-            try {
-                await signOut(auth);
-            } catch (error) {
-                console.error("Sign out failed:", error);
-                showNotification("Error signing out.", "error");
-            }
-        };
-
         const handleNavClick = (e) => {
             const view = e.target.closest('button')?.dataset.view;
             if (view && view !== currentView) {
@@ -1962,6 +2390,44 @@
 
         // --- Global Event Listeners ---
         
+        // --- Backup / Restore handlers ---
+        const handleExportBackup = async () => {
+            try {
+                const data = await exportData();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const d = new Date();
+                const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                a.href = url;
+                a.download = `vehicle_clearance_backup_${stamp}.json`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+                showNotification(`Exported ${data.vehicles.length} vehicle record(s).`, 'success');
+            } catch (e) {
+                console.error('Export failed:', e);
+                showNotification('Export failed: ' + e.message, 'error');
+            }
+        };
+
+        const handleImportFile = (file) => {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const obj = JSON.parse(reader.result);
+                    const res = await importData(obj, 'merge');
+                    showNotification(`Imported ${res.added} new record(s); ${res.skipped} duplicate(s) skipped.`, 'success');
+                } catch (e) {
+                    console.error('Import failed:', e);
+                    showNotification('Import failed: ' + e.message, 'error');
+                }
+            };
+            reader.onerror = () => showNotification('Could not read the file.', 'error');
+            reader.readAsText(file);
+        };
+
         appRoot.addEventListener("click", (e) => {
             handleNavClick(e);
             handleNavDropdownToggle(e);
@@ -1973,12 +2439,21 @@
             const keypadBtn = e.target.closest('.keypad-btn');
             const clearBtn = e.target.id === 'clear-search-btn';
             const exitBtn = e.target.id === 'exit-single-view-btn';
-            const signOutBtn = e.target.id === 'sign-out-btn' || e.target.closest('#sign-out-btn');
             
             // New Grid View Buttons
             const showAllBtn = e.target.closest('#show-all-btn');
             const backSearchBtn = e.target.id === 'back-to-search-btn';
             const batchDeleteBtn = e.target.closest('#batch-delete-expired-btn');
+            const exportBtn = e.target.closest('#export-backup-btn');
+            const importBtn = e.target.closest('#import-backup-btn');
+
+            if (exportBtn) {
+                handleExportBackup();
+            }
+            if (importBtn) {
+                const inp = document.getElementById('import-file-input');
+                if (inp) inp.click();
+            }
 
             if (showAllBtn) {
                 isGridView = true;
@@ -2039,20 +2514,20 @@
             if (exitBtn) {
                 handleExitSingleView();
             }
-            if (signOutBtn) {
-                handleSignOut();
-            }
         });
         
         appRoot.addEventListener("change", (e) => {
+            if (e.target.id === 'import-file-input') {
+                handleImportFile(e.target.files[0]);
+                e.target.value = '';
+                return;
+            }
             handleFormChange(e);
         });
         
         appRoot.addEventListener("submit", (e) => {
             e.preventDefault(); 
-            if (e.target.id === 'login-form') {
-                handleLogin(e);
-            } else if (e.target.id === 'add-vehicle-form') {
+            if (e.target.id === 'add-vehicle-form') {
                 handleAddVehicle(e);
             } else if (e.target.classList.contains('setting-add-form')) {
                 handleSettingAdd(e); 
