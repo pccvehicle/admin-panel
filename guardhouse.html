@@ -575,9 +575,6 @@
             /* Hide everything except the daily log container when printing */
             #view-content > div:not(#daily-log-container) { display: none; }
             #daily-log-container { display: block !important; background: white !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
-
-            /* Blank manual-entry rows are for on-screen only; never print them */
-            .blank-row { display: none !important; }
             
             .print-table {
                 width: 100%;
@@ -1320,9 +1317,12 @@
         let logFromDate = null;     // YYYY-MM-DD range start (null = today)
         let logToDate = null;       // YYYY-MM-DD range end   (null = today)
         let logLocationFilter = 'ALL'; // 'ALL' or a specific location for the Daily Log
+        let _logExportCSV = '';      // CSV of the currently rendered log (for export)
+        let _logExportName = 'Vehicle_Clearance.csv';
         let _pendingBatch = null;    // parsed batch awaiting confirmation
         let isGridView = false; 
         let gridLocationFilter = 'ALL'; // 'ALL' or a specific location for the Show All grid
+        let gridStatusFilter = 'ALL';   // 'ALL' | 'active' | 'escort' | 'expired'
         let allRows = []; 
         let filtered = [];
         let confirmCallback = null;
@@ -2050,15 +2050,19 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                 gridLocationFilter = 'ALL';
             }
 
-            // Rows to display after applying the location filter.
-            const rows = gridLocationFilter === 'ALL'
+            // Rows to display after applying location + status filters.
+            let rows = gridLocationFilter === 'ALL'
                 ? allRows
                 : allRows.filter(v => v.location === gridLocationFilter);
+            if (gridStatusFilter !== 'ALL') {
+                rows = rows.filter(v => getVehicleStatus(v) === gridStatusFilter);
+            }
 
             const expiredCount = rows.filter(v => getVehicleStatus(v) === 'expired').length;
-            const headerCount = gridLocationFilter === 'ALL'
-                ? `All Vehicles (${allRows.length})`
-                : `${gridLocationFilter} (${rows.length})`;
+            const filterActive = gridLocationFilter !== 'ALL' || gridStatusFilter !== 'ALL';
+            const headerCount = filterActive
+                ? `Filtered (${rows.length} of ${allRows.length})`
+                : `All Vehicles (${allRows.length})`;
 
             contentEl.innerHTML = `
                 <div class="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-lg overflow-hidden">
@@ -2078,13 +2082,25 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                         </div>
                     </div>
 
-                    <!-- Location Filter -->
+                    <!-- Filters -->
                     <div class="p-4 border-b border-slate-700 bg-slate-900/30 flex items-center gap-3 flex-wrap">
-                        <label for="grid-location-filter" class="text-sm font-medium text-slate-300 whitespace-nowrap">Filter by Location</label>
-                        <select id="grid-location-filter" class="mobile-input flex-1 min-w-[10rem]">
-                            <option value="ALL" ${gridLocationFilter === 'ALL' ? 'selected' : ''}>All Locations</option>
-                            ${locationOptions.map(loc => `<option value="${loc}" ${loc === gridLocationFilter ? 'selected' : ''}>${loc}</option>`).join('')}
-                        </select>
+                        <div class="flex items-center gap-2 flex-1 min-w-[12rem]">
+                            <label for="grid-location-filter" class="text-sm font-medium text-slate-300 whitespace-nowrap">Location</label>
+                            <select id="grid-location-filter" class="mobile-input flex-1 min-w-[8rem]">
+                                <option value="ALL" ${gridLocationFilter === 'ALL' ? 'selected' : ''}>All Locations</option>
+                                ${locationOptions.map(loc => `<option value="${loc}" ${loc === gridLocationFilter ? 'selected' : ''}>${loc}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 flex-1 min-w-[12rem]">
+                            <label for="grid-status-filter" class="text-sm font-medium text-slate-300 whitespace-nowrap">Status</label>
+                            <select id="grid-status-filter" class="mobile-input flex-1 min-w-[8rem]">
+                                <option value="ALL" ${gridStatusFilter === 'ALL' ? 'selected' : ''}>All Statuses</option>
+                                <option value="active" ${gridStatusFilter === 'active' ? 'selected' : ''}>Active</option>
+                                <option value="escort" ${gridStatusFilter === 'escort' ? 'selected' : ''}>Escort</option>
+                                <option value="expired" ${gridStatusFilter === 'expired' ? 'selected' : ''}>Expired</option>
+                            </select>
+                        </div>
+                        ${filterActive ? `<button id="grid-clear-filters" class="px-3 py-1.5 text-sm rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600">Clear Filters</button>` : ''}
                     </div>
 
                     <!-- Scrollable Grid Area -->
@@ -2101,7 +2117,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-800">
-                                ${rows.length === 0 ? `<tr><td colspan="6" class="text-center py-8 text-slate-500">${allRows.length === 0 ? 'No records found.' : 'No vehicles at this location.'}</td></tr>` : 
+                                ${rows.length === 0 ? `<tr><td colspan="6" class="text-center py-8 text-slate-500">${allRows.length === 0 ? 'No records found.' : 'No vehicles match the current filters.'}</td></tr>` : 
                                   rows.map(v => {
                                     const status = getVehicleStatus(v);
                                     let statusColorClass = 'status-border-success'; 
@@ -2115,12 +2131,23 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                                         statusText = '<span class="text-amber-400 font-bold">Escort</span>';
                                     }
 
+                                    // Expiring-soon hint: within 3 days (and not yet expired)
+                                    let expiryHint = '';
+                                    if (status !== 'expired' && v.expiryDate) {
+                                        const _t = new Date(); _t.setHours(0,0,0,0);
+                                        const _e = v.expiryDate.toDate(); _e.setHours(0,0,0,0);
+                                        const daysLeft = Math.round((_e - _t) / 86400000);
+                                        if (daysLeft >= 0 && daysLeft <= 3) {
+                                            expiryHint = ` <span class="text-amber-400 text-xs font-semibold">(${daysLeft === 0 ? 'today' : daysLeft + 'd left'})</span>`;
+                                        }
+                                    }
+
                                     return `
                                     <tr class="grid-row ${statusColorClass}">
                                         <td class="font-mono font-bold text-white">${formatVehicleNumber(v.vehicleNumber)}</td>
                                         <td>${v.location}</td>
                                         <td class="hidden sm:table-cell text-slate-400">${v.vehicleType}</td>
-                                        <td class="text-slate-400 whitespace-nowrap">${formatDateDisplay(v.expiryDate)}</td>
+                                        <td class="text-slate-400 whitespace-nowrap">${formatDateDisplay(v.expiryDate)}${expiryHint}</td>
                                         <td>${statusText}</td>
                                         <td>
                                             <div class="dropdown-container relative inline-block text-left">
@@ -2226,12 +2253,32 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                 ? `<th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Valid Dates</th>`
                 : '';
             const colCount = logRangeMode ? 7 : 6;
-            const blankCell = `<td class="p-3 border border-gray-300"></td>`;
 
             const countLabel = (logRangeMode
                 ? `${logVehicles.length} vehicle(s) cleared in this period`
                 : `${logVehicles.length} vehicle(s) cleared for this date`)
                 + (logLocationFilter !== 'ALL' ? ` at ${logLocationFilter}.` : '.');
+
+            // Per-location breakdown (shown when viewing all locations).
+            let locationSummary = '';
+            if (logLocationFilter === 'ALL' && logVehicles.length > 0) {
+                const byLoc = {};
+                logVehicles.forEach(v => { const l = v.location || 'N/A'; byLoc[l] = (byLoc[l] || 0) + 1; });
+                locationSummary = Object.keys(byLoc).sort()
+                    .map(l => `${l}: ${byLoc[l]}`).join(' · ');
+            }
+
+            // Prepare CSV of the currently displayed log for export.
+            const _csvEscape = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
+            const csvHeader = ['Vehicle No', 'Type', 'Location', ...(logRangeMode ? ['Entry Date', 'Expiry Date'] : []), 'Approved By', 'Hours', 'Escort', 'Notes'];
+            const csvRows = logVehicles.map(v => [
+                formatVehicleNumber(v.vehicleNumber), v.vehicleType, v.location,
+                ...(logRangeMode ? [formatDateDisplay(v.entryDate), formatDateDisplay(v.expiryDate)] : []),
+                v.approvedBy || '', v.timeSlot || '',
+                v.escortRequired ? (v.escortBy || 'Yes') : '', v.notes || ''
+            ]);
+            _logExportCSV = [csvHeader, ...csvRows].map(r => r.map(_csvEscape).join(',')).join('\r\n');
+            _logExportName = `${fileName}.csv`;
 
             // Location filter (works in both single-day and range modes).
             const locationSelector = `
@@ -2281,9 +2328,14 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                                 <h2 class="text-2xl font-bold text-gray-900">${logRangeMode ? 'Vehicle Log — Date Range' : 'Daily Vehicle Log'}</h2>
                                 <p class="text-gray-600">${headerLabel}${(!logRangeMode && !isToday) ? ' <span class="text-amber-600 font-semibold">(past/future date)</span>' : ''}</p>
                             </div>
-                            <button onclick="document.title='${fileName}'; window.print(); setTimeout(() => { document.title = 'Vehicle Clearance Panel'; }, 500);" class="flex-none flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden">
-                                ${icons.print} Print Log
-                            </button>
+                            <div class="flex-none flex flex-col gap-2 print:hidden">
+                                <button onclick="document.title='${fileName}'; window.print(); setTimeout(() => { document.title = 'Vehicle Clearance Panel'; }, 500);" class="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                    ${icons.print} Print Log
+                                </button>
+                                <button id="log-export-csv" class="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 border border-gray-300 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors text-sm font-semibold">
+                                    Export CSV
+                                </button>
+                            </div>
                         </div>
                         <!-- Mode toggle -->
                         <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden print:hidden">
@@ -2295,6 +2347,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                         <!-- Location filter -->
                         ${locationSelector}
                         <p class="text-sm text-gray-500 print:hidden">${countLabel}</p>
+                        ${locationSummary ? `<p class="text-xs text-gray-400 print:hidden">By location — ${locationSummary}</p>` : ''}
                     </div>
 
                     <!-- Print Header (Hidden in Web, Visible in Print) -->
@@ -2331,13 +2384,6 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                                             ${v.escortRequired ? `<strong>⚠️ Escort: ${v.escortBy}</strong> ` : ''}
                                             ${v.notes ? `<span class="italic">${v.notes}</span>` : ''}
                                         </td>
-                                    </tr>
-                                `).join('')}
-                                <!-- Extra blank rows for manual entries (screen only, hidden on print) -->
-                                ${Array(5).fill(0).map(() => `
-                                    <tr class="blank-row border-b border-gray-200">
-                                        <td class="p-3 border border-gray-300 h-12"></td>
-                                        ${blankCell.repeat(colCount - 1)}
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -3530,6 +3576,21 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             const _toISO = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             if (e.target.closest('#log-mode-single')) { logRangeMode = false; renderDailyLogView(); return; }
             if (e.target.closest('#log-mode-range'))  { logRangeMode = true;  renderDailyLogView(); return; }
+            if (e.target.closest('#log-export-csv')) {
+                if (!_logExportCSV) { showNotification('Nothing to export.', 'info'); return; }
+                const blob = new Blob(['\ufeff' + _logExportCSV], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = _logExportName;
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                showNotification('Log exported as CSV.', 'success');
+                return;
+            }
+            if (e.target.closest('#grid-clear-filters')) {
+                gridLocationFilter = 'ALL'; gridStatusFilter = 'ALL';
+                renderGridView(); return;
+            }
             if (e.target.closest('#log-range-today')) {
                 const d = new Date(); logFromDate = _toISO(d); logToDate = _toISO(d);
                 renderDailyLogView(); return;
@@ -3583,6 +3644,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             if (showAllBtn) {
                 isGridView = true;
                 gridLocationFilter = 'ALL';
+                gridStatusFilter = 'ALL';
                 renderGridView();
             }
             
@@ -3650,6 +3712,11 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             }
             if (e.target.id === 'grid-location-filter') {
                 gridLocationFilter = e.target.value || 'ALL';
+                renderGridView();
+                return;
+            }
+            if (e.target.id === 'grid-status-filter') {
+                gridStatusFilter = e.target.value || 'ALL';
                 renderGridView();
                 return;
             }
