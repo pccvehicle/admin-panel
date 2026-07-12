@@ -567,6 +567,7 @@
 
         /* PRINT STYLES - 24hr Log */
         @media print {
+            @page { size: landscape; margin: 12mm; }
             body { background-color: white; color: black; }
             header, nav, #modal-backdrop, #print-btn-container { display: none !important; }
             #app-root { max-width: none; padding: 0; margin: 0; }
@@ -574,6 +575,9 @@
             /* Hide everything except the daily log container when printing */
             #view-content > div:not(#daily-log-container) { display: none; }
             #daily-log-container { display: block !important; background: white !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+
+            /* Blank manual-entry rows are for on-screen only; never print them */
+            .blank-row { display: none !important; }
             
             .print-table {
                 width: 100%;
@@ -2329,9 +2333,9 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                                         </td>
                                     </tr>
                                 `).join('')}
-                                <!-- Extra blank rows for manual entries -->
+                                <!-- Extra blank rows for manual entries (screen only, hidden on print) -->
                                 ${Array(5).fill(0).map(() => `
-                                    <tr class="border-b border-gray-200">
+                                    <tr class="blank-row border-b border-gray-200">
                                         <td class="p-3 border border-gray-300 h-12"></td>
                                         ${blankCell.repeat(colCount - 1)}
                                     </tr>
