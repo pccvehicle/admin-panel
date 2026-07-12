@@ -1315,8 +1315,10 @@
         let logRangeMode = false;   // false = single day, true = From/To date range
         let logFromDate = null;     // YYYY-MM-DD range start (null = today)
         let logToDate = null;       // YYYY-MM-DD range end   (null = today)
+        let logLocationFilter = 'ALL'; // 'ALL' or a specific location for the Daily Log
         let _pendingBatch = null;    // parsed batch awaiting confirmation
         let isGridView = false; 
+        let gridLocationFilter = 'ALL'; // 'ALL' or a specific location for the Show All grid
         let allRows = []; 
         let filtered = [];
         let confirmCallback = null;
@@ -2033,14 +2035,33 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             const contentEl = document.getElementById("view-content");
             if (!contentEl) return;
 
-            const expiredCount = allRows.filter(v => getVehicleStatus(v) === 'expired').length;
+            // Distinct locations actually present in the data (plus configured ones).
+            const locationSet = new Set();
+            allRows.forEach(v => { if (v.location) locationSet.add(v.location); });
+            (appSettings.locations || []).forEach(l => { if (l) locationSet.add(l); });
+            const locationOptions = Array.from(locationSet).sort((a, b) => a.localeCompare(b));
+
+            // If the active filter no longer exists in the data, fall back to ALL.
+            if (gridLocationFilter !== 'ALL' && !locationSet.has(gridLocationFilter)) {
+                gridLocationFilter = 'ALL';
+            }
+
+            // Rows to display after applying the location filter.
+            const rows = gridLocationFilter === 'ALL'
+                ? allRows
+                : allRows.filter(v => v.location === gridLocationFilter);
+
+            const expiredCount = rows.filter(v => getVehicleStatus(v) === 'expired').length;
+            const headerCount = gridLocationFilter === 'ALL'
+                ? `All Vehicles (${allRows.length})`
+                : `${gridLocationFilter} (${rows.length})`;
 
             contentEl.innerHTML = `
                 <div class="bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-lg overflow-hidden">
                     <!-- Grid Header / Toolbar -->
                     <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
                         <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-                            ${icons.list} All Vehicles (${allRows.length})
+                            ${icons.list} ${headerCount}
                         </h2>
                         <div class="flex gap-2">
                             ${expiredCount > 0 ? `
@@ -2052,7 +2073,16 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                             </button>
                         </div>
                     </div>
-                    
+
+                    <!-- Location Filter -->
+                    <div class="p-4 border-b border-slate-700 bg-slate-900/30 flex items-center gap-3 flex-wrap">
+                        <label for="grid-location-filter" class="text-sm font-medium text-slate-300 whitespace-nowrap">Filter by Location</label>
+                        <select id="grid-location-filter" class="mobile-input flex-1 min-w-[10rem]">
+                            <option value="ALL" ${gridLocationFilter === 'ALL' ? 'selected' : ''}>All Locations</option>
+                            ${locationOptions.map(loc => `<option value="${loc}" ${loc === gridLocationFilter ? 'selected' : ''}>${loc}</option>`).join('')}
+                        </select>
+                    </div>
+
                     <!-- Scrollable Grid Area -->
                     <div class="overflow-x-auto max-h-[65vh]">
                         <table class="grid-table w-full text-left">
@@ -2067,8 +2097,8 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-800">
-                                ${allRows.length === 0 ? `<tr><td colspan="6" class="text-center py-8 text-slate-500">No records found.</td></tr>` : 
-                                  allRows.map(v => {
+                                ${rows.length === 0 ? `<tr><td colspan="6" class="text-center py-8 text-slate-500">${allRows.length === 0 ? 'No records found.' : 'No vehicles at this location.'}</td></tr>` : 
+                                  rows.map(v => {
                                     const status = getVehicleStatus(v);
                                     let statusColorClass = 'status-border-success'; 
                                     let statusText = '<span class="text-green-400">Active</span>';
@@ -2155,6 +2185,25 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                 return entry <= winEnd && expiry >= winStart;
             });
 
+            // Location options come from what's in the (date-filtered) data plus settings.
+            const logLocSet = new Set();
+            logVehicles.forEach(v => { if (v.location) logLocSet.add(v.location); });
+            (appSettings.locations || []).forEach(l => { if (l) logLocSet.add(l); });
+            const logLocOptions = Array.from(logLocSet).sort((a, b) => a.localeCompare(b));
+
+            // If the chosen location isn't relevant anymore, revert to ALL.
+            if (logLocationFilter !== 'ALL' && !logLocSet.has(logLocationFilter)) {
+                logLocationFilter = 'ALL';
+            }
+
+            // Apply the location filter.
+            if (logLocationFilter !== 'ALL') {
+                logVehicles = logVehicles.filter(v => v.location === logLocationFilter);
+                headerLabel += ` · ${logLocationFilter}`;
+                printLabel += ` | Location: ${logLocationFilter}`;
+                fileName += `_${logLocationFilter.replace(/[^A-Za-z0-9]+/g, '-')}`;
+            }
+
             // Sort: in range mode by entry date first, then FOYER, then hours.
             logVehicles.sort((a, b) => {
                 if (logRangeMode) {
@@ -2175,9 +2224,20 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             const colCount = logRangeMode ? 7 : 6;
             const blankCell = `<td class="p-3 border border-gray-300"></td>`;
 
-            const countLabel = logRangeMode
-                ? `${logVehicles.length} vehicle(s) cleared in this period.`
-                : `${logVehicles.length} vehicle(s) cleared for this date.`;
+            const countLabel = (logRangeMode
+                ? `${logVehicles.length} vehicle(s) cleared in this period`
+                : `${logVehicles.length} vehicle(s) cleared for this date`)
+                + (logLocationFilter !== 'ALL' ? ` at ${logLocationFilter}.` : '.');
+
+            // Location filter (works in both single-day and range modes).
+            const locationSelector = `
+                <div class="flex items-center gap-2 flex-wrap print:hidden">
+                    <label for="log-location-filter" class="text-sm font-medium text-gray-600 whitespace-nowrap">Location</label>
+                    <select id="log-location-filter" class="mobile-input bg-white border border-gray-300 text-gray-900 flex-1 min-w-[10rem] h-auto py-2">
+                        <option value="ALL" ${logLocationFilter === 'ALL' ? 'selected' : ''}>All Locations</option>
+                        ${logLocOptions.map(loc => `<option value="${loc}" ${loc === logLocationFilter ? 'selected' : ''}>${loc}</option>`).join('')}
+                    </select>
+                </div>`;
 
             // Selector block differs by mode.
             const singleSelector = `
@@ -2228,6 +2288,8 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                         </div>
                         <!-- Date selector -->
                         ${logRangeMode ? rangeSelector : singleSelector}
+                        <!-- Location filter -->
+                        ${locationSelector}
                         <p class="text-sm text-gray-500 print:hidden">${countLabel}</p>
                     </div>
 
@@ -3352,8 +3414,12 @@ WXY 789 A, Ali Bin Abu" required></textarea>
 
         // *** NEW: Batch Delete Logic ***
         const handleBatchDeleteExpired = () => {
-            const expiredDocs = allRows.filter(v => getVehicleStatus(v) === 'expired');
+            const scope = (gridLocationFilter && gridLocationFilter !== 'ALL')
+                ? allRows.filter(v => v.location === gridLocationFilter)
+                : allRows;
+            const expiredDocs = scope.filter(v => getVehicleStatus(v) === 'expired');
             const count = expiredDocs.length;
+            const scopeLabel = (gridLocationFilter && gridLocationFilter !== 'ALL') ? ` at ${gridLocationFilter}` : '';
 
             if (count === 0) {
                 showNotification("No expired vehicles found.", "info");
@@ -3362,7 +3428,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
 
             showModal(
                 "Delete Expired Vehicles?",
-                `Found ${count} expired vehicle records. This will permanently delete them from the database.`,
+                `Found ${count} expired vehicle record(s)${scopeLabel}. This will permanently delete them from the database.`,
                 async () => {
                     hideModal();
                     try {
@@ -3512,6 +3578,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
 
             if (showAllBtn) {
                 isGridView = true;
+                gridLocationFilter = 'ALL';
                 renderGridView();
             }
             
@@ -3577,6 +3644,11 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                 e.target.value = '';
                 return;
             }
+            if (e.target.id === 'grid-location-filter') {
+                gridLocationFilter = e.target.value || 'ALL';
+                renderGridView();
+                return;
+            }
             if (e.target.id === 'log-date-input') {
                 const iso = fromDMY(e.target.value);
                 if (iso) { logDate = iso; renderDailyLogView(); }
@@ -3590,6 +3662,11 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             if (e.target.id === 'log-to-input') {
                 const iso = fromDMY(e.target.value);
                 if (iso) { logToDate = iso; renderDailyLogView(); }
+                return;
+            }
+            if (e.target.id === 'log-location-filter') {
+                logLocationFilter = e.target.value || 'ALL';
+                renderDailyLogView();
                 return;
             }
             if (e.target.id === 'recover-file-input') {
