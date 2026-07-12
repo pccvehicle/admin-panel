@@ -1312,6 +1312,9 @@
         let currentView = 'add'; // 'add', 'search', 'settings', 'log'
         let addEntryMode = 'single'; // 'single' | 'batch'
         let logDate = null;         // YYYY-MM-DD for the Daily Log view (null = today)
+        let logRangeMode = false;   // false = single day, true = From/To date range
+        let logFromDate = null;     // YYYY-MM-DD range start (null = today)
+        let logToDate = null;       // YYYY-MM-DD range end   (null = today)
         let _pendingBatch = null;    // parsed batch awaiting confirmation
         let isGridView = false; 
         let allRows = []; 
@@ -2109,45 +2112,101 @@ WXY 789 A, Ali Bin Abu" required></textarea>
         const renderDailyLogView = () => {
             const contentEl = document.getElementById("view-content");
             if (!contentEl) return;
-            
-            // Selected day (defaults to today). Log can be viewed for any date.
+
             const _todayStr = (() => { const d = new Date(); d.setHours(0,0,0,0);
                 return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+
+            // Defaults
             if (!logDate) logDate = _todayStr;
-            const isToday = logDate === _todayStr;
+            if (!logFromDate) logFromDate = _todayStr;
+            if (!logToDate) logToDate = _todayStr;
 
-            const today = parseLocalDate(logDate) || new Date();
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
+            // Resolve the active window (single day => start === end).
+            let winStart, winEnd, headerLabel, printLabel, fileName;
+            if (logRangeMode) {
+                let f = parseLocalDate(logFromDate) || new Date();
+                let t = parseLocalDate(logToDate) || new Date();
+                f.setHours(0,0,0,0); t.setHours(0,0,0,0);
+                if (f > t) { const tmp = f; f = t; t = tmp; } // tolerate reversed input
+                winStart = f;
+                winEnd = new Date(t); winEnd.setHours(23,59,59,999);
+                const fStr = f.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                const tStr = t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                headerLabel = (f.getTime() === t.getTime()) ? fStr : `${fStr} — ${tStr}`;
+                printLabel = `Period: ${headerLabel}`;
+                fileName = `Vehicle_Clearance_${f.toISOString().split('T')[0]}_to_${t.toISOString().split('T')[0]}`;
+            } else {
+                const d = parseLocalDate(logDate) || new Date();
+                d.setHours(0,0,0,0);
+                winStart = d;
+                winEnd = new Date(d); winEnd.setHours(23,59,59,999);
+                headerLabel = d.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                printLabel = `Date: ${headerLabel} | Shift: 24 Hours`;
+                fileName = `Vehicle_Clearance_${d.toISOString().split('T')[0]}`;
+            }
+            const isToday = !logRangeMode && logDate === _todayStr;
 
-            // Filter vehicles whose clearance covers the selected date
-            let todaysVehicles = allRows.filter(v => {
+            // A vehicle appears if its clearance overlaps the active window.
+            let logVehicles = allRows.filter(v => {
                 if (!v.entryDate || !v.expiryDate) return false;
                 const entry = v.entryDate.toDate();
                 const expiry = v.expiryDate.toDate();
-                expiry.setHours(23,59,59,999); // Include the full expiry day
-                
-                // Check if today falls within the valid range
-                return entry <= tomorrow && expiry >= today;
+                expiry.setHours(23,59,59,999); // include the full expiry day
+                return entry <= winEnd && expiry >= winStart;
             });
 
-            // Sort: FOYER first, then Vehicle Number
-            todaysVehicles.sort((a, b) => {
-                const locA = (a.location || '').toUpperCase();
-                const locB = (b.location || '').toUpperCase();
-                const isFoyerA = locA.includes('FOYER');
-                const isFoyerB = locB.includes('FOYER');
-
+            // Sort: in range mode by entry date first, then FOYER, then hours.
+            logVehicles.sort((a, b) => {
+                if (logRangeMode) {
+                    const ea = a.entryDate?.toMillis() || 0;
+                    const eb = b.entryDate?.toMillis() || 0;
+                    if (ea !== eb) return ea - eb;
+                }
+                const isFoyerA = (a.location || '').toUpperCase().includes('FOYER');
+                const isFoyerB = (b.location || '').toUpperCase().includes('FOYER');
                 if (isFoyerA && !isFoyerB) return -1;
                 if (!isFoyerA && isFoyerB) return 1;
-                return byTimeSequence(a, b); // then chronological by visiting hours
+                return byTimeSequence(a, b);
             });
 
-            const todayString = today.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            // Filename format: Vehicle_Clearance_YYYY-MM-DD.pdf (implied)
-            const fileNameDate = today.toISOString().split('T')[0];
-            const fileName = `Vehicle_Clearance_${fileNameDate}`;
+            const dateColHeader = logRangeMode
+                ? `<th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Valid Dates</th>`
+                : '';
+            const colCount = logRangeMode ? 7 : 6;
+            const blankCell = `<td class="p-3 border border-gray-300"></td>`;
+
+            const countLabel = logRangeMode
+                ? `${logVehicles.length} vehicle(s) cleared in this period.`
+                : `${logVehicles.length} vehicle(s) cleared for this date.`;
+
+            // Selector block differs by mode.
+            const singleSelector = `
+                <div class="flex items-center gap-2 flex-wrap print:hidden">
+                    <button id="log-prev-day" title="Previous day" class="px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 font-semibold hover:bg-gray-200">‹</button>
+                    <div class="flex-1 min-w-[10rem]">${dateField('logDate', logDate, { id: 'log-date-input', light: true })}</div>
+                    <button id="log-next-day" title="Next day" class="px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 font-semibold hover:bg-gray-200">›</button>
+                    <button id="log-today" class="px-4 py-2 rounded-lg font-semibold ${isToday ? 'bg-gray-100 border border-gray-300 text-gray-400' : 'bg-blue-600 text-white hover:bg-blue-700'}" ${isToday ? 'disabled' : ''}>Today</button>
+                </div>`;
+
+            const rangeSelector = `
+                <div class="space-y-2 print:hidden">
+                    <div class="flex items-end gap-2 flex-wrap">
+                        <div class="flex-1 min-w-[9rem]">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">From</label>
+                            ${dateField('logFrom', logFromDate, { id: 'log-from-input', light: true })}
+                        </div>
+                        <div class="flex-1 min-w-[9rem]">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">To</label>
+                            ${dateField('logTo', logToDate, { id: 'log-to-input', light: true })}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button id="log-range-today" class="px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 text-sm font-semibold hover:bg-gray-200">Today</button>
+                        <button id="log-range-7" class="px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 text-sm font-semibold hover:bg-gray-200">Next 7 days</button>
+                        <button id="log-range-week" class="px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 text-sm font-semibold hover:bg-gray-200">This week</button>
+                        <button id="log-range-month" class="px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 text-sm font-semibold hover:bg-gray-200">This month</button>
+                    </div>
+                </div>`;
 
             contentEl.innerHTML = `
                 <div id="daily-log-container" class="bg-white text-black rounded-2xl shadow-lg overflow-hidden sm:p-8 p-4">
@@ -2155,27 +2214,27 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                     <div class="mb-6 border-b border-gray-200 pb-4 space-y-4">
                         <div class="flex justify-between items-start gap-3">
                             <div>
-                                <h2 class="text-2xl font-bold text-gray-900">Daily Vehicle Log</h2>
-                                <p class="text-gray-600">${todayString}${isToday ? '' : ' <span class="text-amber-600 font-semibold">(past/future date)</span>'}</p>
+                                <h2 class="text-2xl font-bold text-gray-900">${logRangeMode ? 'Vehicle Log — Date Range' : 'Daily Vehicle Log'}</h2>
+                                <p class="text-gray-600">${headerLabel}${(!logRangeMode && !isToday) ? ' <span class="text-amber-600 font-semibold">(past/future date)</span>' : ''}</p>
                             </div>
                             <button onclick="document.title='${fileName}'; window.print(); setTimeout(() => { document.title = 'Vehicle Clearance Panel'; }, 500);" class="flex-none flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden">
                                 ${icons.print} Print Log
                             </button>
                         </div>
-                        <!-- Date selector -->
-                        <div class="flex items-center gap-2 flex-wrap print:hidden">
-                            <button id="log-prev-day" title="Previous day" class="px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 font-semibold hover:bg-gray-200">‹</button>
-                            <div class="flex-1 min-w-[10rem]">${dateField('logDate', logDate, { id: 'log-date-input', light: true })}</div>
-                            <button id="log-next-day" title="Next day" class="px-3 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-800 font-semibold hover:bg-gray-200">›</button>
-                            <button id="log-today" class="px-4 py-2 rounded-lg font-semibold ${isToday ? 'bg-gray-100 border border-gray-300 text-gray-400' : 'bg-blue-600 text-white hover:bg-blue-700'}" ${isToday ? 'disabled' : ''}>Today</button>
+                        <!-- Mode toggle -->
+                        <div class="inline-flex rounded-lg border border-gray-300 overflow-hidden print:hidden">
+                            <button id="log-mode-single" class="px-4 py-2 text-sm font-semibold ${logRangeMode ? 'bg-white text-gray-700 hover:bg-gray-100' : 'bg-blue-600 text-white'}">Single Day</button>
+                            <button id="log-mode-range" class="px-4 py-2 text-sm font-semibold border-l border-gray-300 ${logRangeMode ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}">Date Range</button>
                         </div>
-                        <p class="text-sm text-gray-500 print:hidden">${todaysVehicles.length} vehicle(s) cleared for this date.</p>
+                        <!-- Date selector -->
+                        ${logRangeMode ? rangeSelector : singleSelector}
+                        <p class="text-sm text-gray-500 print:hidden">${countLabel}</p>
                     </div>
 
                     <!-- Print Header (Hidden in Web, Visible in Print) -->
                     <div class="print-header hidden">
-                        <h1>DAILY VEHICLE CLEARANCE LOG</h1>
-                        <p>Date: ${todayString} | Shift: 24 Hours</p>
+                        <h1>${logRangeMode ? 'VEHICLE CLEARANCE LOG' : 'DAILY VEHICLE CLEARANCE LOG'}</h1>
+                        <p>${printLabel}</p>
                     </div>
 
                     <div class="overflow-x-auto">
@@ -2185,19 +2244,21 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                                     <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Vehicle No</th>
                                     <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Type</th>
                                     <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Location</th>
+                                    ${dateColHeader}
                                     <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Approved By</th>
                                     <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Hours</th>
                                     <th class="p-3 border border-gray-300 font-bold whitespace-nowrap">Remarks / Escort</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${todaysVehicles.length === 0 ? 
-                                    `<tr><td colspan="6" class="p-8 text-center text-gray-500 border border-gray-300">No vehicles scheduled for this date.</td></tr>` : 
-                                    todaysVehicles.map(v => `
+                                ${logVehicles.length === 0 ? 
+                                    `<tr><td colspan="${colCount}" class="p-8 text-center text-gray-500 border border-gray-300">No vehicles scheduled for this ${logRangeMode ? 'period' : 'date'}.</td></tr>` : 
+                                    logVehicles.map(v => `
                                     <tr class="border-b border-gray-200">
                                         <td class="p-3 border border-gray-300 font-mono font-bold text-lg whitespace-nowrap">${formatVehicleNumber(v.vehicleNumber)}</td>
                                         <td class="p-3 border border-gray-300 whitespace-nowrap">${v.vehicleType}</td>
                                         <td class="p-3 border border-gray-300 font-bold whitespace-nowrap">${v.location}</td>
+                                        ${logRangeMode ? `<td class="p-3 border border-gray-300 text-sm whitespace-nowrap">${formatDateDisplay(v.entryDate)} – ${formatDateDisplay(v.expiryDate)}</td>` : ''}
                                         <td class="p-3 border border-gray-300 font-bold whitespace-nowrap">${v.approvedBy || ''}</td>
                                         <td class="p-3 border border-gray-300 font-bold whitespace-nowrap">${v.timeSlot || ''}</td>
                                         <td class="p-3 border border-gray-300 text-sm whitespace-nowrap">
@@ -2210,11 +2271,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                                 ${Array(5).fill(0).map(() => `
                                     <tr class="border-b border-gray-200">
                                         <td class="p-3 border border-gray-300 h-12"></td>
-                                        <td class="p-3 border border-gray-300"></td>
-                                        <td class="p-3 border border-gray-300"></td>
-                                        <td class="p-3 border border-gray-300"></td>
-                                        <td class="p-3 border border-gray-300"></td>
-                                        <td class="p-3 border border-gray-300"></td>
+                                        ${blankCell.repeat(colCount - 1)}
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -3399,6 +3456,33 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             if (e.target.closest('#log-prev-day')) { _shiftLogDate(-1); return; }
             if (e.target.closest('#log-next-day')) { _shiftLogDate(1); return; }
             if (e.target.closest('#log-today'))    { logDate = null; renderDailyLogView(); return; }
+            // --- Daily Log: mode toggle + date-range presets ---
+            const _toISO = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            if (e.target.closest('#log-mode-single')) { logRangeMode = false; renderDailyLogView(); return; }
+            if (e.target.closest('#log-mode-range'))  { logRangeMode = true;  renderDailyLogView(); return; }
+            if (e.target.closest('#log-range-today')) {
+                const d = new Date(); logFromDate = _toISO(d); logToDate = _toISO(d);
+                renderDailyLogView(); return;
+            }
+            if (e.target.closest('#log-range-7')) {
+                const s = new Date(); const en = new Date(); en.setDate(en.getDate() + 6);
+                logFromDate = _toISO(s); logToDate = _toISO(en);
+                renderDailyLogView(); return;
+            }
+            if (e.target.closest('#log-range-week')) {
+                const s = new Date(); const day = (s.getDay() + 6) % 7; // Monday = 0
+                s.setDate(s.getDate() - day);
+                const en = new Date(s); en.setDate(en.getDate() + 6);
+                logFromDate = _toISO(s); logToDate = _toISO(en);
+                renderDailyLogView(); return;
+            }
+            if (e.target.closest('#log-range-month')) {
+                const now = new Date();
+                const s = new Date(now.getFullYear(), now.getMonth(), 1);
+                const en = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                logFromDate = _toISO(s); logToDate = _toISO(en);
+                renderDailyLogView(); return;
+            }
             if (e.target.closest('#add-mode-single')) { addEntryMode = 'single'; renderViewContent(); return; }
             if (e.target.closest('#add-mode-batch'))  { addEntryMode = 'batch';  renderViewContent(); return; }
             if (e.target.closest('#choose-folder-btn')) {
@@ -3496,6 +3580,16 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             if (e.target.id === 'log-date-input') {
                 const iso = fromDMY(e.target.value);
                 if (iso) { logDate = iso; renderDailyLogView(); }
+                return;
+            }
+            if (e.target.id === 'log-from-input') {
+                const iso = fromDMY(e.target.value);
+                if (iso) { logFromDate = iso; renderDailyLogView(); }
+                return;
+            }
+            if (e.target.id === 'log-to-input') {
+                const iso = fromDMY(e.target.value);
+                if (iso) { logToDate = iso; renderDailyLogView(); }
                 return;
             }
             if (e.target.id === 'recover-file-input') {
