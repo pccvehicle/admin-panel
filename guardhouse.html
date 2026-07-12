@@ -766,8 +766,14 @@
         // ===================================================================
         const MIRROR_LS_KEY   = 'vcp_mirror_ls';
         const SNAP_META_KEY   = 'vcp_last_snapshot_ts';
-        const MAX_SNAPSHOTS   = 12;              // keep last 12 snapshots
+        const MAX_SNAPSHOTS   = 12;              // hard cap on snapshots kept
         const SNAP_MIN_GAP_MS = 10 * 60 * 1000;  // auto-snapshot at most every 10 min
+        // Tiered retention (keeps history useful without clutter):
+        //   • always keep the 3 newest snapshots
+        //   • keep manual / pre-recovery snapshots preferentially
+        //   • last 7 days: keep at most ONE auto-snapshot per day
+        //   • older than 7 days: keep at most ONE per week
+        //   • never exceed MAX_SNAPSHOTS in total
 
         let _bdb = null, _useBDB = false;
 
@@ -852,10 +858,38 @@
             };
             await _bPut('snapshots', snap);
             LS.set(SNAP_META_KEY, snap.ts);
-            // prune to MAX_SNAPSHOTS (oldest first)
-            const all = (await _bAll('snapshots')).sort((a,b) => a.ts - b.ts);
-            while (all.length > MAX_SNAPSHOTS) { const old = all.shift(); await _bDel('snapshots', old.id); }
+            await _pruneSnapshots();
             return snap;
+        };
+        // Tiered retention: thins out older auto-snapshots so the list stays short
+        // while still covering a long time span (see policy comment above).
+        const _pruneSnapshots = async () => {
+            if (!_useBDB) return;
+            const all = (await _bAll('snapshots')).sort((a,b) => b.ts - a.ts); // newest first
+            if (all.length <= 3) return;
+            const DAY = 86400000, now = Date.now();
+            const dayKey  = ts => new Date(ts).toDateString();
+            const weekKey = ts => 'w' + Math.floor(ts / (7 * DAY));
+            const keep = new Set(), seenDay = new Set(), seenWeek = new Set();
+            let recent = 0;
+            for (const s of all) {
+                if (keep.size >= MAX_SNAPSHOTS) break;
+                const age = now - s.ts;
+                if (recent < 3) {                       // always keep the 3 newest
+                    recent++; keep.add(s.id);
+                    seenDay.add(dayKey(s.ts)); seenWeek.add(weekKey(s.ts));
+                    continue;
+                }
+                if (s.label !== 'auto') { keep.add(s.id); continue; }  // protect manual / pre-recovery
+                if (age < 7 * DAY) {                    // last week: one auto per day
+                    const k = dayKey(s.ts);
+                    if (!seenDay.has(k)) { seenDay.add(k); keep.add(s.id); }
+                } else {                                // older: one auto per week
+                    const k = weekKey(s.ts);
+                    if (!seenWeek.has(k)) { seenWeek.add(k); keep.add(s.id); }
+                }
+            }
+            for (const s of all) if (!keep.has(s.id)) await _bDel('snapshots', s.id);
         };
         const deleteSnapshot = async (id) => {
             if (!_useBDB) return false;
@@ -1033,6 +1067,8 @@
         const _bootRecovery = async () => {
             _useBDB = await _openBackupDB();
             await _ready;
+            // one-time cleanup of accumulated snapshots (tiered retention keeps newest 3, so recovery below is unaffected)
+            if (_useBDB) _pruneSnapshots().catch(() => {});
             if (_vehicles.length > 0) { _scheduleMirror(); return; }
 
             // candidates: (a) backup-DB mirror  (b) newest snapshot  (c) localStorage mirror
@@ -2658,6 +2694,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
         };
 
         // --- Data Protection panel (Settings) ---
+        let _dpShowAllSnaps = false;   // snapshot list collapsed (3 newest) by default
         const renderDataProtectionPanel = async () => {
             const statusEl = document.getElementById('dp-status');
             const listEl = document.getElementById('dp-snapshot-list');
@@ -2669,15 +2706,25 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                     `Primary DB (${st.engine}): <b>${st.primary}</b> record(s)`,
                     `Backup mirror DB: <b>${st.mirror === null ? 'unavailable' : st.mirror + ' record(s)'}</b>`,
                     `localStorage mirror: <b>${st.lsMirror ? st.lsMirror.count + ' record(s), saved ' + fmt(st.lsMirror.savedAt) : 'none yet'}</b>`,
-                    `Snapshots kept: <b>${st.snapshots.length} / ${MAX_SNAPSHOTS}</b>`
+                    `Snapshots kept: <b>${st.snapshots.length} / ${MAX_SNAPSHOTS}</b> <span class="text-slate-500">(older ones are auto-thinned: 1/day this week, 1/week beyond)</span>`
                 ].join('<br>');
                 if (!st.snapshots.length) {
                     listEl.innerHTML = '<p class="text-sm text-slate-500">No snapshots yet. One is created automatically as data changes, or tap "Create snapshot now".</p>';
                 } else {
-                    listEl.innerHTML = st.snapshots.map(x => `
+                    const _snapWhen = (ts) => {
+                        const d = new Date(ts);
+                        const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const today = new Date(); const yest = new Date(); yest.setDate(yest.getDate() - 1);
+                        if (d.toDateString() === today.toDateString()) return `Today, ${time}`;
+                        if (d.toDateString() === yest.toDateString())  return `Yesterday, ${time}`;
+                        return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + `, ${time}`;
+                    };
+                    const visible = _dpShowAllSnaps ? st.snapshots : st.snapshots.slice(0, 3);
+                    const hidden = st.snapshots.length - visible.length;
+                    listEl.innerHTML = visible.map(x => `
                         <div class="flex items-center justify-between gap-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
                             <div class="text-sm text-slate-300 min-w-0">
-                                <div class="font-mono text-xs truncate">${new Date(x.ts).toLocaleString()}</div>
+                                <div class="font-mono text-xs truncate">${_snapWhen(x.ts)}</div>
                                 <div class="text-slate-500 text-xs">${x.count} rec · ${x.label}</div>
                             </div>
                             <div class="flex items-center gap-2 flex-none">
@@ -2685,7 +2732,8 @@ WXY 789 A, Ali Bin Abu" required></textarea>
                                 <button data-snap-id="${x.id}" data-snap-ts="${x.ts}" title="Delete snapshot" class="delete-snapshot-btn px-3 py-1.5 rounded-lg bg-slate-700 text-red-400 text-sm font-bold hover:bg-red-700 hover:text-white">&times;</button>
                             </div>
                         </div>`).join('') +
-                        `<button id="clear-snapshots-btn" class="w-full mt-2 px-4 py-2 rounded-lg bg-slate-700 text-slate-400 text-sm font-medium hover:bg-red-700 hover:text-white">Delete all snapshots</button>`;
+                        (st.snapshots.length > 3 ? `<button id="toggle-snapshots-btn" class="w-full mt-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-sm font-medium hover:bg-slate-700">${_dpShowAllSnaps ? 'Show fewer' : `Show all ${st.snapshots.length} snapshots (${hidden} more)`}</button>` : '') +
+                        (_dpShowAllSnaps || st.snapshots.length <= 3 ? `<button id="clear-snapshots-btn" class="w-full mt-2 px-4 py-2 rounded-lg bg-slate-700 text-slate-400 text-sm font-medium hover:bg-red-700 hover:text-white">Delete all snapshots</button>` : '');
                 }
             } catch (e) {
                 statusEl.textContent = 'Backup status unavailable: ' + e.message;
@@ -3561,6 +3609,7 @@ WXY 789 A, Ali Bin Abu" required></textarea>
             if (restoreSnapBtn) { handleRestoreSnapshot(restoreSnapBtn.dataset.snapId); return; }
             const delSnapBtn = e.target.closest('.delete-snapshot-btn');
             if (delSnapBtn) { handleDeleteSnapshot(delSnapBtn.dataset.snapId, delSnapBtn.dataset.snapTs); return; }
+            if (e.target.closest('#toggle-snapshots-btn')) { _dpShowAllSnaps = !_dpShowAllSnaps; renderDataProtectionPanel(); return; }
             if (e.target.closest('#clear-snapshots-btn')) { handleClearSnapshots(); return; }
             if (e.target.closest('#recover-file-btn')) { document.getElementById('recover-file-input').click(); return; }
             const _shiftLogDate = (days) => {
